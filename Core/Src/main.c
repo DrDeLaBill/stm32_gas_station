@@ -32,6 +32,7 @@
 
 #include "pump_manager.h"
 #include "umka200_manager.h"
+#include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
 
 /* USER CODE END Includes */
@@ -140,9 +141,13 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	umka200_proccess();
-	keyboard4x3_proccess();
 	pump_proccess();
+
+	umka200_proccess();
+
+	indicate_proccess();
+
+	keyboard4x3_proccess();
   }
   /* USER CODE END 3 */
 }
@@ -201,6 +206,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  NVIC_SystemReset();
   while (1)
   {
   }
