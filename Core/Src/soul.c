@@ -7,5 +7,5 @@
 
 void soul_proccess()
 {
-	const uint8_t* question = "Who am I?";
+	volatile const uint8_t* question = "Who am I?";
 }

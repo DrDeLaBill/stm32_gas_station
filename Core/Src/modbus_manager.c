@@ -12,8 +12,11 @@
 #include "modbus_rtu_slave.h"
 
 
+#define MODBUS_U8_ARRAY_REG_COUNT(arr)   (sizeof(arr) / 2 + sizeof(arr) % 2)
+
 #define MODBUS_REGISTER_CF_ID_IDX        ((uint16_t)0)
-#define MODBUS_REGISTER_CARDS_IDX        ((uint16_t)MODBUS_REGISTER_CF_ID_IDX + sizeof(settings.cf_id))
+#define MODBUS_REGISTER_DEVICE_ID_IDX    ((uint16_t)MODBUS_REGISTER_CF_ID_IDX + sizeof(settings.cf_id))
+#define MODBUS_REGISTER_CARDS_IDX        ((uint16_t)MODBUS_REGISTER_DEVICE_ID_IDX + MODBUS_U8_ARRAY_REG_COUNT(settings.device_id))
 #define MODBUS_REGISTER_CARDS_VALUES_IDX ((uint16_t)MODBUS_REGISTER_CARDS_IDX + sizeof(settings.cards))
 #define MODBUS_REGISTER_LOG_ID_IDX       ((uint16_t)MODBUS_REGISTER_CARDS_VALUES_IDX + sizeof(settings.cards_values))
 
@@ -86,23 +89,30 @@ void _modbus_manager_check_registers()
 {
 	settings_t tmp_settings = { 0 };
 	for (uint16_t i = 0; i < sizeof(tmp_settings.cf_id); i++) {
-		tmp_settings.cf_id <<= 8;
+		tmp_settings.cf_id <<= 16;
 		tmp_settings.cf_id |= modbus_slave_get_register_value(MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS, MODBUS_REGISTER_CF_ID_IDX + i);
+	}
+	for (uint16_t i = 0; i < MODBUS_U8_ARRAY_REG_COUNT(settings.device_id); i++) {
+		uint16_t reg_val =  modbus_slave_get_register_value(MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS, MODBUS_REGISTER_DEVICE_ID_IDX + i);
+		settings.device_id[i] = (uint8_t)(reg_val >> 8);
+		if (i + 1 < sizeof(settings.device_id)) {
+			settings.device_id[i] = (uint8_t)(reg_val & 0xFF);
+		}
 	}
 	for (uint16_t i = 0; i < __arr_len(tmp_settings.cards); i++) {
 		for (uint16_t j = 0; j < sizeof(*tmp_settings.cards); j++) {
-			tmp_settings.cards[i] <<= 8;
+			tmp_settings.cards[i] <<= 16;
 			tmp_settings.cards[i] |= modbus_slave_get_register_value(MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS, MODBUS_REGISTER_CARDS_IDX + i + j);
 		}
 	}
 	for (uint16_t i = 0; i < __arr_len(tmp_settings.cards_values); i++) {
 		for (uint16_t j = 0; j < sizeof(*tmp_settings.cards_values); j++) {
-			tmp_settings.cards_values[i] <<= 8;
+			tmp_settings.cards_values[i] <<= 16;
 			tmp_settings.cards_values[i] |= modbus_slave_get_register_value(MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS, MODBUS_REGISTER_CARDS_VALUES_IDX + i + j);
 		}
 	}
 	for (uint16_t i = 0; i < sizeof(tmp_settings.log_id); i++) {
-		tmp_settings.log_id <<= 8;
+		tmp_settings.log_id <<= 16;
 		tmp_settings.log_id |= modbus_slave_get_register_value(MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS, MODBUS_REGISTER_LOG_ID_IDX + i);
 	}
 

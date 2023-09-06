@@ -33,6 +33,8 @@ settings_status_t settings_reset()
 	memset(settings.cards, 0, sizeof(settings.cards));
 	memset(settings.cards_values, 0, sizeof(settings.cards_values));
 
+	memcpy(settings.device_id, SETTINGS_DEVICE_ID_DEFAULT, __min(strlen(SETTINGS_DEVICE_ID_DEFAULT), sizeof(settings.device_id)));
+
 	return settings_save();
 }
 

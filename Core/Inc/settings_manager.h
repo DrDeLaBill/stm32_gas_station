@@ -10,8 +10,10 @@
 #include "main.h"
 
 
-#define SETTINGS_BEDUG   (true)
-#define SETTINGS_VERSION ((uint8_t)0x01)
+#define SETTINGS_BEDUG             (true)
+#define SETTINGS_VERSION           ((uint8_t)0x01)
+#define SETTINGS_DEVICE_ID_SIZE    ((uint8_t)16)
+#define SETTINGS_DEVICE_ID_DEFAULT ("000000000000001")
 
 
 typedef enum _settings_status_t {
@@ -22,6 +24,7 @@ typedef enum _settings_status_t {
 
 typedef struct __attribute__((packed)) _settings_t  {
 	uint32_t cf_id;
+	uint8_t  device_id   [SETTINGS_DEVICE_ID_SIZE];
 	uint32_t cards       [GENERAL_RFID_CARDS_COUNT];
 	uint32_t cards_values[GENERAL_RFID_CARDS_COUNT];
 	uint32_t log_id;

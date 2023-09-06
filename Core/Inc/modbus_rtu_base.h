@@ -21,7 +21,7 @@ extern "C" {
 #define MODBUS_ENABLE_DISCRETE_INPUT_COILS              true
 #define MODBUS_ENABLE_ANALOG_INPUT_REGISTERS            true
 #define MODBUS_ENABLE_ANALOG_OUTPUT_HOLDING_REGISTERS   true
-#define MODBUS_REGISTER_SIZE                            100    // MODBUS default: 9999
+#define MODBUS_REGISTER_SIZE                            97    // MODBUS default: 9999
 
 // Commands:
 #define MODBUS_ENABLE_COMMAND_READ_COIL_STATUS          true
@@ -44,13 +44,13 @@ extern "C" {
 #define MODBUS_ENABLE_PRESET_MULTIPLE_REGISTERS         MODBUS_ENABLE_COMMAND_PRESET_MULTIPLE_REGISTERS && MODBUS_ENABLE_ANALOG_OUTPUT_HOLDING_REGISTERS
 
 
-#define SPECIAL_DATA_REGISTERS_COUNT_IDX               ((uint8_t)0)
-#define SPECIAL_DATA_VALUE_SIZE                        ((uint8_t)2)
-#define SPECIAL_DATA_META_COUNT                        ((uint8_t)3)
+#define SPECIAL_DATA_REGISTERS_COUNT_IDX                ((uint8_t)0)
+#define SPECIAL_DATA_VALUE_SIZE                         ((uint8_t)2)
+#define SPECIAL_DATA_META_COUNT                         ((uint8_t)3)
 
-#define MODBUS_ERROR_COMMAND_CODE                      ((uint8_t)0x80)
+#define MODBUS_ERROR_COMMAND_CODE                       ((uint8_t)0x80)
 
-#define MODBUS_RESPONSE_MESSAGE_SIZE                   ((uint16_t)(MODBUS_MESSAGE_DATA_SIZE + 5))
+#define MODBUS_RESPONSE_MESSAGE_SIZE                    ((uint16_t)(MODBUS_MESSAGE_DATA_SIZE + 5))
 
 
 typedef enum _modbus_command_t {
@@ -88,20 +88,20 @@ typedef enum _modbus_error_types_t {
 
 #define MODBUS_MESSAGE_DATA_SIZE (2 * (MODBUS_REGISTER_SIZE + 2))
 typedef struct _modbus_request_message_t {
-    uint8_t id;
-    uint8_t command;
+    uint8_t  id;
+    uint8_t  command;
     uint16_t register_addr;
-    uint8_t special_data[MODBUS_MESSAGE_DATA_SIZE];
+    uint8_t  special_data[MODBUS_MESSAGE_DATA_SIZE];
     uint16_t crc;
 } modbus_request_message_t;
 
 
 typedef struct _modbus_response_message_t {
-    uint8_t id;
-    uint8_t command;
+    uint8_t  id;
+    uint8_t  command;
     uint16_t register_addr;
-    uint8_t data_len;
-    uint8_t data_resp[MODBUS_MESSAGE_DATA_SIZE];
+    uint8_t  data_len;
+    uint8_t  data_resp[MODBUS_MESSAGE_DATA_SIZE];
     uint16_t crc;
 } modbus_response_message_t;
 
