@@ -10,10 +10,13 @@ extern "C" {
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 
 void indicate_set_buffer(uint8_t* data, uint8_t len);
 void indicate_proccess();
+void indicate_set_load_page(bool enable);
+void indicate_set_error_page(bool enable);
 
 
 #ifdef __cplusplus

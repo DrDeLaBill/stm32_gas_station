@@ -5,6 +5,7 @@
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "main.h"
 
@@ -20,18 +21,25 @@ typedef enum _settings_status_t {
 
 
 typedef struct __attribute__((packed)) _settings_t  {
-	uint8_t  version;
-	uint32_t admin_card;
-	uint32_t user_cards[GENERAL_RFID_CARDS_COUNT];
-	uint32_t session_liters_max;
+	uint32_t cf_id;
+	uint32_t cards       [GENERAL_RFID_CARDS_COUNT];
+	uint32_t cards_values[GENERAL_RFID_CARDS_COUNT];
+	uint32_t log_id;
 } settings_t;
 
+typedef struct _settings_info_t {
+	bool settings_loaded;
+} settings_info_t;
 
-extern settings_t settings;
+
+extern settings_t      settings;
+extern settings_info_t settings_info;
 
 settings_status_t settings_reset();
 settings_status_t settings_load();
 settings_status_t settings_save();
+
+bool settings_loaded();
 
 
 #endif

@@ -1,6 +1,5 @@
 /* Copyright © 2023 Georgy E. All rights reserved. */
 
-#include <eeprom_at24cm01_storage.h>
 #include <storage_data_manager.h>
 
 #include <stdint.h>
@@ -8,6 +7,7 @@
 #include <stdbool.h>
 
 #include "utils.h"
+#include "eeprom_at24cm01_storage.h"
 
 
 const char* STORAGE_TAG = "STRG";
@@ -409,7 +409,7 @@ storage_status_t _storage_write(uint32_t page_addr, uint8_t* buff, uint32_t len,
         }
 
         storage_page_record_t cmpr_payload = { 0 };
-        eeprom_status = eeprom_w25qxx_read(cur_addr, (uint8_t*)&cmpr_payload, sizeof(cmpr_payload));
+        eeprom_status = eeprom_read(cur_addr, (uint8_t*)&cmpr_payload, sizeof(cmpr_payload));
 
         if (eeprom_status != EEPROM_OK) {
 #if STORAGE_DEBUG
@@ -463,7 +463,7 @@ storage_status_t _storage_read(uint32_t page_addr, uint8_t* buff, uint32_t len, 
             return STORAGE_ERROR_OUT_OF_MEMORY;
         }
 
-        status = eeprom_w25qxx_read(cur_addr, (uint8_t*)&payload, sizeof(payload));
+        status = eeprom_read(cur_addr, (uint8_t*)&payload, sizeof(payload));
         if (status == EEPROM_ERROR_BUSY) {
 #if STORAGE_DEBUG
             LOG_TAG_BEDUG(STORAGE_TAG, "read page (address=%lu): flash read error - flash busy", cur_addr);

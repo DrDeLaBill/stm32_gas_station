@@ -56,6 +56,8 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+int _write(int file, uint8_t *ptr, int len);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -132,9 +134,14 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 
 // General settings
-#define GENERAL_RFID_CARDS_COUNT ((uint8_t)10)
+#define GENERAL_RFID_CARDS_COUNT ((uint8_t)20)
 #define GENERAL_BUS_TIMEOUT_MS   ((uint32_t)1000)
 #define GENERAL_SESSION_ML_MAX   ((uint32_t)50000)
+#define GENERAL_MODBUS_SLAVE_ID  ((uint8_t)0x01)
+
+// MODBUS slave
+extern UART_HandleTypeDef        huart2;
+#define MODBUS_UART              (huart2)
 
 // EEPROM
 extern I2C_HandleTypeDef         hi2c1;
@@ -153,6 +160,11 @@ extern ADC_HandleTypeDef         hadc1;
 extern ADC_HandleTypeDef         hadc1;
 #define VALVE_ADC                (hadc1)
 #define VALVE_ADC_CHANNEL        ((uint32_t)9)
+
+// BEDUG UART
+extern UART_HandleTypeDef        huart6;
+#define BEDUG_UART               (huart6)
+
 
 /* USER CODE END Private defines */
 

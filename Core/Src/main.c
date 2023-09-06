@@ -30,8 +30,13 @@
 
 #include <stdint.h>
 
+#include "soul.h"
+#include "utils.h"
 #include "pump_manager.h"
+#include "record_manager.h"
+#include "modbus_manager.h"
 #include "umka200_manager.h"
+#include "settings_manager.h"
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
 
@@ -57,6 +62,8 @@
 
 uint8_t umka200_uart_byte = 0;
 
+uint8_t modbus_uart_byte = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,23 +75,9 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == UMKA200_UART.Instance) {
-    	umka200_recieve_byte(umka200_uart_byte);
-        HAL_UART_Receive_IT(&UMKA200_UART, (uint8_t*)&umka200_uart_byte, 1);
-    }
-}
-
-void umka200_data_sender(uint8_t* data, uint16_t len)
-{
-	HAL_UART_Transmit(&UMKA200_UART, data, len, GENERAL_BUS_TIMEOUT_MS);
-}
-
-void pump_stop_handler()
-{
-	// TODO: write log
-}
+void umka200_data_sender(uint8_t* data, uint16_t len);
+void pump_stop_handler();
+bool check_errors();
 
 /* USER CODE END 0 */
 
@@ -125,6 +118,10 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
+  // Indicators initialization
+  indicate_set_load_page(true);
+  indicate_set_error_page(false);
+
   // PUMP initialization
   pump_set_pump_stop_handler(&pump_stop_handler);
 
@@ -132,22 +129,47 @@ int main(void)
   umka200_set_data_sender(&umka200_data_sender);
   HAL_UART_Receive_IT(&UMKA200_UART, (uint8_t*)&umka200_uart_byte, 1);
 
+  // MODBUS slave initialization
+  HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    soul_proccess();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	pump_proccess();
-
-	umka200_proccess();
 
 	indicate_proccess();
 
+    if (!settings_loaded()) {
+        indicate_set_load_page(true);
+    	settings_load();
+    	continue;
+    }
+
+	pump_proccess();
+
+    if (check_errors()) {
+    	indicate_set_error_page(true);
+    	continue;
+    }
+
+    indicate_set_error_page(false);
+    indicate_set_load_page(false);
+
+	umka200_proccess();
+
 	keyboard4x3_proccess();
+
+	modbus_manager_proccess();
+
+	record_cache_records_proccess();
+
   }
   /* USER CODE END 3 */
 }
@@ -194,6 +216,48 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
+void umka200_data_sender(uint8_t* data, uint16_t len)
+{
+	HAL_UART_Transmit(&UMKA200_UART, data, len, GENERAL_BUS_TIMEOUT_MS);
+}
+
+void pump_stop_handler()
+{
+	// TODO: write log
+}
+
+bool check_errors()
+{
+	if (pump_has_error()) {
+		return true;
+	}
+	return false;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == UMKA200_UART.Instance) {
+    	umka200_recieve_byte(umka200_uart_byte);
+        HAL_UART_Receive_IT(&UMKA200_UART, (uint8_t*)&umka200_uart_byte, 1);
+    } else if (huart->Instance == MODBUS_UART.Instance) {
+    	modbus_manager_recieve_data_byte(modbus_uart_byte);
+        HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
+    }
+}
+
+int _write(int file, uint8_t *ptr, int len) {
+#ifdef DEBUG
+    HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, len, GENERAL_BUS_TIMEOUT_MS);
+    for (int DataIdx = 0; DataIdx < len; DataIdx++) {
+        ITM_SendChar(*ptr++);
+    }
+    return len;
+#endif
+    return 0;
+}
+
 
 /* USER CODE END 4 */
 

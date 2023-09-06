@@ -44,7 +44,7 @@ typedef struct _umka200_state_t {
 	umka200_message_t request;
 	void              (*data_sender_handler)   (uint8_t* data, uint16_t len);
 	void              (*request_proccess)      (void);
-	timer_t           request_timer;
+	util_timer_t      request_timer;
 	uint32_t          current_rfid;
 } umka200_state_t;
 

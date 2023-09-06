@@ -29,6 +29,7 @@ typedef enum _eeprom_status_t {
 
 eeprom_status_t eeprom_read(uint32_t addr, uint8_t* buf, uint16_t len);
 eeprom_status_t eeprom_write(uint32_t addr, uint8_t* buf, uint16_t len);
+uint32_t        eeprom_get_size();
 
 
 #ifdef __cplusplus

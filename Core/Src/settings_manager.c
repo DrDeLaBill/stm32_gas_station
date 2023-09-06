@@ -3,6 +3,8 @@
 #include "settings_manager.h"
 
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "main.h"
 #include "utils.h"
@@ -12,20 +14,24 @@
 const char* SETTINGS_TAG = "STNG";
 
 settings_t settings = {
-	.version    = SETTINGS_VERSION,
-	.admin_card = 0,
-	.user_cards = { 0 }
+	.cf_id        = SETTINGS_VERSION,
+	.cards        = { 0 },
+	.cards_values = { 0 },
+	.log_id       = 0
+};
+
+settings_info_t settings_info = {
+	.settings_loaded = false,
 };
 
 
 settings_status_t settings_reset()
 {
-	settings.version    = SETTINGS_VERSION;
-	settings.admin_card = 0;
+	settings.cf_id  = SETTINGS_VERSION;
+	settings.log_id = 0;
 
-	memset(settings.user_cards, 0, sizeof(settings.user_cards));
-
-	settings.session_liters_max = GENERAL_SESSION_ML_MAX;
+	memset(settings.cards, 0, sizeof(settings.cards));
+	memset(settings.cards_values, 0, sizeof(settings.cards_values));
 
 	return settings_save();
 }
@@ -58,6 +64,8 @@ settings_status_t settings_load()
 	LOG_TAG_BEDUG(SETTINGS_TAG, "load settings: OK");
 #endif
 
+	settings_info.settings_loaded = true;
+
 	return SETTINGS_OK;
 }
 
@@ -89,4 +97,9 @@ settings_status_t settings_save()
 #endif
 
 	return SETTINGS_OK;
+}
+
+bool settings_loaded()
+{
+	return settings_info.settings_loaded;
 }

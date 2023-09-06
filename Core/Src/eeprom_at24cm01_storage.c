@@ -47,7 +47,7 @@
     #include "stm32f4xx_hal.h"
 	#include "stm32f4xx_hal_i2c.h"
 #else
-	#error "Please select first the target STM32F4xx device used in your application (in flash_w25qxx_storage.c file)"
+	#error "Please select first the target STM32Fxxx device used in your application (in eeprom_at24cm01_storage.c file)"
 #endif
 
 #include "main.h"
@@ -150,4 +150,9 @@ eeprom_status_t eeprom_write(uint32_t addr, uint8_t* buf, uint16_t len)
 #endif
 
     return EEPROM_OK;
+}
+
+uint32_t eeprom_get_size()
+{
+	return EEPROM_PAGE_SIZE * EEPROM_PAGES_COUNT;
 }
