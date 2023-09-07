@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 
-void access_proccess();
+void     access_proccess();
 
 
 #ifdef __cplusplus

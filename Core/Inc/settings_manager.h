@@ -30,7 +30,7 @@ typedef struct __attribute__((packed)) _settings_t  {
 	uint32_t log_id;
 } settings_t;
 
-typedef struct _settings_info_t {
+typedef struct _deviece_info_t {
 	bool     settings_loaded;
 	bool     access_granted;
 	uint32_t user_card;

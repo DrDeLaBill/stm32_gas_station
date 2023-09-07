@@ -1,7 +1,7 @@
 /* Copyright © 2023 Georgy E. All rights reserved. */
 
-#ifndef _INDICATION_MANAGER_H_
-#define _INDICATION_MANAGER_H_
+#ifndef _INDICATE_MANAGER_H_
+#define _INDICATE_MANAGER_H_
 
 
 #ifdef __cplusplus

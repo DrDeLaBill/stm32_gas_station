@@ -1,5 +1,5 @@
-#ifndef INC_UTILS_H_
-#define INC_UTILS_H_
+#ifndef _UTILS_H_
+#define _UTILS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +38,11 @@ extern "C" {
 
 #ifndef __arr_len
 #define __arr_len(arr) (sizeof(arr) / sizeof(*arr))
+#endif
+
+#ifndef STRUCT_MEMBER_NOWARN_UNSAFE
+#define STRUCT_MEMBER_NOWARN_UNSAFE(struct_type, struct_ptr, member_name) \
+  ((void*)((((char*)(struct_ptr)) + offsetof(struct_type, member_name))))
 #endif
 
 

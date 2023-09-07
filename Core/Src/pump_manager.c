@@ -269,7 +269,6 @@ void _pump_fsm_stop()
     util_timer_start(&pump_state.wait_timer, 0);
 
     pump_state.fsm_pump_state   = &_pump_fsm_check_stop;
-    pump_state.ml_current_count = 0;
 }
 
 void _pump_fsm_check_stop()
@@ -313,6 +312,8 @@ void _pump_fsm_check_stop()
         pump_state.pump_error     = true;
         pump_state.fsm_pump_state = &_pump_fsm_error;
     }
+
+    pump_state.ml_current_count = 0;
 }
 
 void _pump_fsm_error()
@@ -362,7 +363,7 @@ void _pump_reset_state()
     memset((uint8_t*)&pump_state, 0, sizeof(pump_state));
 
     pump_state.fsm_pump_state    = &_pump_fsm_stop;
-    pump_state.pump_stop_handler = &pump_stop_handler;
+    pump_state.pump_stop_handler = pump_stop_handler;
 
     __HAL_TIM_SET_COUNTER(&MD212_TIM, 0);
 }

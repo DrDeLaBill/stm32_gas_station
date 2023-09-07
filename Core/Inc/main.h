@@ -166,6 +166,10 @@ extern ADC_HandleTypeDef         hadc1;
 #define VALVE_ADC                (hadc1)
 #define VALVE_ADC_CHANNEL        ((uint32_t)9)
 
+// Clock
+extern RTC_HandleTypeDef         hrtc;
+#define CLOCK_RTC                (hrtc)
+
 // BEDUG UART
 extern UART_HandleTypeDef        huart6;
 #define BEDUG_UART               (huart6)

@@ -33,4 +33,5 @@
 
 # STM32CubeIDE
 Debug*
+Release*
 *language.settings.xml

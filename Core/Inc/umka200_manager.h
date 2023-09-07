@@ -1,7 +1,7 @@
 /* Copyright © 2023 Georgy E. All rights reserved. */
 
-#ifndef _UMKA200_PROTOCOL_MANAGER_H_
-#define _UMKA200_PROTOCOL_MANAGER_H_
+#ifndef _UMKA200_MANAGER_H_
+#define _UMKA200_MANAGER_H_
 
 
 #ifdef __cplusplus

@@ -29,6 +29,7 @@ void access_proccess()
 
 	if (device_info.access_granted && !util_is_timer_wait(&access_state.wait_timer)) {
 		device_info.access_granted = false;
+		device_info.user_card      = 0;
 	}
 
 	if (!user_card) {

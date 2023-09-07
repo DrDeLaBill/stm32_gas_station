@@ -55,7 +55,7 @@ void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint32_t start_cou
 	}
 }
 #else /* DEBUG */
-void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint16_t len) {}
+void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint32_t start_counter, uint16_t len) {}
 #endif /* DEBUG */
 
 bool util_wait_event(bool (*condition) (void), uint32_t time)

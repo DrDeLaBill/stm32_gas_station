@@ -29,9 +29,11 @@
 /* USER CODE BEGIN Includes */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "soul.h"
 #include "utils.h"
+#include "clock.h"
 #include "ui_manager.h"
 #include "pump_manager.h"
 #include "record_manager.h"
@@ -58,6 +60,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+const char* MAIN_TAG = "MAIN";
 
 uint8_t umka200_uart_byte = 0;
 
@@ -214,11 +218,47 @@ void umka200_data_sender(uint8_t* data, uint16_t len)
 
 void pump_stop_handler()
 {
-	// TODO: write log
 	log_record_t record = {
 		.cf_id = settings.cf_id,
-		.time  = { 0 }
+		.time  = {
+			clock_get_year(),
+			clock_get_month(),
+			clock_get_date(),
+			clock_get_hour(),
+			clock_get_minute(),
+			clock_get_second()
+		},
+		.used_liters = pump_get_fuel_count_ml(),
+		.card        = device_info.user_card,
+		.id          = 0
 	};
+
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: begin");
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: time=20%02u-%02u-%02u %02u:%02u:%02u", record.time[0], record.time[1], record.time[2], record.time[3], record.time[4], record.time[5]);
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: cf_id=%lu", record.cf_id);
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: card=%lu", record.card);
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: used_liters=%lu", record.used_liters);
+
+	uint32_t new_id = 0;
+	record_status_t status = record_get_new_id(&new_id);
+	if (status != RECORD_OK) {
+		LOG_TAG_BEDUG(MAIN_TAG, "save new log: find new log id error=%02x", status);
+		return;
+	}
+
+	record.id = new_id;
+
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: id=%lu", record.id);
+
+	memcpy((uint8_t*)&log_record, (uint8_t*)&record, sizeof(log_record));
+
+	status = record_save();
+	if (status != RECORD_OK) {
+		LOG_TAG_BEDUG(MAIN_TAG, "save new log: error=%02x", status);
+		return;
+	}
+
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
 }
 
 bool general_check_errors()

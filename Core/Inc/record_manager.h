@@ -27,6 +27,7 @@ typedef enum _record_status_t {
 
 
 #define RECORD_TIME_ARRAY_SIZE 6
+
 typedef struct __attribute__((packed)) _log_record_t {
 	uint32_t id;                           // Record ID
 	uint8_t  time[RECORD_TIME_ARRAY_SIZE]; // Record time
