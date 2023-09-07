@@ -20,8 +20,10 @@ settings_t settings = {
 	.log_id       = 0
 };
 
-settings_info_t settings_info = {
+deviece_info_t device_info = {
 	.settings_loaded = false,
+	.access_granted  = false,
+	.user_card       = 0,
 };
 
 
@@ -66,7 +68,7 @@ settings_status_t settings_load()
 	LOG_TAG_BEDUG(SETTINGS_TAG, "load settings: OK");
 #endif
 
-	settings_info.settings_loaded = true;
+	device_info.settings_loaded = true;
 
 	return SETTINGS_OK;
 }
@@ -103,5 +105,30 @@ settings_status_t settings_save()
 
 bool settings_loaded()
 {
-	return settings_info.settings_loaded;
+	return device_info.settings_loaded;
+}
+
+void settings_update_cf_id(uint32_t cf_id)
+{
+	settings.cf_id = cf_id;
+}
+
+void settings_update_device_id(uint8_t* device_id, uint16_t len)
+{
+	memcpy(settings.device_id, device_id, __min(len, sizeof(settings.device_id)));
+}
+
+void settings_update_cards(uint32_t* cards, uint16_t len)
+{
+	memcpy(settings.cards, cards, __min(len, sizeof(settings.cards)));
+}
+
+void settings_update_cards_values(uint32_t* cards_values, uint16_t len)
+{
+	memcpy(settings.cards_values, cards_values, __min(len, sizeof(settings.cards_values)));
+}
+
+void settings_update_log_id(uint32_t log_id)
+{
+	settings.log_id = log_id;
 }

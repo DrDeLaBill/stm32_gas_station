@@ -33,6 +33,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /* USER CODE END Includes */
 
@@ -136,8 +137,12 @@ int _write(int file, uint8_t *ptr, int len);
 // General settings
 #define GENERAL_RFID_CARDS_COUNT ((uint8_t)20)
 #define GENERAL_BUS_TIMEOUT_MS   ((uint32_t)1000)
+#define GENERAL_SESSION_ML_MIN   ((uint32_t)500)
 #define GENERAL_SESSION_ML_MAX   ((uint32_t)50000)
 #define GENERAL_MODBUS_SLAVE_ID  ((uint8_t)0x01)
+
+// Defines
+#define ML_IN_LTR                ((uint32_t)1000)
 
 // MODBUS slave
 extern UART_HandleTypeDef        huart2;
@@ -164,6 +169,9 @@ extern ADC_HandleTypeDef         hadc1;
 // BEDUG UART
 extern UART_HandleTypeDef        huart6;
 #define BEDUG_UART               (huart6)
+
+
+bool general_check_errors();
 
 
 /* USER CODE END Private defines */

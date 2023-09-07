@@ -32,13 +32,12 @@
 
 #include "soul.h"
 #include "utils.h"
+#include "ui_manager.h"
 #include "pump_manager.h"
 #include "record_manager.h"
 #include "modbus_manager.h"
 #include "umka200_manager.h"
 #include "settings_manager.h"
-#include "indicate_manager.h"
-#include "keyboard4x3_manager.h"
 
 /* USER CODE END Includes */
 
@@ -77,7 +76,6 @@ void SystemClock_Config(void);
 
 void umka200_data_sender(uint8_t* data, uint16_t len);
 void pump_stop_handler();
-bool check_errors();
 
 /* USER CODE END 0 */
 
@@ -118,10 +116,6 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
-  // Indicators initialization
-  indicate_set_load_page(true);
-  indicate_set_error_page(false);
-
   // PUMP initialization
   pump_set_pump_stop_handler(&pump_stop_handler);
 
@@ -139,32 +133,27 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     soul_proccess();
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 
-	indicate_proccess();
+	ui_proccess();
 
     if (!settings_loaded()) {
-        indicate_set_load_page(true);
     	settings_load();
     	continue;
     }
 
 	pump_proccess();
 
-    if (check_errors()) {
-    	indicate_set_error_page(true);
+    if (general_check_errors()) {
     	continue;
     }
 
-    indicate_set_error_page(false);
-    indicate_set_load_page(false);
-
 	umka200_proccess();
-
-	keyboard4x3_proccess();
 
 	modbus_manager_proccess();
 
@@ -226,9 +215,13 @@ void umka200_data_sender(uint8_t* data, uint16_t len)
 void pump_stop_handler()
 {
 	// TODO: write log
+	log_record_t record = {
+		.cf_id = settings.cf_id,
+		.time  = { 0 }
+	};
 }
 
-bool check_errors()
+bool general_check_errors()
 {
 	if (pump_has_error()) {
 		return true;

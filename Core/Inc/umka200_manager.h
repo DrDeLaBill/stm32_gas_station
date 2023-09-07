@@ -28,7 +28,7 @@ typedef enum _umka200_resposne_status_t {
 } umka200_resposne_status_t;
 
 
-void umka200_proccess();
+void     umka200_proccess();
 uint32_t umka200_get_rfid();
 
 void umka200_recieve_byte(uint8_t byte);

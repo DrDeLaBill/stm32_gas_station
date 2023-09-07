@@ -42,7 +42,7 @@ typedef struct __attribute__((packed)) _log_record_t {
 typedef struct __attribute__((packed)) _log_record_clust_t {
 	uint8_t      record_magic;
 	log_record_t records[RECORDS_CLUST_SIZE];
-}log_record_clust_t;
+} log_record_clust_t;
 
 typedef struct _log_ids_cache_t {
 	bool is_need_to_scan;

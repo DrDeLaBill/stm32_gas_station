@@ -62,12 +62,9 @@ void keyboard4x3_proccess()
 	keyboard4x3_state.fsm_measure_proccess();
 }
 
-uint8_t get_buffer_value(uint8_t idx)
+uint8_t* keyboard4x3_get_buffer()
 {
-	if (idx >= __arr_len(keyboard4x3_state.buffer)) {
-		return 0;
-	}
-	return keyboard4x3_state.buffer[idx];
+	return keyboard4x3_state.buffer;
 }
 
 void _keyboard4x3_fsm_set_row()

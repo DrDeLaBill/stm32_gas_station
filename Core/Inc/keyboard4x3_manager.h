@@ -11,13 +11,14 @@ extern "C" {
 #include <stdint.h>
 
 
-#define KEYBOARD4X3_BUFFER_SIZE ((uint8_t)10)
-#define KEYBOARD4X3_COLS_COUNT  ((uint8_t)3)
-#define KEYBOARD4X3_ROWS_COUNT  ((uint8_t)4)
+#define KEYBOARD4X3_BUFFER_SIZE               ((uint8_t)10)
+#define KEYBOARD4X3_COLS_COUNT                ((uint8_t)3)
+#define KEYBOARD4X3_ROWS_COUNT                ((uint8_t)4)
+#define KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT ((uint32_t)1)
 
 
-void    keyboard4x3_proccess();
-uint8_t get_buffer_value(uint8_t idx);
+void     keyboard4x3_proccess();
+uint8_t* keyboard4x3_get_buffer();
 
 
 #ifdef __cplusplus

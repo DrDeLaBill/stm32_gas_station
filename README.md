@@ -6,7 +6,7 @@ Gas station
 
 # Modbus registers
 
-Data         | Table                           | Start reg | Reg count | Unit size | Units count | R/W | Description
+Field        | Table                           | Start reg | Reg count | Unit size | Units count | R/W | Description
  ---         |  ---                            |    ---    |    ---    |    ---    | ---         | --- | ---
 cf_id        | Analog Output Holding Registers | 0         | 2         | 4 bytes   | 1           | R/W | Current config version
 device_id    | Analog Output Holding Registers | 2         | 8         | 1 byte    | 16          | R/W | Uniq device ID

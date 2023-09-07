@@ -57,6 +57,20 @@ void MX_RTC_Init(void)
 
   /* USER CODE BEGIN Check_RTC_BKUP */
 
+  RTC_TimeTypeDef tmp_time = {0};
+  RTC_DateTypeDef tmp_date = {0};
+
+  tmp_time.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  tmp_time.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_GetTime(&hrtc, &tmp_time, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_RTC_GetDate(&hrtc, &tmp_date, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   /* USER CODE END Check_RTC_BKUP */
 
   /** Initialize RTC and set the Time and Date
@@ -80,6 +94,15 @@ void MX_RTC_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN RTC_Init 2 */
+
+  if (HAL_RTC_SetTime(&hrtc, &tmp_time, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_RTC_SetDate(&hrtc, &tmp_date, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   /* USER CODE END RTC_Init 2 */
 

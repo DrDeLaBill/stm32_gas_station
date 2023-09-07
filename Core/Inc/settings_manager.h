@@ -31,16 +31,24 @@ typedef struct __attribute__((packed)) _settings_t  {
 } settings_t;
 
 typedef struct _settings_info_t {
-	bool settings_loaded;
-} settings_info_t;
+	bool     settings_loaded;
+	bool     access_granted;
+	uint32_t user_card;
+} deviece_info_t;
 
 
 extern settings_t      settings;
-extern settings_info_t settings_info;
+extern deviece_info_t device_info;
 
 settings_status_t settings_reset();
 settings_status_t settings_load();
 settings_status_t settings_save();
+
+void settings_update_cf_id(uint32_t cf_id);
+void settings_update_device_id(uint8_t* device_id, uint16_t len);
+void settings_update_cards(uint32_t* cards, uint16_t len);
+void settings_update_cards_values(uint32_t* cards_values, uint16_t len);
+void settings_update_log_id(uint32_t log_id);
 
 bool settings_loaded();
 
