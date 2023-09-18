@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 #include "utils.h"
-#include "umka200_manager.h"
+#include "wiegand.h"
 #include "settings_manager.h"
 
 
@@ -25,7 +25,11 @@ access_state_t access_state = {
 
 void access_proccess()
 {
-	uint32_t user_card = umka200_get_rfid();
+	uint32_t user_card = 0;
+
+	if (wiegand_available()) {
+		user_card = wiegant_get_value();
+	}
 
 	if (device_info.access_granted && !util_is_timer_wait(&access_state.wait_timer)) {
 		device_info.access_granted = false;

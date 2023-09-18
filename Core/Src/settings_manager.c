@@ -16,7 +16,7 @@ const char* SETTINGS_TAG = "STNG";
 settings_t settings = {
 	.cf_id        = SETTINGS_VERSION,
 	.cards        = { 0 },
-	.cards_values = { 0 },
+	.cards_limits = { 0 },
 	.log_id       = 0
 };
 
@@ -29,13 +29,12 @@ deviece_info_t device_info = {
 
 settings_status_t settings_reset()
 {
-	settings.cf_id  = SETTINGS_VERSION;
-	settings.log_id = 0;
+	settings.cf_id     = SETTINGS_VERSION;
+	settings.log_id    = 0;
+	settings.device_id = SETTINGS_DEVICE_ID_DEFAULT;
 
 	memset(settings.cards, 0, sizeof(settings.cards));
-	memset(settings.cards_values, 0, sizeof(settings.cards_values));
-
-	memcpy(settings.device_id, SETTINGS_DEVICE_ID_DEFAULT, __min(strlen(SETTINGS_DEVICE_ID_DEFAULT), sizeof(settings.device_id)));
+	memset(settings.cards_limits, 0, sizeof(settings.cards_limits));
 
 	return settings_save();
 }
@@ -113,9 +112,9 @@ void settings_update_cf_id(uint32_t cf_id)
 	settings.cf_id = cf_id;
 }
 
-void settings_update_device_id(uint8_t* device_id, uint16_t len)
+void settings_update_device_id(uint32_t device_id)
 {
-	memcpy(settings.device_id, device_id, __min(len, sizeof(settings.device_id)));
+	settings.device_id = device_id;
 }
 
 void settings_update_cards(uint32_t* cards, uint16_t len)
@@ -125,7 +124,7 @@ void settings_update_cards(uint32_t* cards, uint16_t len)
 
 void settings_update_cards_values(uint32_t* cards_values, uint16_t len)
 {
-	memcpy(settings.cards_values, cards_values, __min(len, sizeof(settings.cards_values)));
+	memcpy(settings.cards_limits, cards_values, __min(len, sizeof(settings.cards_limits)));
 }
 
 void settings_update_log_id(uint32_t log_id)

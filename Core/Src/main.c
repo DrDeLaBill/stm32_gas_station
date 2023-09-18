@@ -34,11 +34,11 @@
 #include "soul.h"
 #include "utils.h"
 #include "clock.h"
+#include "wiegand.h"
 #include "ui_manager.h"
 #include "pump_manager.h"
 #include "record_manager.h"
 #include "modbus_manager.h"
-#include "umka200_manager.h"
 #include "settings_manager.h"
 
 /* USER CODE END Includes */
@@ -113,19 +113,14 @@ int main(void)
   MX_GPIO_Init();
   MX_RTC_Init();
   MX_I2C1_Init();
-  MX_TIM2_Init();
-  MX_USART1_UART_Init();
   MX_USART2_UART_Init();
-  MX_USART6_UART_Init();
   MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   // PUMP initialization
   pump_set_pump_stop_handler(&pump_stop_handler);
-
-  // UMKA200 (RFID) initialization
-  umka200_set_data_sender(&umka200_data_sender);
-  HAL_UART_Receive_IT(&UMKA200_UART, (uint8_t*)&umka200_uart_byte, 1);
 
   // MODBUS slave initialization
   HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
@@ -156,8 +151,6 @@ int main(void)
     if (general_check_errors()) {
     	continue;
     }
-
-	umka200_proccess();
 
 	modbus_manager_proccess();
 
@@ -209,12 +202,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-
-void umka200_data_sender(uint8_t* data, uint16_t len)
-{
-	HAL_UART_Transmit(&UMKA200_UART, data, len, GENERAL_BUS_TIMEOUT_MS);
-}
 
 void pump_stop_handler()
 {
@@ -271,12 +258,18 @@ bool general_check_errors()
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if (huart->Instance == UMKA200_UART.Instance) {
-    	umka200_recieve_byte(umka200_uart_byte);
-        HAL_UART_Receive_IT(&UMKA200_UART, (uint8_t*)&umka200_uart_byte, 1);
-    } else if (huart->Instance == MODBUS_UART.Instance) {
+    if (huart->Instance == MODBUS_UART.Instance) {
     	modbus_manager_recieve_data_byte(modbus_uart_byte);
         HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
+    }
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if(GPIO_Pin == RFID_D0_Pin) {
+    	wiegand_set_value(0);
+    } else if(GPIO_Pin == RFID_D1_Pin) {
+    	wiegand_set_value(1);
     }
 }
 

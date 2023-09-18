@@ -13,7 +13,7 @@
 #define SETTINGS_BEDUG             (true)
 #define SETTINGS_VERSION           ((uint8_t)0x01)
 #define SETTINGS_DEVICE_ID_SIZE    ((uint8_t)16)
-#define SETTINGS_DEVICE_ID_DEFAULT ("000000000000001")
+#define SETTINGS_DEVICE_ID_DEFAULT ((uint32_t)1)
 
 
 typedef enum _settings_status_t {
@@ -24,9 +24,9 @@ typedef enum _settings_status_t {
 
 typedef struct __attribute__((packed)) _settings_t  {
 	uint32_t cf_id;
-	uint8_t  device_id   [SETTINGS_DEVICE_ID_SIZE];
+	uint32_t device_id;
 	uint32_t cards       [GENERAL_RFID_CARDS_COUNT];
-	uint32_t cards_values[GENERAL_RFID_CARDS_COUNT];
+	uint32_t cards_limits[GENERAL_RFID_CARDS_COUNT];
 	uint32_t log_id;
 } settings_t;
 
@@ -45,7 +45,7 @@ settings_status_t settings_load();
 settings_status_t settings_save();
 
 void settings_update_cf_id(uint32_t cf_id);
-void settings_update_device_id(uint8_t* device_id, uint16_t len);
+void settings_update_device_id(uint32_t device_id);
 void settings_update_cards(uint32_t* cards, uint16_t len);
 void settings_update_cards_values(uint32_t* cards_values, uint16_t len);
 void settings_update_log_id(uint32_t log_id);
