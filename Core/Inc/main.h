@@ -146,7 +146,7 @@ int _write(int file, uint8_t *ptr, int len);
 
 // General settings
 #define GENERAL_RFID_CARDS_COUNT ((uint8_t)20)
-#define GENERAL_BUS_TIMEOUT_MS   ((uint32_t)1000)
+#define GENERAL_BUS_TIMEOUT_MS   ((uint32_t)100)
 #define GENERAL_SESSION_ML_MIN   ((uint32_t)500)
 #define GENERAL_SESSION_ML_MAX   ((uint32_t)50000)
 #define GENERAL_MODBUS_SLAVE_ID  ((uint8_t)0x01)
@@ -180,6 +180,9 @@ extern RTC_HandleTypeDef         hrtc;
 extern UART_HandleTypeDef        huart2;
 #define BEDUG_UART               (huart2)
 
+// Indicators
+extern TIM_HandleTypeDef         htim4;
+#define INDICATORS_TIM           (htim4)
 
 bool general_check_errors();
 

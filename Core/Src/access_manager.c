@@ -7,7 +7,8 @@
 
 #include "utils.h"
 #include "wiegand.h"
-#include "settings_manager.h"
+
+//#include "SettingsDB.h"
 
 
 #define ACCESS_TIMEOUT_MS ((uint32_t)30000)
@@ -25,27 +26,27 @@ access_state_t access_state = {
 
 void access_proccess()
 {
-	uint32_t user_card = 0;
-
-	if (wiegand_available()) {
-		user_card = wiegant_get_value();
-	}
-
-	if (device_info.access_granted && !util_is_timer_wait(&access_state.wait_timer)) {
-		device_info.access_granted = false;
-		device_info.user_card      = 0;
-	}
-
-	if (!user_card) {
-		return;
-	}
-
-	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
-		if (settings.cards[i] == user_card) {
-			device_info.access_granted = true;
-			device_info.user_card      = user_card;
-			util_timer_start(&access_state.wait_timer, ACCESS_TIMEOUT_MS);
-			break;
-		}
-	}
+//	uint32_t user_card = 0;
+//
+//	if (wiegand_available()) {
+//		user_card = wiegant_get_value();
+//	}
+//
+//	if (device_info.access_granted && !util_is_timer_wait(&access_state.wait_timer)) {
+//		device_info.access_granted = false;
+//		device_info.user_card      = 0;
+//	}
+//
+//	if (!user_card) {
+//		return;
+//	}
+//
+//	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
+//		if (settings.cards[i] == user_card) {
+//			device_info.access_granted = true;
+//			device_info.user_card      = user_card;
+//			util_timer_start(&access_state.wait_timer, ACCESS_TIMEOUT_MS);
+//			break;
+//		}
+//	}
 }

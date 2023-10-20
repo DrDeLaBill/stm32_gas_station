@@ -15,6 +15,7 @@ extern "C" {
 
 void indicate_set_buffer(uint8_t* data, uint8_t len);
 void indicate_proccess();
+void indicate_display();
 void indicate_set_wait_page();
 void indicate_set_buffer_page();
 void indicate_set_load_page();

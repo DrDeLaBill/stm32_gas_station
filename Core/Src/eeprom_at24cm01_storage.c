@@ -54,8 +54,7 @@
 #include "utils.h"
 
 
-#define EEPROM_DELAY       ((uint16_t)0xFFFF)
-#define EEPROM_TIMER_DELAY ((uint16_t)5000)
+#define EEPROM_TIMER_DELAY ((uint16_t)GENERAL_BUS_TIMEOUT_MS)
 
 const char* EEPROM_TAG = "EEPR";
 
@@ -80,9 +79,9 @@ eeprom_status_t eeprom_read(uint32_t addr, uint8_t* buf, uint16_t len)
 
     HAL_StatusTypeDef status;
     util_timer_t timer;
-    util_timer_start(&timer, EEPROM_TIMER_DELAY);
+    util_timer_start(&timer, GENERAL_BUS_TIMEOUT_MS);
     while (util_is_timer_wait(&timer)) {
-    	status = HAL_I2C_IsDeviceReady(&EEPROM_I2C, dev_addr, 1, HAL_MAX_DELAY);
+    	status = HAL_I2C_IsDeviceReady(&EEPROM_I2C, dev_addr, 1, GENERAL_BUS_TIMEOUT_MS);
     	if (status == HAL_OK) {
     		break;
     	}
@@ -91,7 +90,7 @@ eeprom_status_t eeprom_read(uint32_t addr, uint8_t* buf, uint16_t len)
     	return EEPROM_ERROR_BUSY;
     }
 
-    status = HAL_I2C_Mem_Read(&EEPROM_I2C, dev_addr, (uint16_t)(addr & 0xFFFF), I2C_MEMADD_SIZE_16BIT, buf, len, EEPROM_DELAY);
+    status = HAL_I2C_Mem_Read(&EEPROM_I2C, dev_addr, (uint16_t)(addr & 0xFFFF), I2C_MEMADD_SIZE_16BIT, buf, len, GENERAL_BUS_TIMEOUT_MS);
     if (status != HAL_OK) {
 #if EEPROM_DEBUG
         LOG_TAG_BEDUG(EEPROM_TAG, "eeprom read: i2c error=0x%02x\n", status);
@@ -128,7 +127,7 @@ eeprom_status_t eeprom_write(uint32_t addr, uint8_t* buf, uint16_t len)
     util_timer_t timer;
     util_timer_start(&timer, EEPROM_TIMER_DELAY);
     while (util_is_timer_wait(&timer)) {
-    	status = HAL_I2C_IsDeviceReady(&EEPROM_I2C, dev_addr, 1, HAL_MAX_DELAY);
+    	status = HAL_I2C_IsDeviceReady(&EEPROM_I2C, dev_addr, 1, GENERAL_BUS_TIMEOUT_MS);
     	if (status == HAL_OK) {
     		break;
     	}
@@ -137,7 +136,7 @@ eeprom_status_t eeprom_write(uint32_t addr, uint8_t* buf, uint16_t len)
     	return EEPROM_ERROR_BUSY;
     }
 
-    status = HAL_I2C_Mem_Write(&EEPROM_I2C, dev_addr, (uint16_t)(addr & 0xFFFF), I2C_MEMADD_SIZE_16BIT, buf, len, EEPROM_DELAY);
+    status = HAL_I2C_Mem_Write(&EEPROM_I2C, dev_addr, (uint16_t)(addr & 0xFFFF), I2C_MEMADD_SIZE_16BIT, buf, len, GENERAL_BUS_TIMEOUT_MS);
     if (status != HAL_OK) {
 #if EEPROM_DEBUG
         LOG_TAG_BEDUG(EEPROM_TAG, "eeprom write: i2c error=0x%02x\n", status);

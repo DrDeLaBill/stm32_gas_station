@@ -10,25 +10,26 @@
 #include "utils.h"
 
 
-const uint16_t indicators_pins[] = {
-	DIGITS_1_Pin,
-	DIGITS_2_Pin,
-	DIGITS_3_Pin,
-	DIGITS_4_Pin,
-	DIGITS_5_Pin
+const util_port_pin_t indicators_pins[] = {
+	{.port = DIGITS_6_GPIO_Port, .pin = DIGITS_6_Pin},
+	{.port = DIGITS_5_GPIO_Port, .pin = DIGITS_5_Pin},
+	{.port = DIGITS_4_GPIO_Port, .pin = DIGITS_4_Pin},
+	{.port = DIGITS_3_GPIO_Port, .pin = DIGITS_3_Pin},
+	{.port = DIGITS_2_GPIO_Port, .pin = DIGITS_2_Pin},
+	{.port = DIGITS_1_GPIO_Port, .pin = DIGITS_1_Pin},
 };
 
-const uint16_t segments_pins[] = {
-	DIGITS_A_Pin,
-	DIGITS_B_Pin,
-	DIGITS_C_Pin,
-	DIGITS_D_Pin,
-	DIGITS_E_Pin,
-	DIGITS_F_Pin,
-	DIGITS_G_Pin
+const util_port_pin_t segments_pins[] = {
+	{.port = DIGITS_A_GPIO_Port, .pin = DIGITS_A_Pin},
+	{.port = DIGITS_B_GPIO_Port, .pin = DIGITS_B_Pin},
+	{.port = DIGITS_C_GPIO_Port, .pin = DIGITS_C_Pin},
+	{.port = DIGITS_D_GPIO_Port, .pin = DIGITS_D_Pin},
+	{.port = DIGITS_E_GPIO_Port, .pin = DIGITS_E_Pin},
+	{.port = DIGITS_F_GPIO_Port, .pin = DIGITS_F_Pin},
+	{.port = DIGITS_G_GPIO_Port, .pin = DIGITS_G_Pin},
 };
 
-const bool digits_pins[][sizeof(segments_pins)] = {
+const bool digits_pins[][10] = {
 /*   A  B  C  D  E  F  G    */
 	{1, 1, 1, 1, 1, 1, 0},  // 0
 	{0, 1, 1, 0, 0, 0, 0},  // 1
@@ -42,34 +43,42 @@ const bool digits_pins[][sizeof(segments_pins)] = {
 	{1, 1, 1, 1, 0, 1, 1}   // 9
 };
 
-const bool error_arr[][sizeof(indicators_pins)] = {
+const bool error_arr[][__arr_len(segments_pins)] = {
 /*   A  B  C  D  E  F  G    */
 	{1, 0, 0, 1, 1, 1, 1},  // E
 	{0, 0, 0, 0, 1, 0, 1},  // r
 	{0, 0, 0, 0, 1, 0, 1},  // r
+	{0, 0, 0, 0, 0, 0, 0},  // empty
 	{0, 0, 0, 0, 0, 0, 0},  // empty
 	{0, 0, 0, 0, 0, 0, 0}   // empty
 };
 
 
 #define INDICATE_INDICATORS_COUNT  ((uint8_t)sizeof(indicators_pins))
-#define INDICATE_SHOW_DELAY_MS     ((uint8_t)50)
-#define INDICATE_FSM_WAIT_DELAY_MS ((uint8_t)1000)
-#define INDICATE_FSM_LOAD_DELAY_MS ((uint8_t)300)
-#define INDICATE_DIGITS_PORT       ((GPIO_TypeDef*)DIGITS_1_GPIO_Port)
+#define INDICATE_SHOW_DELAY_MS     ((uint32_t)50)
+#define INDICATE_FSM_WAIT_DELAY_MS ((uint32_t)1000)
+#define INDICATE_FSM_LOAD_DELAY_MS ((uint32_t)120)
 
 
 typedef struct _indicate_fsm_state_t {
 	void         (*indicate_state) (void);
-	uint8_t      indicator_idx;
-	util_timer_t show_timer;
 	util_timer_t wait_timer;
 	uint8_t      indicate_buffer[INDICATE_INDICATORS_COUNT];
 	uint8_t      load_segment_num;
 } indicate_state_t;
 
+bool display_buffer[][__arr_len(segments_pins)] = {
+/*   A  B  C  D  E  F  G    */
+	{0, 0, 0, 0, 0, 0, 0},  // DIGIT_1
+	{0, 0, 0, 0, 0, 0, 0},  // DIGIT_2
+	{0, 0, 0, 0, 0, 0, 0},  // DIGIT_3
+	{0, 0, 0, 0, 0, 0, 0},  // DIGIT_4
+	{0, 0, 0, 0, 0, 0, 0},  // DIGIT_5
+	{0, 0, 0, 0, 0, 0, 0}   // DIGIT_6
+};
 
-void _indicate_fsm_indicator_idx_update();
+
+void _indicate_clear_buffer();
 
 void _indicate_fsm_wait();
 void _indicate_fsm_buffer();
@@ -79,7 +88,6 @@ void _indicate_fsm_error();
 
 indicate_state_t indicate_state = {
 	.indicate_state  = _indicate_fsm_wait,
-	.indicator_idx   = 0,
 	.wait_timer      = { 0 },
 	.indicate_buffer = { 0 },
 };
@@ -95,46 +103,67 @@ void indicate_set_buffer(uint8_t* data, uint8_t len)
 
 void indicate_proccess()
 {
-	if (util_is_timer_wait(&indicate_state.show_timer)) {
-		return;
-	}
-
-	HAL_GPIO_WritePin(INDICATE_DIGITS_PORT, DIGITS_DP_Pin, GPIO_PIN_RESET);
-
-	util_timer_start(&indicate_state.show_timer, INDICATE_SHOW_DELAY_MS);
-
-	if (indicate_state.indicate_buffer[indicate_state.indicator_idx] > __arr_len(digits_pins) - 1) {
-		indicate_state.indicate_buffer[indicate_state.indicator_idx] = 0;
-	}
+	HAL_GPIO_WritePin(DIGITS_DP_GPIO_Port, DIGITS_DP_Pin, GPIO_PIN_RESET);
 
 	indicate_state.indicate_state();
+}
 
-	_indicate_fsm_indicator_idx_update();
+void indicate_display()
+{
+	for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
+		HAL_GPIO_WritePin(indicators_pins[i].port, indicators_pins[i].pin, GPIO_PIN_RESET);
+	}
+
+	static uint8_t curr_indicator_idx = 0;
+
+	HAL_GPIO_WritePin(indicators_pins[curr_indicator_idx].port, indicators_pins[curr_indicator_idx].pin, GPIO_PIN_SET);
+
+
+	for (uint8_t i = 0; i < __arr_len(segments_pins); i++) {
+		HAL_GPIO_WritePin(
+			segments_pins[i].port,
+			segments_pins[i].pin,
+			display_buffer[curr_indicator_idx][i]
+		);
+	}
+
+//	if (curr_indicator_idx == __arr_len(indicators_pins) - 3) {
+//		HAL_GPIO_WritePin(DIGITS_DP_GPIO_Port, DIGITS_DP_Pin, GPIO_PIN_SET);
+//	}
+
+	curr_indicator_idx++;
+	if (curr_indicator_idx > __arr_len(indicators_pins)) {
+		curr_indicator_idx = 0;
+	}
 }
 
 void indicate_set_wait_page()
 {
+	_indicate_clear_buffer();
 	indicate_state.indicate_state = &_indicate_fsm_wait;
 }
 
 void indicate_set_buffer_page()
 {
+	_indicate_clear_buffer();
 	indicate_state.indicate_state = &_indicate_fsm_buffer;
 }
 
 void indicate_set_load_page()
 {
+	_indicate_clear_buffer();
 	indicate_state.indicate_state = &_indicate_fsm_load;
 }
 
 void indicate_set_error_page()
 {
+	_indicate_clear_buffer();
 	indicate_state.indicate_state = &_indicate_fsm_error;
 }
 
-void _indicate_fsm_indicator_idx_update()
+void _indicate_clear_buffer()
 {
-	indicate_state.indicator_idx = (indicate_state.indicator_idx + 1) % __arr_len(indicators_pins);
+	memset(display_buffer, 0, sizeof(display_buffer));
 }
 
 void _indicate_fsm_wait()
@@ -143,47 +172,44 @@ void _indicate_fsm_wait()
 		return;
 	}
 
-	for (uint8_t i = 0; i < __arr_len(segments_pins); i++) {
-		HAL_GPIO_WritePin(INDICATE_DIGITS_PORT, segments_pins[i], GPIO_PIN_RESET);
+	for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
+		display_buffer[i][__arr_len(segments_pins) - 1] = !display_buffer[i][__arr_len(segments_pins) - 1];
 	}
-	HAL_GPIO_TogglePin(INDICATE_DIGITS_PORT, segments_pins[__arr_len(segments_pins) - 1]);
-
-	if (indicate_state.indicator_idx >= __arr_len(indicators_pins)) {
-		util_timer_start(&indicate_state.wait_timer, INDICATE_FSM_WAIT_DELAY_MS);
-	}
+	util_timer_start(&indicate_state.wait_timer, INDICATE_FSM_WAIT_DELAY_MS);
 }
 
 void _indicate_fsm_buffer()
 {
-	for (uint8_t i = 0; i < __arr_len(segments_pins); i++) {
-		uint8_t number = indicate_state.indicate_buffer[indicate_state.indicator_idx];
-
-		HAL_GPIO_WritePin(INDICATE_DIGITS_PORT, segments_pins[i], digits_pins[number][i]);
-
-		if (i == __arr_len(segments_pins) - 2) {
-			HAL_GPIO_WritePin(INDICATE_DIGITS_PORT, DIGITS_DP_Pin, GPIO_PIN_SET);
+	for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
+		char ch = indicate_state.indicate_buffer[i];
+		uint8_t number = 0;
+		if (ch >= '0' && ch <= '9') {
+			number =  ch - '0';
 		}
+		memcpy(display_buffer[i], digits_pins[number], sizeof(display_buffer[i]));
 	}
 }
 
 void _indicate_fsm_load()
 {
+	for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
+		for (uint8_t j = 0; j < __arr_len(segments_pins); j++) {
+			bool state = false;
+			if (j == indicate_state.load_segment_num) {
+				state = true;
+			}
+
+			display_buffer[i][j] = state;
+		}
+	}
+
 	if (util_is_timer_wait(&indicate_state.wait_timer)) {
 		return;
 	}
 
-	for (uint8_t i = 0; i < __arr_len(segments_pins); i++) {
-		GPIO_PinState state = GPIO_PIN_RESET;
-		if (i == indicate_state.load_segment_num) {
-			state = GPIO_PIN_SET;
-		}
-
-		HAL_GPIO_WritePin(INDICATE_DIGITS_PORT, segments_pins[i], state);
-	}
-
-	if (indicate_state.indicator_idx >= __arr_len(indicators_pins) - 1) {
-		indicate_state.load_segment_num += 1;
-		indicate_state.load_segment_num %= __arr_len(segments_pins);
+	indicate_state.load_segment_num++;
+	if (indicate_state.load_segment_num >= __arr_len(segments_pins) - 1) {
+		indicate_state.load_segment_num = 0;
 	}
 
 	util_timer_start(&indicate_state.wait_timer, INDICATE_FSM_LOAD_DELAY_MS);
@@ -191,7 +217,9 @@ void _indicate_fsm_load()
 
 void _indicate_fsm_error()
 {
-	for (uint8_t i = 0; i < __arr_len(segments_pins); i++) {
-		HAL_GPIO_WritePin(INDICATE_DIGITS_PORT, segments_pins[i], error_arr[indicate_state.indicator_idx][i]);
+	for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
+		for (uint8_t j = 0; j < __arr_len(segments_pins); j++) {
+			display_buffer[i][j] = error_arr[i][j];
+		}
 	}
 }

@@ -1,53 +1,55 @@
-/* Copyright © 2023 Georgy E. All rights reserved. */
-
-#include "ui_manager.h"
+#include "UIManager.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
+
+#include "SettingsDB/SettingsDB.h"
 
 #include "main.h"
 #include "pump_manager.h"
 #include "access_manager.h"
-#include "settings_manager.h"
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
 
 
-void _ui_check_user_need_gas();
-bool _ui_check_keyboard_stop();
-bool _ui_check_keyboard_start();
+extern SettingsDB settings;
 
 
-void ui_proccess()
+void UIManager::UIProccess()
 {
-	if (!settings_loaded()) {
+	if (!settings.isLoaded()) {
 		indicate_set_load_page();
+	} else {
+		indicate_set_wait_page();
 	}
 
 	if (general_check_errors()) {
 		indicate_set_error_page();
 	}
 
-	indicate_proccess();
-
 	keyboard4x3_proccess();
 
 	access_proccess();
 
-	_ui_check_user_need_gas();
+	UIManager::gasProccess();
+
+	indicate_proccess();
+
+	indicate_display();
 }
 
-void _ui_check_user_need_gas()
+void UIManager::gasProccess()
 {
-	if (!device_info.access_granted) {
-		return;
-	}
+//	if (!device_info.access_granted) {
+//		return;
+//	}
 
 	if (pump_has_error()) {
 		return;
 	}
 
-	if (_ui_check_keyboard_stop()) {
+	if (UIManager::checkKeyboardStop()) {
 		pump_stop();
 		return;
 	}
@@ -56,7 +58,7 @@ void _ui_check_user_need_gas()
 		return;
 	}
 
-	if (!_ui_check_keyboard_start()) {
+	if (!UIManager::checkKeyboardStart()) {
 		return;
 	}
 
@@ -73,12 +75,12 @@ void _ui_check_user_need_gas()
 	}
 }
 
-bool _ui_check_keyboard_stop()
+bool UIManager::checkKeyboardStop()
 {
 	return strnstr((char*)keyboard4x3_get_buffer(), "*", KEYBOARD4X3_BUFFER_SIZE);
 }
 
-bool _ui_check_keyboard_start()
+bool UIManager::checkKeyboardStart()
 {
 	return strnstr((char*)keyboard4x3_get_buffer(), "#", KEYBOARD4X3_BUFFER_SIZE);
 }

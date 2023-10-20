@@ -19,28 +19,24 @@ typedef struct _keyboard4x3_state_t {
 	void         (*fsm_measure_proccess) (void);
 	uint8_t      cur_col;
 	uint8_t      cur_row;
+	uint8_t      last_row;
 	util_timer_t wait_timer;
 	util_timer_t reset_timer;
 	uint8_t      buffer_idx;
 	uint8_t      buffer[KEYBOARD4X3_BUFFER_SIZE];
 } keyboard4x3_state_t;
 
-typedef struct _GPIO_key_pin_t {
-	GPIO_TypeDef* port;
-	uint16_t      pin;
-} GPIO_key_pin_t;
 
-
-const GPIO_key_pin_t rows_pins[] = {
+const util_port_pin_t rows_pins[] = {
 	{ .port = KBD_ROW1_GPIO_Port, .pin = KBD_ROW1_Pin },
 	{ .port = KBD_ROW2_GPIO_Port, .pin = KBD_ROW2_Pin },
 	{ .port = KBD_ROW3_GPIO_Port, .pin = KBD_ROW3_Pin },
 	{ .port = KBD_ROW4_GPIO_Port, .pin = KBD_ROW4_Pin }
 };
-const GPIO_key_pin_t cols_pins[] = {
-	{ .port = KBD_COL1_GPIO_Port, .pin = KBD_COL1_Pin },
+const util_port_pin_t cols_pins[] = {
+	{ .port = KBD_COL3_GPIO_Port, .pin = KBD_COL3_Pin },
 	{ .port = KBD_COL2_GPIO_Port, .pin = KBD_COL2_Pin },
-	{ .port = KBD_COL3_GPIO_Port, .pin = KBD_COL3_Pin }
+	{ .port = KBD_COL1_GPIO_Port, .pin = KBD_COL1_Pin }
 };
 const uint8_t keyboard_btns[4][3] = {
 	{ '1', '2', '3' },
@@ -49,9 +45,18 @@ const uint8_t keyboard_btns[4][3] = {
 	{ '*', '0', '#' }
 };
 
-keyboard4x3_state_t keyboard4x3_state = { 0 };
+keyboard4x3_state_t keyboard4x3_state = {
+	.buffer               = { 0 },
+	.buffer_idx           = 0,
+	.cur_col              = 0,
+	.cur_row              = 0,
+	.fsm_measure_proccess = NULL,
+	.last_row             = __arr_len(rows_pins),
+	.reset_timer          = { 0 },
+	.wait_timer           = { 0 }
+};
 
-void _keyboard4x3_set_output_pin(uint16_t pin_num);
+void _keyboard4x3_set_output_pin(uint16_t row_num);
 void _keyboard4x3_reset_buffer();
 
 void _keyboard4x3_fsm_set_row();
@@ -63,6 +68,9 @@ void _keyboard4x3_fsm_next_button();
 
 void keyboard4x3_proccess()
 {
+	if (!keyboard4x3_state.fsm_measure_proccess) {
+		_keyboard4x3_reset_buffer();
+	}
 	keyboard4x3_state.fsm_measure_proccess();
 }
 
@@ -73,7 +81,7 @@ uint8_t* keyboard4x3_get_buffer()
 
 void _keyboard4x3_fsm_set_row()
 {
-	if (keyboard4x3_state.buffer_idx && util_is_timer_wait(&keyboard4x3_state.reset_timer)) {
+	if (keyboard4x3_state.buffer_idx && !util_is_timer_wait(&keyboard4x3_state.reset_timer)) {
 		_keyboard4x3_reset_buffer();
 	}
 	_keyboard4x3_set_output_pin(keyboard4x3_state.cur_row);
@@ -83,9 +91,10 @@ void _keyboard4x3_fsm_set_row()
 void _keyboard4x3_fsm_check_button()
 {
 	GPIO_PinState state = HAL_GPIO_ReadPin(cols_pins[keyboard4x3_state.cur_col].port, cols_pins[keyboard4x3_state.cur_col].pin);
-	if (state == GPIO_PIN_SET) {
-		util_timer_start(&keyboard4x3_state.reset_timer, KEYBOARD4X3_RESET_DELAY_MS);
+	if (state == GPIO_PIN_RESET) {
+		util_timer_start(&keyboard4x3_state.wait_timer, KEYBOARD4X3_PRESS_DELAY_MS);
 		keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_wait_button;
+		return;
 	} else {
 		keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
 	}
@@ -94,9 +103,10 @@ void _keyboard4x3_fsm_check_button()
 void _keyboard4x3_fsm_wait_button()
 {
 	GPIO_PinState state = HAL_GPIO_ReadPin(cols_pins[keyboard4x3_state.cur_col].port, cols_pins[keyboard4x3_state.cur_col].pin);
-	if (state == GPIO_PIN_RESET) {
+	if (state == GPIO_PIN_SET) {
 		util_timer_start(&keyboard4x3_state.wait_timer, KEYBOARD4X3_DEBOUNCE_DELAY_MS);
 		keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_wait_debounce;
+		return;
 	}
 	if (!util_is_timer_wait(&keyboard4x3_state.wait_timer)) {
 		keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
@@ -116,14 +126,20 @@ void _keyboard4x3_fsm_register_button()
 	uint8_t row = keyboard4x3_state.cur_row;
 
 	if (keyboard4x3_state.buffer_idx >= __arr_len(keyboard4x3_state.buffer)) {
-		_keyboard4x3_reset_buffer();
+		memcpy(keyboard4x3_state.buffer, keyboard4x3_state.buffer + 1, sizeof(keyboard4x3_state.buffer) - 1);
+		keyboard4x3_state.buffer_idx = __arr_len(keyboard4x3_state.buffer) - 1;
 	}
 
 	keyboard4x3_state.buffer[keyboard4x3_state.buffer_idx++] = keyboard_btns[row][col];
 
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
 
-	util_timer_start(&keyboard4x3_state.wait_timer, KEYBOARD4X3_RESET_DELAY_MS);
+	util_timer_start(&keyboard4x3_state.reset_timer, KEYBOARD4X3_RESET_DELAY_MS);
+
+	for (uint8_t i = 0; i < __arr_len(keyboard4x3_state.buffer); i++) {
+		LOG_BEDUG("%c ", keyboard4x3_state.buffer[i]);
+	}
+	LOG_BEDUG("\n");
 }
 
 void _keyboard4x3_fsm_next_button()
@@ -140,38 +156,24 @@ void _keyboard4x3_fsm_next_button()
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_set_row;
 }
 
-void _keyboard4x3_set_output_pin(uint16_t pin_num)
+void _keyboard4x3_set_output_pin(uint16_t row_num)
 {
-	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	if (keyboard4x3_state.last_row == row_num) {
+		return;
+	}
 
 	for (uint8_t i = 0; i < __arr_len(rows_pins); i++) {
-		memset((uint8_t*)&GPIO_InitStruct, 0, sizeof(GPIO_InitStruct));
-		GPIO_InitStruct.Pin  = rows_pins[i].pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		HAL_GPIO_Init(rows_pins[i].port, &GPIO_InitStruct);
+		HAL_GPIO_WritePin(rows_pins[i].port, rows_pins[i].pin, GPIO_PIN_SET);
 	}
 
-	for (uint8_t i = 0; i < __arr_len(cols_pins); i++) {
-		memset((uint8_t*)&GPIO_InitStruct, 0, sizeof(GPIO_InitStruct));
-		GPIO_InitStruct.Pin  = cols_pins[i].pin;
-		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		HAL_GPIO_Init(cols_pins[i].port, &GPIO_InitStruct);
-	}
+	HAL_GPIO_WritePin(rows_pins[row_num].port, rows_pins[row_num].pin, GPIO_PIN_RESET);
 
-	memset((uint8_t*)&GPIO_InitStruct, 0, sizeof(GPIO_InitStruct));
-	GPIO_InitStruct.Pin   = rows_pins[pin_num].pin;
-	GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull  = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(rows_pins[pin_num].port, &GPIO_InitStruct);
-
-	HAL_GPIO_WritePin(rows_pins[pin_num].port, rows_pins[pin_num].pin, GPIO_PIN_SET);
+	keyboard4x3_state.last_row = row_num;
 }
 
 void _keyboard4x3_reset_buffer()
 {
 	memset((uint8_t*)&keyboard4x3_state, 0, sizeof(keyboard4x3_state));
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_set_row;
+	keyboard4x3_state.last_row = __arr_len(rows_pins);
 }
