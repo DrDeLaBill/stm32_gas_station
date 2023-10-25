@@ -8,7 +8,6 @@ public:
 	static void UIProccess();
 
 private:
-	static void gasProccess();
 	static bool checkKeyboardStart();
 	static bool checkKeyboardStop();
 };

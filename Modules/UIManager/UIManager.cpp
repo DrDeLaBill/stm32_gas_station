@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "SettingsDB/SettingsDB.h"
+#include "Access.h"
+#include "SettingsDB.h"
 
 #include "main.h"
 #include "pump_manager.h"
-#include "access_manager.h"
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
 
@@ -18,32 +18,16 @@ extern SettingsDB settings;
 
 void UIManager::UIProccess()
 {
-	if (!settings.isLoaded()) {
-		indicate_set_load_page();
-	} else {
-		indicate_set_wait_page();
-	}
-
 	if (general_check_errors()) {
 		indicate_set_error_page();
 	}
 
-	keyboard4x3_proccess();
+	Access::tick();
 
-	access_proccess();
-
-	UIManager::gasProccess();
-
-	indicate_proccess();
-
-	indicate_display();
-}
-
-void UIManager::gasProccess()
-{
-//	if (!device_info.access_granted) {
-//		return;
-//	}
+	if (!Access::isGranted()) {
+		indicate_set_wait_page();
+		return;
+	}
 
 	if (pump_has_error()) {
 		return;
@@ -57,6 +41,9 @@ void UIManager::gasProccess()
 	if (pump_is_working()) {
 		return;
 	}
+
+	indicate_set_buffer_page();
+	indicate_set_buffer(keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
 
 	if (!UIManager::checkKeyboardStart()) {
 		return;

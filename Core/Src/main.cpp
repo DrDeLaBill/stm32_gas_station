@@ -20,6 +20,7 @@
 #include "main.h"
 #include "adc.h"
 #include "i2c.h"
+#include "iwdg.h"
 #include "rtc.h"
 #include "tim.h"
 #include "usart.h"
@@ -36,13 +37,16 @@
 #include "clock.h"
 #include "wiegand.h"
 #include "pump_manager.h"
-#include "modbus_manager.h"
 #include "indicate_manager.h"
+#include "keyboard4x3_manager.h"
 #include "eeprom_at24cm01_storage.h"
 
+#include "Access.h"
+#include "RecordDB.h"
 #include "StorageAT.h"
 #include "UIManager.h"
-#include "SettingsDB/SettingsDB.h"
+#include "SettingsDB.h"
+#include "ModbusManager.h"
 
 /* USER CODE END Includes */
 
@@ -83,6 +87,8 @@ StorageStatus write_driver(uint32_t address, uint8_t* data, uint32_t len);
 
 void pump_stop_handler();
 
+void reset_eeprom_i2c();
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -92,6 +98,8 @@ StorageAT storage(
 	read_driver,
 	write_driver
 );
+
+ModbusManager mbManager(&MODBUS_UART);
 /* USER CODE END 0 */
 
 /**
@@ -101,7 +109,6 @@ StorageAT storage(
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -117,7 +124,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  reset_eeprom_i2c();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -129,7 +136,11 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(100);
+
+  PRINT_MESSAGE(MAIN_TAG, "The device is started\n");
 
   // PUMP initialization
   pump_set_pump_stop_handler(&pump_stop_handler);
@@ -142,15 +153,18 @@ int main(void)
 
   // Settings
   while (settings.load() != SettingsDB::SETTINGS_OK) {
+	  UIManager::UIProccess();
 	  settings.reset();
   }
 
+  PRINT_MESSAGE(MAIN_TAG, "The device is loaded successfully\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	HAL_IWDG_Refresh(&DEVICE_IWDG);
 
     soul_proccess();
 
@@ -158,21 +172,20 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
+    UIManager::UIProccess();
+
     if (!settings.isLoaded()) {
     	settings.load();
     	continue;
     }
 
-//	pump_proccess();
-//
-//    if (general_check_errors()) {
-//    	continue;
-//    }
-//
-//	modbus_manager_proccess();
-//
-//	record_cache_records_proccess();
+	pump_proccess();
 
+    if (general_check_errors()) {
+    	continue;
+    }
+
+	mbManager.tick();
   }
   /* USER CODE END 3 */
 }
@@ -194,9 +207,11 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE
+                              |RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
@@ -227,54 +242,72 @@ void SystemClock_Config(void)
 
 void pump_stop_handler()
 {
-//	log_record_t record = {
-//		.cf_id = settings.cf_id,
-//		.time  = {
-//			clock_get_year(),
-//			clock_get_month(),
-//			clock_get_date(),
-//			clock_get_hour(),
-//			clock_get_minute(),
-//			clock_get_second()
-//		},
-//		.used_liters = pump_get_fuel_count_ml(),
-//		.card        = device_info.user_card,
-//		.id          = 0
-//	};
-//
-//	LOG_TAG_BEDUG(MAIN_TAG, "save new log: begin");
-//	LOG_TAG_BEDUG(MAIN_TAG, "save new log: time=20%02u-%02u-%02u %02u:%02u:%02u", record.time[0], record.time[1], record.time[2], record.time[3], record.time[4], record.time[5]);
-//	LOG_TAG_BEDUG(MAIN_TAG, "save new log: cf_id=%lu", record.cf_id);
-//	LOG_TAG_BEDUG(MAIN_TAG, "save new log: card=%lu", record.card);
-//	LOG_TAG_BEDUG(MAIN_TAG, "save new log: used_liters=%lu", record.used_liters);
-//
-//	uint32_t new_id = 0;
-//	record_status_t status = record_get_new_id(&new_id);
-//	if (status != RECORD_OK) {
-//		LOG_TAG_BEDUG(MAIN_TAG, "save new log: find new log id error=%02x", status);
-//		return;
-//	}
-//
-//	record.id = new_id;
-//
-//	LOG_TAG_BEDUG(MAIN_TAG, "save new log: id=%lu", record.id);
-//
-//	memcpy((uint8_t*)&log_record, (uint8_t*)&record, sizeof(log_record));
-//
-//	status = record_save();
-//	if (status != RECORD_OK) {
-//		LOG_TAG_BEDUG(MAIN_TAG, "save new log: error=%02x", status);
-//		return;
-//	}
-//
-//	LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
+	RecordDB record;
+//	record.record.cf_id = settings.settings.cf_id;
+	record.record.time[0] = clock_get_year();
+	record.record.time[1] = clock_get_month();
+	record.record.time[2] = clock_get_date();
+	record.record.time[3] = clock_get_hour();
+	record.record.time[4] = clock_get_minute();
+	record.record.time[5] = clock_get_second();
+	record.record.used_liters = pump_get_fuel_count_ml();
+	record.record.card = Access::getCard();
+
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: begin");
+	LOG_TAG_BEDUG(
+		MAIN_TAG,
+		"save new log: time=20%02u-%02u-%02u %02u:%02u:%02u",
+		record.record.time[0],
+		record.record.time[1],
+		record.record.time[2],
+		record.record.time[3],
+		record.record.time[4],
+		record.record.time[5]
+	);
+//	LOG_TAG_BEDUG(MAIN_TAG, "save new log: cf_id=%lu", record.record.cf_id);
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: card=%lu", record.record.card);
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: used_liters=%lu", record.record.used_liters);
+
+	uint32_t new_id = 0;
+	RecordDB::RecordStatus status = RecordDB::getNewId(&new_id);
+	if (status != RecordDB::RECORD_OK) {
+		LOG_TAG_BEDUG(MAIN_TAG, "save new log: find new log id error=%02x", status);
+		return;
+	}
+
+	record.record.id = new_id;
+
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: id=%lu", record.record.id);
+
+	status = record.save();
+	if (status != RecordDB::RECORD_OK) {
+		LOG_TAG_BEDUG(MAIN_TAG, "save new log: error=%02x", status);
+		return;
+	}
+
+	LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
+}
+
+void reset_eeprom_i2c()
+{
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+	GPIO_InitStruct.Pin   = EEPROM_SDA_Pin | EEPROM_SCL_Pin;
+	GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
+	GPIO_InitStruct.Pull  = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	HAL_GPIO_WritePin(EEPROM_SDA_GPIO_Port, EEPROM_SDA_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(EEPROM_SCL_GPIO_Port, EEPROM_SCL_Pin, GPIO_PIN_RESET);
+	HAL_Delay(100);
 }
 
 bool general_check_errors()
 {
-	if (pump_has_error()) {
-		return true;
-	}
+//	if (pump_has_error()) {
+//		return true;
+//	}
 	return false;
 }
 
@@ -305,7 +338,8 @@ StorageStatus write_driver(uint32_t address, uint8_t* data, uint32_t len)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == MODBUS_UART.Instance) {
-    	modbus_manager_recieve_data_byte(modbus_uart_byte);
+    	LOG_TAG_BEDUG(MAIN_TAG, "%02X ", modbus_uart_byte);
+    	mbManager.recirveByte(modbus_uart_byte);
         HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
     }
 }
@@ -323,7 +357,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance == INDICATORS_TIM.Instance)
 	{
-	    UIManager::UIProccess();
+		keyboard4x3_proccess();
+
+		indicate_proccess();
+		indicate_display();
 	}
 }
 

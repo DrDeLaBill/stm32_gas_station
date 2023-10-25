@@ -138,6 +138,10 @@ int _write(int file, uint8_t *ptr, int len);
 #define KBD_COL3_GPIO_Port GPIOB
 #define KBD_COL2_Pin GPIO_PIN_5
 #define KBD_COL2_GPIO_Port GPIOB
+#define EEPROM_SCL_Pin GPIO_PIN_6
+#define EEPROM_SCL_GPIO_Port GPIOB
+#define EEPROM_SDA_Pin GPIO_PIN_7
+#define EEPROM_SDA_GPIO_Port GPIOB
 #define KBD_COL1_Pin GPIO_PIN_8
 #define KBD_COL1_GPIO_Port GPIOB
 #define KBD_BL_Pin GPIO_PIN_9
@@ -145,7 +149,7 @@ int _write(int file, uint8_t *ptr, int len);
 /* USER CODE BEGIN Private defines */
 
 // General settings
-#define GENERAL_RFID_CARDS_COUNT ((uint8_t)20)
+#define GENERAL_RFID_CARDS_COUNT ((uint16_t)20)
 #define GENERAL_BUS_TIMEOUT_MS   ((uint32_t)100)
 #define GENERAL_SESSION_ML_MIN   ((uint32_t)500)
 #define GENERAL_SESSION_ML_MAX   ((uint32_t)50000)
@@ -183,6 +187,11 @@ extern UART_HandleTypeDef        huart2;
 // Indicators
 extern TIM_HandleTypeDef         htim4;
 #define INDICATORS_TIM           (htim4)
+
+// Watchdog
+extern IWDG_HandleTypeDef        hiwdg;
+#define DEVICE_IWDG              (hiwdg)
+
 
 bool general_check_errors();
 

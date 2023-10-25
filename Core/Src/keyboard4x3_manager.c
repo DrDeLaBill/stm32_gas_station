@@ -15,6 +15,9 @@
 #define KEYBOARD4X3_RESET_DELAY_MS    ((uint32_t)10000)
 
 
+static const char KEYBOARD_TAG[] = "KBD";
+
+
 typedef struct _keyboard4x3_state_t {
 	void         (*fsm_measure_proccess) (void);
 	uint8_t      cur_col;
@@ -65,6 +68,9 @@ void _keyboard4x3_fsm_wait_button();
 void _keyboard4x3_fsm_wait_debounce();
 void _keyboard4x3_fsm_register_button();
 void _keyboard4x3_fsm_next_button();
+
+void _keyboard4x3_show_buf();
+
 
 void keyboard4x3_proccess()
 {
@@ -136,10 +142,7 @@ void _keyboard4x3_fsm_register_button()
 
 	util_timer_start(&keyboard4x3_state.reset_timer, KEYBOARD4X3_RESET_DELAY_MS);
 
-	for (uint8_t i = 0; i < __arr_len(keyboard4x3_state.buffer); i++) {
-		LOG_BEDUG("%c ", keyboard4x3_state.buffer[i]);
-	}
-	LOG_BEDUG("\n");
+	_keyboard4x3_show_buf();
 }
 
 void _keyboard4x3_fsm_next_button()
@@ -176,4 +179,16 @@ void _keyboard4x3_reset_buffer()
 	memset((uint8_t*)&keyboard4x3_state, 0, sizeof(keyboard4x3_state));
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_set_row;
 	keyboard4x3_state.last_row = __arr_len(rows_pins);
+	_keyboard4x3_show_buf();
+}
+
+void _keyboard4x3_show_buf()
+{
+#ifdef DEBUG
+	LOG_BEDUG("%s: \t", KEYBOARD_TAG);
+	for (uint8_t i = 0; i < __arr_len(keyboard4x3_state.buffer); i++) {
+		LOG_BEDUG("%c ", keyboard4x3_state.buffer[i] ? keyboard4x3_state.buffer[i] : (int)'-');
+	}
+	LOG_BEDUG("\n");
+#endif
 }

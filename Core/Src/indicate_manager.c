@@ -48,13 +48,13 @@ const bool error_arr[][__arr_len(segments_pins)] = {
 	{1, 0, 0, 1, 1, 1, 1},  // E
 	{0, 0, 0, 0, 1, 0, 1},  // r
 	{0, 0, 0, 0, 1, 0, 1},  // r
-	{0, 0, 0, 0, 0, 0, 0},  // empty
-	{0, 0, 0, 0, 0, 0, 0},  // empty
+	{1, 1, 1, 1, 1, 1, 0},  // O
+	{0, 0, 0, 0, 1, 0, 1},  // r
 	{0, 0, 0, 0, 0, 0, 0}   // empty
 };
 
 
-#define INDICATE_INDICATORS_COUNT  ((uint8_t)sizeof(indicators_pins))
+#define INDICATE_INDICATORS_COUNT  ((uint32_t)__arr_len(indicators_pins))
 #define INDICATE_SHOW_DELAY_MS     ((uint32_t)50)
 #define INDICATE_FSM_WAIT_DELAY_MS ((uint32_t)1000)
 #define INDICATE_FSM_LOAD_DELAY_MS ((uint32_t)120)
@@ -85,6 +85,8 @@ void _indicate_fsm_buffer();
 void _indicate_fsm_load();
 void _indicate_fsm_error();
 
+void _indicate_set_page(void (*new_page) ());
+
 
 indicate_state_t indicate_state = {
 	.indicate_state  = _indicate_fsm_wait,
@@ -103,8 +105,6 @@ void indicate_set_buffer(uint8_t* data, uint8_t len)
 
 void indicate_proccess()
 {
-	HAL_GPIO_WritePin(DIGITS_DP_GPIO_Port, DIGITS_DP_Pin, GPIO_PIN_RESET);
-
 	indicate_state.indicate_state();
 }
 
@@ -118,6 +118,7 @@ void indicate_display()
 
 	HAL_GPIO_WritePin(indicators_pins[curr_indicator_idx].port, indicators_pins[curr_indicator_idx].pin, GPIO_PIN_SET);
 
+	HAL_GPIO_WritePin(DIGITS_DP_GPIO_Port, DIGITS_DP_Pin, GPIO_PIN_RESET);
 
 	for (uint8_t i = 0; i < __arr_len(segments_pins); i++) {
 		HAL_GPIO_WritePin(
@@ -132,33 +133,38 @@ void indicate_display()
 //	}
 
 	curr_indicator_idx++;
-	if (curr_indicator_idx > __arr_len(indicators_pins)) {
+	if (curr_indicator_idx >= __arr_len(indicators_pins)) {
 		curr_indicator_idx = 0;
 	}
 }
 
+void _indicate_set_page(void (*new_page) ())
+{
+	if (new_page == indicate_state.indicate_state) {
+		return;
+	}
+	_indicate_clear_buffer();
+	indicate_state.indicate_state = new_page;
+}
+
 void indicate_set_wait_page()
 {
-	_indicate_clear_buffer();
-	indicate_state.indicate_state = &_indicate_fsm_wait;
+	_indicate_set_page(&_indicate_fsm_wait);
 }
 
 void indicate_set_buffer_page()
 {
-	_indicate_clear_buffer();
-	indicate_state.indicate_state = &_indicate_fsm_buffer;
+	_indicate_set_page(&_indicate_fsm_buffer);
 }
 
 void indicate_set_load_page()
 {
-	_indicate_clear_buffer();
-	indicate_state.indicate_state = &_indicate_fsm_load;
+	_indicate_set_page(&_indicate_fsm_load);
 }
 
 void indicate_set_error_page()
 {
-	_indicate_clear_buffer();
-	indicate_state.indicate_state = &_indicate_fsm_error;
+	_indicate_set_page(&_indicate_fsm_error);
 }
 
 void _indicate_clear_buffer()
@@ -182,16 +188,21 @@ void _indicate_fsm_buffer()
 {
 	for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
 		char ch = indicate_state.indicate_buffer[i];
-		uint8_t number = 0;
 		if (ch >= '0' && ch <= '9') {
-			number =  ch - '0';
+			uint8_t number = ch - '0';
+			memcpy(display_buffer[i], digits_pins[number], sizeof(display_buffer[i]));
+		} else {
+			display_buffer[i][__arr_len(segments_pins) - 1] = true;
 		}
-		memcpy(display_buffer[i], digits_pins[number], sizeof(display_buffer[i]));
 	}
 }
 
 void _indicate_fsm_load()
 {
+	if (util_is_timer_wait(&indicate_state.wait_timer)) {
+		return;
+	}
+
 	for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
 		for (uint8_t j = 0; j < __arr_len(segments_pins); j++) {
 			bool state = false;
@@ -201,10 +212,6 @@ void _indicate_fsm_load()
 
 			display_buffer[i][j] = state;
 		}
-	}
-
-	if (util_is_timer_wait(&indicate_state.wait_timer)) {
-		return;
 	}
 
 	indicate_state.load_segment_num++;
