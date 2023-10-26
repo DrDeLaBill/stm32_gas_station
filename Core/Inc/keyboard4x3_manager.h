@@ -19,6 +19,7 @@ extern "C" {
 
 void     keyboard4x3_proccess();
 uint8_t* keyboard4x3_get_buffer();
+void     keyboard4x3_clear();
 
 
 #ifdef __cplusplus

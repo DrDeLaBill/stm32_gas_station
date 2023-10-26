@@ -2,14 +2,17 @@
 #define UI_MANAGER_H
 
 
+#include "keyboard4x3_manager.h"
+
+
 class UIManager
 {
 public:
 	static void UIProccess();
 
 private:
-	static bool checkKeyboardStart();
-	static bool checkKeyboardStop();
+	static bool isStartPressed;
+	static char constBuffer[KEYBOARD4X3_BUFFER_SIZE];
 };
 
 

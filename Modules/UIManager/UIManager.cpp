@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "stm32f4xx_hal.h"
+
 #include "Access.h"
 #include "SettingsDB.h"
 
@@ -16,26 +18,34 @@
 extern SettingsDB settings;
 
 
+bool UIManager::isStartPressed = false;
+char UIManager::constBuffer[KEYBOARD4X3_BUFFER_SIZE] = "";
+
+
 void UIManager::UIProccess()
 {
+	Access::tick();
+
 	if (general_check_errors()) {
 		indicate_set_error_page();
+		return;
 	}
-
-	Access::tick();
 
 	if (!Access::isGranted()) {
 		indicate_set_wait_page();
+		keyboard4x3_clear();
 		return;
 	}
 
-	if (pump_has_error()) {
-		return;
-	}
-
-	if (UIManager::checkKeyboardStop()) {
+	if (HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin)) {
+		memset(UIManager::constBuffer, 0, sizeof(UIManager::constBuffer));
+		keyboard4x3_clear();
 		pump_stop();
 		return;
+	}
+
+	if (pump_is_working() && !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin)) {
+		pump_pause();
 	}
 
 	if (pump_is_working()) {
@@ -43,13 +53,24 @@ void UIManager::UIProccess()
 	}
 
 	indicate_set_buffer_page();
-	indicate_set_buffer(keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
+	if (!UIManager::isStartPressed) {
+		indicate_set_buffer(keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
+	} else {
+		indicate_set_buffer(reinterpret_cast<uint8_t*>(UIManager::constBuffer), KEYBOARD4X3_BUFFER_SIZE);
+	}
 
-	if (!UIManager::checkKeyboardStart()) {
+	// TODO: add timeout
+
+	if (!HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin)) {
 		return;
 	}
 
-	uint32_t user_liters       = (uint32_t)atoi((char*)keyboard4x3_get_buffer());
+	pump_start();
+
+	UIManager::isStartPressed = true;
+	memcpy(UIManager::constBuffer, keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
+
+	uint32_t user_liters       = (uint32_t)atoi(UIManager::constBuffer);
 	uint32_t liters_multiplier = ML_IN_LTR;
 	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
 		liters_multiplier /= (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT * 10);
@@ -62,12 +83,12 @@ void UIManager::UIProccess()
 	}
 }
 
-bool UIManager::checkKeyboardStop()
-{
-	return strnstr((char*)keyboard4x3_get_buffer(), "*", KEYBOARD4X3_BUFFER_SIZE);
-}
-
-bool UIManager::checkKeyboardStart()
-{
-	return strnstr((char*)keyboard4x3_get_buffer(), "#", KEYBOARD4X3_BUFFER_SIZE);
-}
+//bool UIManager::checkKeyboardStop()
+//{
+//	return strnstr((char*)keyboard4x3_get_buffer(), "*", KEYBOARD4X3_BUFFER_SIZE);
+//}
+//
+//bool UIManager::checkKeyboardStart()
+//{
+//	return strnstr((char*)keyboard4x3_get_buffer(), "#", KEYBOARD4X3_BUFFER_SIZE);
+//}

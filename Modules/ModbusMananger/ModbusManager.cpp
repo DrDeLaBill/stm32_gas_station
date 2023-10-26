@@ -24,6 +24,11 @@ util_timer_t ModbusManager::timer;
 bool ModbusManager::recievedNewData = false;
 bool ModbusManager::requestInProgress = false;
 
+#if MB_MANAGER_BEDUG
+uint16_t ModbusManager::counter = 0;
+uint8_t ModbusManager::request[20] = {};
+#endif
+
 
 extern SettingsDB settings;
 
@@ -35,13 +40,12 @@ ModbusManager::ModbusManager(UART_HandleTypeDef* huart)
     modbus_slave_set_internal_error_handler(&(ModbusManager::request_error_handler));
 
     ModbusManager::huart = huart;
-    ModbusManager::recievedNewData = false;
-    ModbusManager::requestInProgress = false;
 }
 
 void ModbusManager::tick()
 {
 	if (ModbusManager::requestInProgress && !util_is_timer_wait(&ModbusManager::timer)) {
+		LOG_TAG_BEDUG(ModbusManager::TAG, "Modbus timeout")
 		modbus_slave_timeout();
 		ModbusManager::reset();
 		return;
@@ -55,14 +59,22 @@ void ModbusManager::tick()
 
 	if (ModbusManager::recievedNewData) {
 		this->load();
-	} else if (settings.info.savedNewData) {
+	} else if (settings.info.saved_new_data) {
 		this->save();
 	}
 }
 
 void ModbusManager::recirveByte(uint8_t byte)
 {
+    ModbusManager::recievedNewData = false;
+
     modbus_slave_recieve_data_byte(byte);
+    ModbusManager::requestInProgress = true;
+#if MB_MANAGER_BEDUG
+    if (counter < sizeof(ModbusManager::request)) {
+    	ModbusManager::request[ModbusManager::counter++] = byte;
+    }
+#endif
     util_timer_start(&ModbusManager::timer, GENERAL_BUS_TIMEOUT_MS);
 }
 
@@ -214,13 +226,11 @@ void ModbusManager::load()
 	time.Seconds = reg8->get();
 
     clock_save_time(&time);
-
-    ModbusManager::recievedNewData = false;
 }
 
 void ModbusManager::save()
 {
-	settings.info.savedNewData = false;
+	settings.info.saved_new_data = false;
 #if MB_MANAGER_BEDUG
     LOG_TAG_BEDUG(ModbusManager::TAG, "UPDATE MODBUS TABLE");
 #endif
@@ -338,7 +348,7 @@ void ModbusManager::save()
 #endif
 	std::shared_ptr<ModbusRegister<uint16_t>> reg16 = ModbusRegister<uint16_t>::createRegister(
 		MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
-		reg8->getNextAddress(),
+		0,
 		GENERAL_RFID_CARDS_COUNT
 	);
 	reg16->save();
@@ -398,6 +408,9 @@ void ModbusManager::response_data_handler(uint8_t* data, uint32_t len)
 	}
 
 	ModbusManager::data = std::make_unique<uint8_t[]>(len);
+	for (unsigned i = 0; i < len; i++) {
+		ModbusManager::data[i] = data[i];
+	}
 	ModbusManager::data_length = len;
     ModbusManager::recievedNewData = true;
 }
@@ -412,6 +425,18 @@ void ModbusManager::send_data()
 	if (!ModbusManager::data || !ModbusManager::huart) {
 		return;
 	}
+#if MB_MANAGER_BEDUG
+	LOG_BEDUG("%s:\trequest  - ", ModbusManager::TAG);
+	for (unsigned i = 0; i < ModbusManager::counter; i++) {
+    	LOG_BEDUG("%02X ", ModbusManager::request[i]);
+	}
+	LOG_BEDUG("\n");
+	LOG_BEDUG("%s:\tresponse - ", ModbusManager::TAG);
+	for (unsigned i = 0; i < ModbusManager::data_length; i++) {
+    	LOG_BEDUG("%02X ", ModbusManager::data[i]);
+	}
+	LOG_BEDUG("\n");
+#endif
     HAL_UART_Transmit(ModbusManager::huart, ModbusManager::data.get(), ModbusManager::data_length, GENERAL_BUS_TIMEOUT_MS);
 }
 
@@ -423,4 +448,9 @@ void ModbusManager::reset()
 
     ModbusManager::recievedNewData = false;
     ModbusManager::requestInProgress = false;
+
+#if MB_MANAGER_BEDUG
+	ModbusManager::counter = 0;
+	memset(ModbusManager::request, 0, sizeof(ModbusManager::request));
+#endif
 }

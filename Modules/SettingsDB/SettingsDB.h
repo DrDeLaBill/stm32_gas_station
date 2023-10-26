@@ -44,7 +44,7 @@ public:
 	typedef struct _DeviceInfo {
 		bool     settings_loaded;
 		bool     access_granted;
-		bool     savedNewData;
+		bool     saved_new_data;
 	} DeviceInfo;
 
 	DeviceInfo info;

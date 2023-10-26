@@ -12,7 +12,7 @@
 
 #define KEYBOARD4X3_DEBOUNCE_DELAY_MS ((uint32_t)50)
 #define KEYBOARD4X3_PRESS_DELAY_MS    ((uint32_t)5000)
-#define KEYBOARD4X3_RESET_DELAY_MS    ((uint32_t)10000)
+#define KEYBOARD4X3_RESET_DELAY_MS    ((uint32_t)30000)
 
 
 static const char KEYBOARD_TAG[] = "KBD";
@@ -85,6 +85,11 @@ uint8_t* keyboard4x3_get_buffer()
 	return keyboard4x3_state.buffer;
 }
 
+void keyboard4x3_clear()
+{
+	_keyboard4x3_reset_buffer();
+}
+
 void _keyboard4x3_fsm_set_row()
 {
 	if (keyboard4x3_state.buffer_idx && !util_is_timer_wait(&keyboard4x3_state.reset_timer)) {
@@ -136,7 +141,10 @@ void _keyboard4x3_fsm_register_button()
 		keyboard4x3_state.buffer_idx = __arr_len(keyboard4x3_state.buffer) - 1;
 	}
 
-	keyboard4x3_state.buffer[keyboard4x3_state.buffer_idx++] = keyboard_btns[row][col];
+	uint8_t ch = keyboard_btns[row][col];
+	if (ch >= '0' && ch <= '9') {
+		keyboard4x3_state.buffer[keyboard4x3_state.buffer_idx++] = ch;
+	}
 
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
 

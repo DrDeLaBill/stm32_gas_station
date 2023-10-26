@@ -82,7 +82,7 @@ public:
 	void save()
 	{
 #if MB_REGISTER_BEDUG
-		LOG_TAG_BEDUG(ModbusRegister::TAG, "modbus set id=%lu reg_type=0x%02X regs_count=%lu: %d", id, register_type, ModbusRegister<T>::getRegSize(), this->deserializedData);
+		LOG_TAG_BEDUG(ModbusRegister::TAG, "modbus set id=%lu reg_type=0x%02X regs_count=%lu: %d", id, register_type, ModbusRegister<T>::getRegSize(), static_cast<int>(this->deserialize()));
 #endif
 		this->serialize();
 		ModbusTableService::setRegisters(register_type, id, serializedData, ModbusRegister<T>::getRegSize());
@@ -92,7 +92,7 @@ public:
 	{
 		serializedData = ModbusTableService::getRegisters(register_type, id, ModbusRegister<T>::getRegSize());
 #if MB_REGISTER_BEDUG
-		LOG_TAG_BEDUG(ModbusRegister::TAG, "modbus get id=%lu reg_type=0x%02X regs_count=%lu: %d", id, register_type, ModbusRegister<T>::getRegSize(), this->deserialize());
+		LOG_TAG_BEDUG(ModbusRegister::TAG, "modbus get id=%lu reg_type=0x%02X regs_count=%lu: %d", id, register_type, ModbusRegister<T>::getRegSize(), static_cast<int>(this->deserialize()));
 #endif
 		this->deserialize();
 	}

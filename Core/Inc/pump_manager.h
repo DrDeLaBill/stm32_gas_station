@@ -12,16 +12,22 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#define PUMP_BEDUG (true)
 
-void     pump_set_fuel_ml(uint32_t amount_ml);
-void     pump_proccess();
-void     pump_stop();
+
+void pump_proccess();
+
+void pump_set_fuel_ml(uint32_t liquid_ml);
+void pump_start();
+void pump_pause();
+void pump_stop();
+
+bool pump_has_error();
+bool pump_is_working();
+
+void pump_set_record_handler(void (*pump_record_handler) (void));
 
 uint32_t pump_get_fuel_count_ml();
-bool     pump_has_error();
-bool     pump_is_working();
-
-void     pump_set_pump_stop_handler(void (*pump_stop_handler) (void));
 
 
 #ifdef __cplusplus

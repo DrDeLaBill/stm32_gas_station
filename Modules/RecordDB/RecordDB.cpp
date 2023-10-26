@@ -91,7 +91,7 @@ RecordDB::RecordStatus RecordDB::save()
 		EXIT_CODE(RECORD_ERROR);
 	}
 
-	settings.info.savedNewData = true;
+	settings.info.saved_new_data = true;
 
 	EXIT_CODE(RECORD_OK);
 }
@@ -112,7 +112,7 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 		EXIT_CODE(RECORD_ERROR);
 	}
 
-	settings.info.savedNewData = true;
+	settings.info.saved_new_data = true;
 
 	EXIT_CODE(RECORD_OK);
 }

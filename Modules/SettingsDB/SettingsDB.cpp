@@ -17,9 +17,10 @@ extern StorageAT storage;
 
 SettingsDB::SettingsDB()
 {
-	this->isSettingsLoaded = false;
 	memset(reinterpret_cast<void*>(&this->settings), 0, sizeof(this->settings));
 	memset(reinterpret_cast<void*>(&this->info), 0, sizeof(this->info));
+	this->isSettingsLoaded = false;
+	this->info.saved_new_data = true;
 }
 
 SettingsDB::SettingsStatus SettingsDB::load()
@@ -71,7 +72,7 @@ SettingsDB::SettingsStatus SettingsDB::save()
 		EXIT_CODE(SETTINGS_ERROR);
 	}
 
-	info.savedNewData = true;
+	info.saved_new_data = true;
 
 	EXIT_CODE(SETTINGS_OK);
 }

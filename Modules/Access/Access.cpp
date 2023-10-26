@@ -32,8 +32,8 @@ void Access::tick()
 	}
 
 	if (Access::isGranted() && !util_is_timer_wait(&Access::timer)) {
+		LOG_TAG_BEDUG(Access::TAG, "Access closed");
 		Access::granted = false;
-		Access::card    = 0;
 	}
 
 	if (!user_card) {

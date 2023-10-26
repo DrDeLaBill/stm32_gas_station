@@ -192,6 +192,7 @@ void _indicate_fsm_buffer()
 			uint8_t number = ch - '0';
 			memcpy(display_buffer[i], digits_pins[number], sizeof(display_buffer[i]));
 		} else {
+			memset(display_buffer[i], 0, sizeof(display_buffer[i]));
 			display_buffer[i][__arr_len(segments_pins) - 1] = true;
 		}
 	}

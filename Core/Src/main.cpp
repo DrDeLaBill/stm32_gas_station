@@ -85,7 +85,7 @@ void SystemClock_Config(void);
 StorageStatus read_driver(uint32_t address, uint8_t* data, uint32_t len);
 StorageStatus write_driver(uint32_t address, uint8_t* data, uint32_t len);
 
-void pump_stop_handler();
+void pump_record_handler();
 
 void reset_eeprom_i2c();
 
@@ -136,14 +136,14 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
-  MX_IWDG_Init();
+//  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(100);
 
   PRINT_MESSAGE(MAIN_TAG, "The device is started\n");
 
   // PUMP initialization
-  pump_set_pump_stop_handler(&pump_stop_handler);
+  pump_set_record_handler(&pump_record_handler);
 
   // Indicators timer init
   HAL_TIM_Base_Start_IT(&htim4);
@@ -164,7 +164,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	HAL_IWDG_Refresh(&DEVICE_IWDG);
+//	HAL_IWDG_Refresh(&DEVICE_IWDG);
 
     soul_proccess();
 
@@ -240,7 +240,7 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-void pump_stop_handler()
+void pump_record_handler()
 {
 	RecordDB record;
 //	record.record.cf_id = settings.settings.cf_id;
@@ -305,9 +305,9 @@ void reset_eeprom_i2c()
 
 bool general_check_errors()
 {
-//	if (pump_has_error()) {
-//		return true;
-//	}
+	if (pump_has_error()) {
+		return true;
+	}
 	return false;
 }
 
@@ -338,7 +338,6 @@ StorageStatus write_driver(uint32_t address, uint8_t* data, uint32_t len)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == MODBUS_UART.Instance) {
-    	LOG_TAG_BEDUG(MAIN_TAG, "%02X ", modbus_uart_byte);
     	mbManager.recirveByte(modbus_uart_byte);
         HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
     }
