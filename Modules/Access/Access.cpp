@@ -47,9 +47,10 @@ void Access::tick()
 			Access::card    = user_card;
 			util_timer_start(&Access::timer, ACCESS_TIMEOUT_MS);
 			LOG_TAG_BEDUG(Access::TAG, "Access granted");
-			break;
+			return;
 		}
 	}
+	LOG_TAG_BEDUG(Access::TAG, "Access denied");
 }
 
 uint32_t Access::getCard()

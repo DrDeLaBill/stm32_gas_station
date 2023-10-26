@@ -14,7 +14,7 @@
 #include "modbus_rtu_base.h"
 
 
-#define MB_REGISTER_BEDUG (true)
+#define MB_REGISTER_BEDUG (false)
 
 
 template <typename T>

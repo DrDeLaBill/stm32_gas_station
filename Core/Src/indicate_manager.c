@@ -85,7 +85,7 @@ void _indicate_fsm_buffer();
 void _indicate_fsm_load();
 void _indicate_fsm_error();
 
-void _indicate_set_page(void (*new_page) ());
+void _indicate_set_page(void (*new_page) (void));
 
 
 indicate_state_t indicate_state = {
@@ -138,9 +138,12 @@ void indicate_display()
 	}
 }
 
-void _indicate_set_page(void (*new_page) ())
+void _indicate_set_page(void (*new_page) (void))
 {
 	if (new_page == indicate_state.indicate_state) {
+		return;
+	}
+	if (!new_page) {
 		return;
 	}
 	_indicate_clear_buffer();

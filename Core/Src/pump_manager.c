@@ -10,24 +10,28 @@
 #include "utils.h"
 
 
-#define PUMP_MD212_CYCLE_IMPULSES_COUNT ((uint32_t)200)
-#define PUMP_MD212_CYCLE_ML_VALUE       ((uint32_t)1000)
-#define PUMP_MD212_CYCLE_INACCURACY     ((uint32_t)20)
-#define PUMP_MD212_MEASURE_DELAY_MS     ((uint32_t)10)
+#define PUMP_MD212_CYCLE_IMPULSES_COUNT ((int32_t)200)
+#define PUMP_MD212_CYCLE_ML_VALUE       ((int32_t)1000)
+#define PUMP_MD212_CYCLE_INACCURACY     ((int32_t)20)
+#define PUMP_MD212_MEASURE_DELAY_MS     ((uint32_t)300)
 
 #define PUMP_ADC_READ_TIMEOUT_MS        ((uint32_t)100)
-#define PUMP_ADC_MEASURE_DELAY_MS       ((uint32_t)10)
+#define PUMP_ADC_MEASURE_DELAY_MS       ((uint32_t)100)
 #define PUMP_ADC_OVERHEAD               ((uint32_t)4000)
-#define PUMP_ADC_VALVE_MIN              ((uint32_t)2500)
-#define PUMP_ADC_PUMP_MIN               ((uint32_t)2500)
+#define PUMP_ADC_VALVE_MIN              ((uint32_t)1000)
+#define PUMP_ADC_VALVE_MAX              ((uint32_t)2000)
+#define PUMP_ADC_PUMP_MIN               ((uint32_t)1000)
+#define PUMP_ADC_PUMP_MAX               ((uint32_t)2000)
 //
 #define PUMP_SESSION_ML_MAX             ((uint32_t)50000)
 #define PUMP_SESSION_ML_MIN             ((uint32_t)1000)
 #define PUMP_CHECK_START_DELAY_MS       ((uint32_t)5000)
-#define PUMP_CHECK_STOP_DELAY_MS        ((uint32_t)2000)
+#define PUMP_CHECK_STOP_DELAY_MS        ((uint32_t)5000)
 #define PUMP_MEASURE_BUFFER_SIZE        ((uint8_t)10)
 
 #define PUMP_SLOW_ML_VALUE              ((uint32_t)5000)
+
+#define PUMP_ENCODER_MIDDLE             ((uint32_t)0xFFFF / 2)
 
 
 typedef struct _pump_state_t {
@@ -36,12 +40,10 @@ typedef struct _pump_state_t {
     void         (*record_handler) (void);
     bool         pump_error;
 
-    uint32_t     md212_counter;
-    uint32_t     md212_measure_buf[PUMP_MEASURE_BUFFER_SIZE];
-
     uint32_t     pump_counter;
     uint32_t     valve_measure_buf[PUMP_MEASURE_BUFFER_SIZE];
     uint32_t     pump_measure_buf [PUMP_MEASURE_BUFFER_SIZE];
+    int32_t      md212_measure_buf[PUMP_MEASURE_BUFFER_SIZE];
 
     uint32_t     ml_current_count;
 
@@ -60,7 +62,7 @@ void _pump_fsm_wait_liters();
 void _pump_fsm_wait_start();
 void _pump_fsm_start();
 void _pump_fsm_check_start();
-void _pump_fsm_wait_stop();
+void _pump_fsm_work();
 void _pump_fsm_error();
 void _pump_fsm_stop();
 void _pump_fsm_check_stop();
@@ -74,10 +76,14 @@ void _pump_reset_state();
 uint32_t _pump_get_adc_valve_current();
 uint32_t _pump_get_adc_pump_current();
 uint32_t _pump_get_average(uint32_t* data, uint32_t len);
-uint32_t _pump_get_average_difference(uint32_t* data, uint32_t len);
+uint32_t _pump_get_average_difference(int32_t* data, uint32_t len);
 
 bool _is_pump_not_working();
 bool _is_pump_and_valve_enabled();
+bool _is_pump_and_valve_operable();
+
+int32_t _get_pump_encoder_current_ticks();
+void _reset_pump_encoder();
 
 
 static const char* PUMP_TAG = "PMP";
@@ -88,12 +94,10 @@ pump_state_t pump_state = {
     .record_handler    = NULL,
     .pump_error        = false,
 
-    .md212_counter     = 0,
-    .md212_measure_buf = { 0 },
-
     .pump_counter      = 0,
     .pump_measure_buf  = { 0 },
     .valve_measure_buf = { 0 },
+    .md212_measure_buf = { 0 },
 
     .wait_timer        = { 0 },
     .error_timer       = { 0 },
@@ -138,7 +142,13 @@ void pump_stop()
 
 bool pump_is_working()
 {
-	return pump_state.fsm_pump_state != _pump_fsm_wait_liters;
+	return pump_state.fsm_pump_state == _pump_fsm_work;
+}
+
+bool pump_is_free()
+{
+	return pump_state.fsm_pump_state == _pump_fsm_wait_liters ||
+		   pump_state.fsm_pump_state == _pump_fsm_init;
 }
 
 bool pump_has_error()
@@ -163,6 +173,10 @@ void _pump_set_fsm_state(void (*new_fsm_state) (void))
 	if (new_fsm_state == NULL) {
 		return;
 	}
+	memset(pump_state.pump_measure_buf, 0, sizeof(pump_state.pump_measure_buf));
+	memset(pump_state.valve_measure_buf, 0, sizeof(pump_state.valve_measure_buf));
+    util_timer_start(&pump_state.error_timer, 0);
+    util_timer_start(&pump_state.wait_timer, 0);
 	pump_state.fsm_pump_state = new_fsm_state;
 	pump_state.pump_counter = 0;
 	pump_state.need_start   = false;
@@ -185,6 +199,7 @@ void _pump_fsm_wait_liters()
 		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_wait_start", HAL_GetTick());
 #endif
 		_pump_set_fsm_state(_pump_fsm_wait_start);
+		pump_start();
 	}
 }
 
@@ -218,37 +233,33 @@ void _pump_fsm_wait_start()
         return;
     }
 
-	util_timer_start(&pump_state.error_timer, 0);
-	util_timer_start(&pump_state.wait_timer, 0);
+    pump_state.pump_counter = 0;
 
-    if (_is_pump_and_valve_enabled()) {
+    if (_is_pump_and_valve_enabled() || !_is_pump_and_valve_operable()) {
 #if PUMP_BEDUG
     	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
 #endif
     	_pump_set_fsm_state(_pump_fsm_error);
     	return;
     }
-
-#if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_wait_stop", HAL_GetTick());
-#endif
-	_pump_set_fsm_state(_pump_fsm_wait_stop);
 }
 
 void _pump_fsm_start()
 {
-    __HAL_TIM_SET_COUNTER(&MD212_TIM, 0);
+	_reset_pump_encoder();
 
     _pump_set_pump_enable(GPIO_PIN_SET);
     _pump_set_valve1_enable(GPIO_PIN_SET);
     _pump_set_valve2_enable(GPIO_PIN_SET);
 
-    util_timer_start(&pump_state.error_timer, PUMP_CHECK_START_DELAY_MS);
-    util_timer_start(&pump_state.wait_timer, 0);
 #if PUMP_BEDUG
 	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_check_start", HAL_GetTick());
 #endif
     _pump_set_fsm_state(_pump_fsm_check_start);
+
+    pump_state.ml_current_count = 0;
+    _reset_pump_encoder();
+    util_timer_start(&pump_state.error_timer, PUMP_CHECK_START_DELAY_MS);
 }
 
 void _pump_fsm_check_start()
@@ -265,19 +276,16 @@ void _pump_fsm_check_start()
         return;
     }
 
+    util_timer_start(&pump_state.wait_timer, PUMP_ADC_MEASURE_DELAY_MS);
+    pump_state.pump_measure_buf[pump_state.pump_counter]  = _pump_get_adc_pump_current();
+    pump_state.valve_measure_buf[pump_state.pump_counter] = _pump_get_adc_valve_current();
+    pump_state.pump_counter++;
+
     if (pump_state.pump_counter < __arr_len(pump_state.pump_measure_buf)) {
-        util_timer_start(&pump_state.wait_timer, PUMP_ADC_MEASURE_DELAY_MS);
-        pump_state.pump_measure_buf[pump_state.pump_counter]  = _pump_get_adc_pump_current();
-        pump_state.valve_measure_buf[pump_state.pump_counter] = _pump_get_adc_valve_current();
-        pump_state.pump_counter++;
         return;
     }
 
-
-    util_timer_start(&pump_state.error_timer, 0);
-    util_timer_start(&pump_state.wait_timer, 0);
-
-    if (!_is_pump_and_valve_enabled()) {
+    if (!_is_pump_and_valve_enabled() || !_is_pump_and_valve_operable()) {
 #if PUMP_BEDUG
 		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
 #endif
@@ -286,12 +294,12 @@ void _pump_fsm_check_start()
 	}
 
 #if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_wait_stop", HAL_GetTick());
+	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_work", HAL_GetTick());
 #endif
-	_pump_set_fsm_state(_pump_fsm_wait_stop);
+	_pump_set_fsm_state(_pump_fsm_work);
 }
 
-void _pump_fsm_wait_stop()
+void _pump_fsm_work()
 {
 	if (pump_state.need_stop) {
 #if PUMP_BEDUG
@@ -306,13 +314,26 @@ void _pump_fsm_wait_stop()
 	}
 
 	util_timer_start(&pump_state.wait_timer, PUMP_MD212_MEASURE_DELAY_MS);
-	pump_state.md212_measure_buf[pump_state.md212_counter++] = __HAL_TIM_GET_COUNTER(&MD212_TIM);
+	pump_state.md212_measure_buf[pump_state.pump_counter]  = _get_pump_encoder_current_ticks();
+	pump_state.pump_measure_buf[pump_state.pump_counter]   = _pump_get_adc_pump_current();
+	pump_state.valve_measure_buf[pump_state.pump_counter]  = _pump_get_adc_valve_current();
+	pump_state.pump_counter++;
 
-	if (pump_state.md212_counter < __arr_len(pump_state.md212_measure_buf)) {
+	if (pump_state.pump_counter < __arr_len(pump_state.md212_measure_buf)) {
 		return;
 	}
 
-	if (_is_pump_not_working()) {
+    pump_state.pump_counter = 0;
+
+//	if (_is_pump_not_working()) {
+//#if PUMP_BEDUG
+//		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
+//#endif
+//		_pump_set_fsm_state(_pump_fsm_error);
+//		return;
+//	}
+
+	if (!_is_pump_and_valve_enabled() || !_is_pump_and_valve_operable()) {
 #if PUMP_BEDUG
 		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
 #endif
@@ -320,25 +341,36 @@ void _pump_fsm_wait_stop()
 		return;
 	}
 
-	uint32_t ml_current_count     = (__HAL_TIM_GET_COUNTER(&MD212_TIM) * PUMP_MD212_CYCLE_ML_VALUE) / PUMP_MD212_CYCLE_IMPULSES_COUNT;
+	int32_t ml_current_count = (_get_pump_encoder_current_ticks() * PUMP_MD212_CYCLE_ML_VALUE) / PUMP_MD212_CYCLE_IMPULSES_COUNT;
+	if (ml_current_count < 0) {
+#if PUMP_BEDUG
+		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | pump isn't working: current gas ticks=%ld; target=%lu", HAL_GetTick(), ml_current_count, pump_state.target_ml);
+#endif
+		_reset_pump_encoder();
+		return;
+	}
+
+#if PUMP_BEDUG
+	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | current gas ml: %lu (%ld ticks); target: %lu", HAL_GetTick(), pump_state.ml_current_count, ml_current_count, pump_state.target_ml);
+#endif
+
+	pump_state.ml_current_count += ml_current_count;
+	_reset_pump_encoder();
+
 	uint32_t ml_fast_count_target = pump_state.target_ml;
-	if (ml_fast_count_target > PUMP_SLOW_ML_VALUE) {
+	if (ml_fast_count_target > PUMP_SLOW_ML_VALUE) { // TODO: if ml_current_count < 0 -> error
 		ml_fast_count_target -= PUMP_SLOW_ML_VALUE;
 	}
-	if (ml_current_count >= ml_fast_count_target) {
+	if (pump_state.ml_current_count >= ml_fast_count_target) {
 		_pump_set_valve1_enable(GPIO_PIN_RESET);
 	}
 
-	if (ml_current_count >= pump_state.target_ml) {
-		util_timer_start(&pump_state.error_timer, 0);
-		util_timer_start(&pump_state.wait_timer, 0);
+	if (pump_state.ml_current_count >= (int32_t)pump_state.target_ml) {
 #if PUMP_BEDUG
 		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_stop", HAL_GetTick());
 #endif
 		_pump_set_fsm_state(&_pump_fsm_stop);
 	}
-
-	pump_state.ml_current_count = ml_current_count;
 }
 
 void _pump_fsm_stop()
@@ -347,13 +379,11 @@ void _pump_fsm_stop()
     _pump_set_valve1_enable(GPIO_PIN_RESET);
     _pump_set_valve2_enable(GPIO_PIN_RESET);
 
-    util_timer_start(&pump_state.error_timer, PUMP_CHECK_STOP_DELAY_MS);
-    util_timer_start(&pump_state.wait_timer, 0);
-
 #if PUMP_BEDUG
 	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_check_stop", HAL_GetTick());
 #endif
     _pump_set_fsm_state(_pump_fsm_check_stop);
+    util_timer_start(&pump_state.error_timer, PUMP_CHECK_STOP_DELAY_MS);
 }
 
 void _pump_fsm_check_stop()
@@ -377,32 +407,33 @@ void _pump_fsm_check_stop()
         return;
     }
 
-    util_timer_start(&pump_state.error_timer, 0);
-    util_timer_start(&pump_state.wait_timer, 0);
-
-    if (_is_pump_and_valve_enabled()) {
+    if (_is_pump_and_valve_enabled() || !_is_pump_and_valve_operable()) {
 #if PUMP_BEDUG
     	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
 #endif
         _pump_set_fsm_state(_pump_fsm_error);
-    } else {
-#if PUMP_BEDUG
-    	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_record", HAL_GetTick());
-#endif
-        _pump_set_fsm_state(_pump_fsm_record);
+        return;
     }
 
-    pump_state.ml_current_count = 0;
-    __HAL_TIM_SET_COUNTER(&MD212_TIM, 0);
+#if PUMP_BEDUG
+	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_record", HAL_GetTick());
+#endif
+	_pump_set_fsm_state(_pump_fsm_record);
 }
 
 void _pump_fsm_record()
 {
-    pump_state.record_handler();
+	if (pump_state.ml_current_count > 0) {
+		pump_state.record_handler();
+	}
 #if PUMP_BEDUG
 	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_wait_liters", HAL_GetTick());
 #endif
     _pump_set_fsm_state(_pump_fsm_wait_liters);
+    pump_state.target_ml = 0;
+
+    pump_state.ml_current_count = 0;
+    _reset_pump_encoder();
 }
 
 void _pump_fsm_error()
@@ -414,7 +445,7 @@ void _pump_fsm_error()
 	_pump_set_valve1_enable(GPIO_PIN_RESET);
 	_pump_set_valve2_enable(GPIO_PIN_RESET);
 
-	__HAL_TIM_SET_COUNTER(&MD212_TIM, 0);
+	_reset_pump_encoder();
 }
 
 void _pump_set_pump_enable(GPIO_PinState enable_state)
@@ -454,7 +485,7 @@ void _pump_reset_state()
     pump_state.fsm_pump_state    = &_pump_fsm_stop;
     pump_state.record_handler = pump_stop_handler;
 
-    __HAL_TIM_SET_COUNTER(&MD212_TIM, 0);
+    _reset_pump_encoder();
 }
 
 uint32_t _pump_get_adc_valve_current()
@@ -510,13 +541,13 @@ uint32_t _pump_get_average(uint32_t* data, uint32_t len)
     return average / len;
 }
 
-uint32_t _pump_get_average_difference(uint32_t* data, uint32_t len)
+uint32_t _pump_get_average_difference(int32_t* data, uint32_t len)
 {
     if (len <= 1) {
         return 0;
     }
 
-    uint32_t average_difference = 0;
+    int32_t average_difference = 0;
 
     for (uint8_t i = 0; i < len - 1; i++) {
         average_difference += __abs_dif(data[i], data[i + 1]);
@@ -534,14 +565,44 @@ bool _is_pump_not_working()
 bool _is_pump_and_valve_enabled()
 {
 	uint32_t pump_average  = _pump_get_average(pump_state.pump_measure_buf, __arr_len(pump_state.pump_measure_buf));
-	uint32_t valve_average = _pump_get_average(pump_state.valve_measure_buf, __arr_len(pump_state.valve_measure_buf));
+//	uint32_t valve_average = _pump_get_average(pump_state.valve_measure_buf, __arr_len(pump_state.valve_measure_buf));
 
+	pump_average = PUMP_ADC_PUMP_MIN; // TODO: only for tests
 	if (pump_average < PUMP_ADC_PUMP_MIN) {
 		return false;
 	}
-	if (valve_average < PUMP_ADC_VALVE_MIN) {
-		return false;
-	}
+//	if (valve_average < PUMP_ADC_VALVE_MIN) {
+//		return false;
+//	}
 
 	return true;
+}
+
+bool _is_pump_and_valve_operable()
+{
+	uint32_t pump_average  = _pump_get_average(pump_state.pump_measure_buf, __arr_len(pump_state.pump_measure_buf));
+//	uint32_t valve_average = _pump_get_average(pump_state.valve_measure_buf, __arr_len(pump_state.valve_measure_buf));
+
+	if (pump_average > PUMP_ADC_PUMP_MAX) {
+		return false;
+	}
+//	if (valve_average > PUMP_ADC_VALVE_MAX) {
+//		return false;
+//	}
+
+	return true;
+}
+
+int32_t _get_pump_encoder_current_ticks()
+{
+	uint32_t value = __HAL_TIM_GET_COUNTER(&MD212_TIM);
+	if (value >= PUMP_ENCODER_MIDDLE) {
+		return (int32_t)(value - PUMP_ENCODER_MIDDLE);
+	}
+	return -((int32_t)(PUMP_ENCODER_MIDDLE - value));
+}
+
+void _reset_pump_encoder()
+{
+	__HAL_TIM_SET_COUNTER(&MD212_TIM, PUMP_ENCODER_MIDDLE);
 }

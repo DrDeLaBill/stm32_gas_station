@@ -31,20 +31,22 @@ void UIManager::UIProccess()
 		return;
 	}
 
-	if (!Access::isGranted()) {
-		indicate_set_wait_page();
-		keyboard4x3_clear();
-		return;
-	}
-
-	if (UIManager::checkKeyboardStop() || HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin)) {
-		memset(UIManager::constBuffer, 0, sizeof(UIManager::constBuffer));
-		keyboard4x3_clear();
+	if (!Access::isGranted() && !pump_is_working()) {
+		UIManager::clear();
 		pump_stop();
 		return;
 	}
 
-	if (pump_is_working()) {
+	if (UIManager::checkStop()) {
+		UIManager::clear();
+		pump_stop();
+#if UI_BEDUG
+		LOG_TAG_BEDUG(UIManager::TAG, "pump stop command");
+#endif
+		return;
+	}
+
+	if (!pump_is_free()) {
 		return;
 	}
 
@@ -57,11 +59,9 @@ void UIManager::UIProccess()
 
 	// TODO: add timeout
 
-	if (!UIManager::checkKeyboardStart() && !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin)) {
+	if (!UIManager::checkStart()) {
 		return;
 	}
-
-	pump_start();
 
 	UIManager::isStartPressed = true;
 	memcpy(UIManager::constBuffer, keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
@@ -74,8 +74,16 @@ void UIManager::UIProccess()
 
 	uint32_t user_ml = user_liters * liters_multiplier;
 
-	if (user_liters > GENERAL_SESSION_ML_MIN) {
+	if (user_liters >= GENERAL_SESSION_ML_MIN) {
+#if UI_BEDUG
+		LOG_TAG_BEDUG(UIManager::TAG, "pump start command");
+#endif
 		pump_set_fuel_ml(user_ml);
+	} else {
+#if UI_BEDUG
+		LOG_TAG_BEDUG(UIManager::TAG, "invalid liters value");
+#endif
+		UIManager::clear();
 	}
 }
 
@@ -87,4 +95,22 @@ bool UIManager::checkKeyboardStop()
 bool UIManager::checkKeyboardStart()
 {
 	return strnstr((char*)keyboard4x3_get_buffer(), "#", KEYBOARD4X3_BUFFER_SIZE);
+}
+
+bool UIManager::checkStop()
+{
+	return UIManager::checkKeyboardStop() || HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
+}
+
+bool UIManager::checkStart()
+{
+	return UIManager::checkKeyboardStart() || HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
+}
+
+void UIManager::clear()
+{
+	memset(UIManager::constBuffer, 0, sizeof(UIManager::constBuffer));
+	UIManager::isStartPressed = false;
+	keyboard4x3_clear();
+	indicate_set_wait_page();
 }

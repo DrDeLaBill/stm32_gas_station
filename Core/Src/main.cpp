@@ -146,7 +146,10 @@ int main(void)
   pump_set_record_handler(&pump_record_handler);
 
   // Indicators timer init
-  HAL_TIM_Base_Start_IT(&htim4);
+  HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
+
+  // Gas sensor encoder
+  HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
 
   // MODBUS slave initialization
   HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);

@@ -10,7 +10,7 @@
 #include "utils.h"
 
 
-#define KEYBOARD4X3_DEBOUNCE_DELAY_MS ((uint32_t)50)
+#define KEYBOARD4X3_DEBOUNCE_DELAY_MS ((uint32_t)150)
 #define KEYBOARD4X3_PRESS_DELAY_MS    ((uint32_t)5000)
 #define KEYBOARD4X3_RESET_DELAY_MS    ((uint32_t)30000)
 
@@ -142,10 +142,7 @@ void _keyboard4x3_fsm_register_button()
 		keyboard4x3_state.buffer_idx = __arr_len(keyboard4x3_state.buffer) - 1;
 	}
 
-	uint8_t ch = keyboard_btns[row][col];
-	if (ch >= '0' && ch <= '9') {
-		keyboard4x3_state.buffer[keyboard4x3_state.buffer_idx++] = ch;
-	}
+	keyboard4x3_state.buffer[keyboard4x3_state.buffer_idx++] = keyboard_btns[row][col];
 
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
 
@@ -185,7 +182,12 @@ void _keyboard4x3_set_output_pin(uint16_t row_num)
 
 void _keyboard4x3_reset_buffer()
 {
-	memset((uint8_t*)&keyboard4x3_state, 0, sizeof(keyboard4x3_state));
+	memset(keyboard4x3_state.buffer, 0, sizeof(keyboard4x3_state.buffer));
+	keyboard4x3_state.buffer_idx = 0;
+	keyboard4x3_state.cur_col = 0;
+	keyboard4x3_state.cur_row = 0;
+	util_timer_start(&keyboard4x3_state.reset_timer, 0);
+	util_timer_start(&keyboard4x3_state.wait_timer, 0);
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_set_row;
 	keyboard4x3_state.last_row = __arr_len(rows_pins);
 }

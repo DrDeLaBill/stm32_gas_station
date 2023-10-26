@@ -23,6 +23,7 @@ void pump_stop();
 
 bool pump_has_error();
 bool pump_is_working();
+bool pump_is_free();
 
 void pump_set_record_handler(void (*pump_record_handler) (void));
 
