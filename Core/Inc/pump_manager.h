@@ -19,7 +19,6 @@ void pump_proccess();
 
 void pump_set_fuel_ml(uint32_t liquid_ml);
 void pump_start();
-void pump_pause();
 void pump_stop();
 
 bool pump_has_error();

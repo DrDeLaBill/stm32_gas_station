@@ -54,8 +54,8 @@ public:
 	void serialize()
 	{
 		std::shared_ptr<uint16_t[]> dataPtr(new uint16_t[ModbusRegister<T>::getRegSize()], [] (uint16_t* arr) {
-	        delete [] arr;
-	    });
+			delete [] arr;
+		});
 	    this->serializedData = dataPtr;
 		memset(this->serializedData.get(), 0, ModbusRegister<T>::getRegSize());
 		T value = this->deserializedData;

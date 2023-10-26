@@ -37,15 +37,11 @@ void UIManager::UIProccess()
 		return;
 	}
 
-	if (HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin)) {
+	if (UIManager::checkKeyboardStop() || HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin)) {
 		memset(UIManager::constBuffer, 0, sizeof(UIManager::constBuffer));
 		keyboard4x3_clear();
 		pump_stop();
 		return;
-	}
-
-	if (pump_is_working() && !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin)) {
-		pump_pause();
 	}
 
 	if (pump_is_working()) {
@@ -61,7 +57,7 @@ void UIManager::UIProccess()
 
 	// TODO: add timeout
 
-	if (!HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin)) {
+	if (!UIManager::checkKeyboardStart() && !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin)) {
 		return;
 	}
 
@@ -83,12 +79,12 @@ void UIManager::UIProccess()
 	}
 }
 
-//bool UIManager::checkKeyboardStop()
-//{
-//	return strnstr((char*)keyboard4x3_get_buffer(), "*", KEYBOARD4X3_BUFFER_SIZE);
-//}
-//
-//bool UIManager::checkKeyboardStart()
-//{
-//	return strnstr((char*)keyboard4x3_get_buffer(), "#", KEYBOARD4X3_BUFFER_SIZE);
-//}
+bool UIManager::checkKeyboardStop()
+{
+	return strnstr((char*)keyboard4x3_get_buffer(), "*", KEYBOARD4X3_BUFFER_SIZE);
+}
+
+bool UIManager::checkKeyboardStart()
+{
+	return strnstr((char*)keyboard4x3_get_buffer(), "#", KEYBOARD4X3_BUFFER_SIZE);
+}

@@ -13,6 +13,9 @@ public:
 private:
 	static bool isStartPressed;
 	static char constBuffer[KEYBOARD4X3_BUFFER_SIZE];
+
+	static bool checkKeyboardStop();
+	static bool checkKeyboardStart();
 };
 
 

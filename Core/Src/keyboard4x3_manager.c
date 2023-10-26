@@ -94,6 +94,7 @@ void _keyboard4x3_fsm_set_row()
 {
 	if (keyboard4x3_state.buffer_idx && !util_is_timer_wait(&keyboard4x3_state.reset_timer)) {
 		_keyboard4x3_reset_buffer();
+		_keyboard4x3_show_buf();
 	}
 	_keyboard4x3_set_output_pin(keyboard4x3_state.cur_row);
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_check_button;
@@ -187,7 +188,6 @@ void _keyboard4x3_reset_buffer()
 	memset((uint8_t*)&keyboard4x3_state, 0, sizeof(keyboard4x3_state));
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_set_row;
 	keyboard4x3_state.last_row = __arr_len(rows_pins);
-	_keyboard4x3_show_buf();
 }
 
 void _keyboard4x3_show_buf()
