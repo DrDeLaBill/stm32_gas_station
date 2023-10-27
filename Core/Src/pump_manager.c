@@ -13,7 +13,9 @@
 #define PUMP_MD212_CYCLE_IMPULSES_COUNT ((int32_t)200)
 #define PUMP_MD212_CYCLE_ML_VALUE       ((int32_t)1000)
 #define PUMP_MD212_CYCLE_INACCURACY     ((int32_t)20)
+#define PUMP_MD212_MLS_PER_TICK         ((int32_t)5)
 #define PUMP_MD212_MEASURE_DELAY_MS     ((uint32_t)300)
+#define PUMP_MD212_MEASURE_WORKDELAY_MS ((uint32_t)50)
 
 #define PUMP_ADC_READ_TIMEOUT_MS        ((uint32_t)100)
 #define PUMP_ADC_MEASURE_DELAY_MS       ((uint32_t)100)
@@ -149,6 +151,11 @@ bool pump_is_free()
 {
 	return pump_state.fsm_pump_state == _pump_fsm_wait_liters ||
 		   pump_state.fsm_pump_state == _pump_fsm_init;
+}
+
+bool pump_is_stopped()
+{
+	return pump_state.fsm_pump_state == _pump_fsm_stop;
 }
 
 bool pump_has_error()
@@ -313,7 +320,7 @@ void _pump_fsm_work()
 		return;
 	}
 
-	util_timer_start(&pump_state.wait_timer, PUMP_MD212_MEASURE_DELAY_MS);
+	util_timer_start(&pump_state.wait_timer, PUMP_MD212_MEASURE_WORKDELAY_MS);
 	pump_state.md212_measure_buf[pump_state.pump_counter]  = _get_pump_encoder_current_ticks();
 	pump_state.pump_measure_buf[pump_state.pump_counter]   = _pump_get_adc_pump_current();
 	pump_state.valve_measure_buf[pump_state.pump_counter]  = _pump_get_adc_valve_current();
@@ -341,7 +348,7 @@ void _pump_fsm_work()
 		return;
 	}
 
-	int32_t ml_current_count = (_get_pump_encoder_current_ticks() * PUMP_MD212_CYCLE_ML_VALUE) / PUMP_MD212_CYCLE_IMPULSES_COUNT;
+	int32_t ml_current_count = _get_pump_encoder_current_ticks() * PUMP_MD212_MLS_PER_TICK;
 	if (ml_current_count < 0) {
 #if PUMP_BEDUG
 		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | pump isn't working: current gas ticks=%ld; target=%lu", HAL_GetTick(), ml_current_count, pump_state.target_ml);
@@ -357,11 +364,11 @@ void _pump_fsm_work()
 	pump_state.ml_current_count += ml_current_count;
 	_reset_pump_encoder();
 
-	uint32_t ml_fast_count_target = pump_state.target_ml;
-	if (ml_fast_count_target > PUMP_SLOW_ML_VALUE) { // TODO: if ml_current_count < 0 -> error
-		ml_fast_count_target -= PUMP_SLOW_ML_VALUE;
-	}
-	if (pump_state.ml_current_count >= ml_fast_count_target) {
+	uint32_t ml_fast_count_target =
+		pump_state.target_ml > PUMP_SLOW_ML_VALUE ?
+		pump_state.target_ml - PUMP_SLOW_ML_VALUE :
+		0;
+	if (pump_state.ml_current_count >= ml_fast_count_target) { // TODO: if ml_current_count < 0 -> error
 		_pump_set_valve1_enable(GPIO_PIN_RESET);
 	}
 
@@ -567,7 +574,7 @@ bool _is_pump_and_valve_enabled()
 	uint32_t pump_average  = _pump_get_average(pump_state.pump_measure_buf, __arr_len(pump_state.pump_measure_buf));
 //	uint32_t valve_average = _pump_get_average(pump_state.valve_measure_buf, __arr_len(pump_state.valve_measure_buf));
 
-	pump_average = PUMP_ADC_PUMP_MIN; // TODO: only for tests
+//	pump_average = PUMP_ADC_PUMP_MIN; // TODO: only for tests
 	if (pump_average < PUMP_ADC_PUMP_MIN) {
 		return false;
 	}

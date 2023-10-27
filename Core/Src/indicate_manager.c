@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #include "main.h"
@@ -100,10 +101,9 @@ void indicate_set_buffer(uint8_t* data, uint8_t len)
 	if (len > __arr_len(indicate_state.indicate_buffer)) {
 		len = __arr_len(indicate_state.indicate_buffer);
 	}
-	uint32_t number = atoi(data);
-	uint8_t number_len = util_get_number_len(number);
+	uint32_t number = atoi((char*)data);
 	for (uint8_t i = sizeof(indicate_state.indicate_buffer); i > 0; i--) {
-		indicate_state.indicate_buffer[i] = number % 10;
+		indicate_state.indicate_buffer[i-1] = number % 10;
 		number /= 10;
 	}
 }
@@ -195,9 +195,8 @@ void _indicate_fsm_wait()
 void _indicate_fsm_buffer()
 {
 	for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
-		char ch = indicate_state.indicate_buffer[i];
-		if (ch >= '0' && ch <= '9') {
-			uint8_t number = ch - '0';
+		uint8_t number = indicate_state.indicate_buffer[i];
+		if (number >= 0 && number <= 9) {
 			memcpy(display_buffer[i], digits_pins[number], sizeof(display_buffer[i]));
 		} else {
 			memset(display_buffer[i], 0, sizeof(display_buffer[i]));

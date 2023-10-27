@@ -62,3 +62,8 @@ bool Access::isGranted()
 {
 	return Access::granted;
 }
+
+void Access::close()
+{
+	Access::granted = false;
+}

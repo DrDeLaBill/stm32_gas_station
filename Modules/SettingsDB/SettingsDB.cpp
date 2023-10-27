@@ -15,7 +15,7 @@
 extern StorageAT storage;
 
 
-uint8_t SettingsDB::SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "STG";
+const uint8_t SettingsDB::SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "STG";
 
 
 SettingsDB::SettingsDB()
@@ -112,7 +112,7 @@ SettingsDB::SettingsStatus SettingsDB::reset()
 
 	memset(settings.cards, 0, sizeof(settings.cards));
 	memset(settings.limits, 0, sizeof(settings.limits));
-	memset(settings.residues, 0, sizeof(settings.residues));
+//	memset(settings.residues, 0, sizeof(settings.residues));
 
 	return this->save();
 }
@@ -177,22 +177,22 @@ void SettingsDB::set_limit(uint32_t limit, uint16_t idx)
 
 void SettingsDB::set_reresidue(uint32_t used_litters, uint32_t card)
 {
-	unsigned idx = 0;
-	bool idxFound = false;
-	for (unsigned i = 0; i < __arr_len(settings.cards); i++) {
-		if (settings.cards[i] == card) {
-			idx = i;
-			idxFound = true;
-			break;
-		}
-	}
-	if (!idxFound) {
-		return;
-	}
-	if (used_litters > settings.residues[idx]) {
-		settings.residues[idx] = 0;
-	} else {
-		settings.residues[idx] -= used_litters;
-	}
-	this->save();
+//	unsigned idx = 0;
+//	bool idxFound = false;
+//	for (unsigned i = 0; i < __arr_len(settings.cards); i++) {
+//		if (settings.cards[i] == card) {
+//			idx = i;
+//			idxFound = true;
+//			break;
+//		}
+//	}
+//	if (!idxFound) {
+//		return;
+//	}
+//	if (used_litters > settings.residues[idx]) {
+//		settings.residues[idx] = 0;
+//	} else {
+//		settings.residues[idx] -= used_litters;
+//	}
+//	this->save();
 }

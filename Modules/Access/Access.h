@@ -23,6 +23,7 @@ public:
 
 	static uint32_t getCard();
 	static bool isGranted();
+	static void close();
 };
 
 
