@@ -28,5 +28,21 @@ private:
 	static void clear();
 };
 
+class UIBaseFSM
+{
+public:
+	UIBaseFSM();
+
+	virtual void tick();
+};
+
+class UIInitFSM: public UIBaseFSM
+{
+public:
+	UIInitFSM();
+
+	void tick() override;
+};
+
 
 #endif

@@ -68,3 +68,13 @@ bool util_wait_event(bool (*condition) (void), uint32_t time)
     }
     return false;
 }
+
+uint8_t util_get_number_len(int number)
+{
+	uint8_t counter = 0;
+	while (number) {
+		number /= 10;
+		counter++;
+	}
+	return counter;
+}

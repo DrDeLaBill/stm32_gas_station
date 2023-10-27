@@ -30,6 +30,9 @@ SettingsDB::SettingsStatus SettingsDB::load()
 	uint32_t address = 0;
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
 	if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::SETTINGS_PREFIX), "error load settings");
+#endif
 		this->isSettingsLoaded = false;
 		EXIT_CODE(SETTINGS_ERROR);
 	}
@@ -37,6 +40,9 @@ SettingsDB::SettingsStatus SettingsDB::load()
 	Settings tmpSettings = { 0 };
 	status = storage.load(address, reinterpret_cast<uint8_t*>(&tmpSettings), sizeof(tmpSettings));
 	if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::SETTINGS_PREFIX), "error load settings");
+#endif
 		this->isSettingsLoaded = false;
 		EXIT_CODE(SETTINGS_ERROR);
 	}
@@ -47,6 +53,10 @@ SettingsDB::SettingsStatus SettingsDB::load()
 
 	settings.cards[0]  = 20056288; //TODO: test
 	settings.limits[0] = 100000;   //TODO: test
+
+#if SETTINGS_BEDUG
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::SETTINGS_PREFIX), "settings loaded");
+#endif
 
 	EXIT_CODE(SETTINGS_OK);
 }
@@ -64,27 +74,42 @@ SettingsDB::SettingsStatus SettingsDB::save()
 		//TODO: save on first page
 	}
 	if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::SETTINGS_PREFIX), "error save settings");
+#endif
 		EXIT_CODE(SETTINGS_ERROR);
 	}
 
 	status = storage.save(address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1, reinterpret_cast<uint8_t*>(&this->settings), sizeof(this->settings));
 	if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::SETTINGS_PREFIX), "error save settings");
+#endif
 		EXIT_CODE(SETTINGS_ERROR);
 	}
 
 	info.saved_new_data = true;
+
+#if SETTINGS_BEDUG
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::SETTINGS_PREFIX), "settings saved");
+#endif
 
 	EXIT_CODE(SETTINGS_OK);
 }
 
 SettingsDB::SettingsStatus SettingsDB::reset()
 {
+#if SETTINGS_BEDUG
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::SETTINGS_PREFIX), "reset settings");
+#endif
+
 	settings.cf_id     = SETTINGS_VERSION;
 	settings.log_id    = 0;
 	settings.device_id = SETTINGS_DEVICE_ID_DEFAULT;
 
 	memset(settings.cards, 0, sizeof(settings.cards));
 	memset(settings.limits, 0, sizeof(settings.limits));
+	memset(settings.residues, 0, sizeof(settings.residues));
 
 	return this->save();
 }
@@ -99,6 +124,7 @@ void SettingsDB::set_cf_id(uint32_t cf_id)
 	if (cf_id) {
 		settings.cf_id = cf_id;
 	}
+	this->save();
 }
 
 void SettingsDB::set_device_id(uint32_t device_id)
@@ -106,6 +132,7 @@ void SettingsDB::set_device_id(uint32_t device_id)
 	if (device_id) {
 		settings.device_id = device_id;
 	}
+	this->save();
 }
 
 void SettingsDB::set_cards(void* cards, uint16_t len)
@@ -113,6 +140,7 @@ void SettingsDB::set_cards(void* cards, uint16_t len)
 	if (cards) {
 		memcpy(settings.cards, cards, std::min(static_cast<unsigned>(len), sizeof(settings.cards)));
 	}
+	this->save();
 }
 
 void SettingsDB::set_limits(void* limits, uint16_t len)
@@ -120,6 +148,7 @@ void SettingsDB::set_limits(void* limits, uint16_t len)
 	if (limits) {
 		memcpy(settings.limits, limits, std::min(static_cast<unsigned>(len), sizeof(settings.limits)));
 	}
+	this->save();
 }
 
 void SettingsDB::set_log_id(uint32_t log_id)
@@ -132,6 +161,7 @@ void SettingsDB::set_card(uint32_t card, uint16_t idx)
 	if (idx < __arr_len(settings.cards)) {
 		settings.cards[idx] = card;
 	}
+	this->save();
 }
 
 void SettingsDB::set_limit(uint32_t limit, uint16_t idx)
@@ -139,4 +169,24 @@ void SettingsDB::set_limit(uint32_t limit, uint16_t idx)
 	if (idx < __arr_len(settings.limits)) {
 		settings.limits[idx] = limit;
 	}
+	this->save();
+}
+
+void SettingsDB::set_reresidue(uint32_t used_litters, uint32_t card)
+{
+	unsigned idx = 0;
+	bool idxFound = false;
+	for (unsigned i = 0; i < __arr_len(settings.cards); i++) {
+		if (settings.cards[i] == card) {
+			idx = i;
+			idxFound = true;
+			break;
+		}
+	}
+	if (used_litters > settings.residues[idx]) {
+		settings.residues[idx] = 0;
+	} else {
+		settings.residues[idx] -= used_litters;
+	}
+	this->save();
 }

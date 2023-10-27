@@ -100,7 +100,12 @@ void indicate_set_buffer(uint8_t* data, uint8_t len)
 	if (len > __arr_len(indicate_state.indicate_buffer)) {
 		len = __arr_len(indicate_state.indicate_buffer);
 	}
-	memcpy(indicate_state.indicate_buffer, data, len);
+	uint32_t number = atoi(data);
+	uint8_t number_len = util_get_number_len(number);
+	for (uint8_t i = sizeof(indicate_state.indicate_buffer); i > 0; i--) {
+		indicate_state.indicate_buffer[i] = number % 10;
+		number /= 10;
+	}
 }
 
 void indicate_proccess()
@@ -128,9 +133,9 @@ void indicate_display()
 		);
 	}
 
-//	if (curr_indicator_idx == __arr_len(indicators_pins) - 3) {
-//		HAL_GPIO_WritePin(DIGITS_DP_GPIO_Port, DIGITS_DP_Pin, GPIO_PIN_SET);
-//	}
+	if (indicate_state.indicate_state == _indicate_fsm_buffer && curr_indicator_idx == __arr_len(indicators_pins) - 3) {
+		HAL_GPIO_WritePin(DIGITS_DP_GPIO_Port, DIGITS_DP_Pin, GPIO_PIN_SET);
+	}
 
 	curr_indicator_idx++;
 	if (curr_indicator_idx >= __arr_len(indicators_pins)) {

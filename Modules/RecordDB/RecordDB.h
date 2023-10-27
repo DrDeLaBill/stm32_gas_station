@@ -7,6 +7,9 @@
 #include "StorageAT.h"
 
 
+#define RECORD_BEDUG (true)
+
+
 class RecordDB
 {
 public:
@@ -38,7 +41,7 @@ public:
 	Record record = { 0 };
 
 private:
-	static const uint8_t RECORD_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE];
+	static constexpr const uint8_t RECORD_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "RCR";
 
 	static const uint32_t RECORDS_CLUST_SIZE  = ((Page::STORAGE_PAGE_PAYLOAD_SIZE - sizeof(uint8_t)) / sizeof(struct _Record));
 	static const uint32_t RECORDS_CLUST_MAGIC = (sizeof(struct _Record));

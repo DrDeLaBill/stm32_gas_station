@@ -89,12 +89,12 @@ void UIManager::UIProccess()
 
 bool UIManager::checkKeyboardStop()
 {
-	return strnstr((char*)keyboard4x3_get_buffer(), "*", KEYBOARD4X3_BUFFER_SIZE);
+	return keyboard4x3_is_cancel();
 }
 
 bool UIManager::checkKeyboardStart()
 {
-	return strnstr((char*)keyboard4x3_get_buffer(), "#", KEYBOARD4X3_BUFFER_SIZE);
+	return keyboard4x3_is_enter();
 }
 
 bool UIManager::checkStop()
