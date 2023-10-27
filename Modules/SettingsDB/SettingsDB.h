@@ -7,7 +7,7 @@
 #include "StoragePage.h"
 
 
-#define SETTINGS_BEDUG (true)
+#define SETTINGS_BEDUG (false)
 
 
 class SettingsDB
@@ -55,7 +55,8 @@ public:
 	DeviceInfo info;
 
 private:
-	static constexpr const uint8_t SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "STG";
+	static uint8_t SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE];
+	static constexpr const uint8_t TAG[] = "STG";
 
 	static const uint8_t SETTINGS_VERSION            = ((uint8_t)0x01);
 	static const uint8_t SETTINGS_DEVICE_ID_SIZE     = ((uint8_t)16);

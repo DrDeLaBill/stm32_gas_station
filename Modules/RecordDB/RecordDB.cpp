@@ -18,6 +18,9 @@ extern StorageAT storage;
 extern SettingsDB settings;
 
 
+uint8_t RecordDB::RECORD_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "RCR";
+
+
 RecordDB::RecordDB(uint32_t recordId)
 {
 	this->record.id = recordId;
@@ -32,7 +35,7 @@ RecordDB::RecordStatus RecordDB::load()
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error load record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
@@ -40,13 +43,13 @@ RecordDB::RecordStatus RecordDB::load()
 	status = storage.load(address, reinterpret_cast<uint8_t*>(&this->record), sizeof(this->record));
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error load record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
 
 #if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "record loaded");
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record loaded");
 #endif
 
 	EXIT_CODE(RECORD_OK);
@@ -61,7 +64,7 @@ RecordDB::RecordStatus RecordDB::loadNext()
 	StorageStatus status = storage.find(FIND_MODE_NEXT, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error load next record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load next record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
@@ -69,13 +72,13 @@ RecordDB::RecordStatus RecordDB::loadNext()
 	status = storage.load(address, reinterpret_cast<uint8_t*>(&this->record), sizeof(this->record));
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error load next record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load next record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
 
 #if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "next record loaded");
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "next record loaded");
 #endif
 
 	EXIT_CODE(RECORD_OK);
@@ -97,7 +100,7 @@ RecordDB::RecordStatus RecordDB::save()
 	}
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error save record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error save record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
@@ -111,7 +114,7 @@ RecordDB::RecordStatus RecordDB::save()
 	);
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error save record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error save record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
@@ -119,7 +122,7 @@ RecordDB::RecordStatus RecordDB::save()
 	settings.info.saved_new_data = true;
 
 #if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "record saved");
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record saved");
 #endif
 
 	EXIT_CODE(RECORD_OK);
@@ -134,7 +137,7 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error delete record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error delete record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
@@ -142,7 +145,7 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 	storage.deleteData(address);
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error delete record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error delete record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
@@ -150,7 +153,7 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 	settings.info.saved_new_data = true;
 
 #if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "record deleted");
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record deleted");
 #endif
 
 	EXIT_CODE(RECORD_OK);
@@ -166,13 +169,13 @@ RecordDB::RecordStatus RecordDB::getNewId(uint32_t *newId)
 	if (status == STORAGE_NOT_FOUND) {
 		*newId = 1;
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "new ID received");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "new ID received");
 #endif
 		EXIT_CODE(RECORD_OK);
 	}
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error get new id");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error get new id");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
@@ -181,7 +184,7 @@ RecordDB::RecordStatus RecordDB::getNewId(uint32_t *newId)
 	status = storage.load(address, reinterpret_cast<uint8_t*>(&record.record), sizeof(record.record));
 	if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "error get new id");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error get new id");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
@@ -189,7 +192,7 @@ RecordDB::RecordStatus RecordDB::getNewId(uint32_t *newId)
 	*newId = record.record.id + 1;
 
 #if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::RECORD_PREFIX), "new ID received");
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "new ID received");
 #endif
 
 	EXIT_CODE(RECORD_OK);
