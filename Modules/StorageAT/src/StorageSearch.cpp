@@ -35,7 +35,7 @@ StorageStatus StorageSearchBase::searchPageAddress(
 		}
 	}
 
-	return STORAGE_NOT_FOUND;
+	return foundOnce ? STORAGE_OK : STORAGE_NOT_FOUND;
 }
 
 StorageStatus StorageSearchBase::searchPageAddressInSector(
@@ -97,10 +97,7 @@ bool StorageSearchNext::isIdFound(
 	if (pageId <= headerId) {
 		return false;
 	}
-	if (pageId < prevId) {
-		return true;
-	}
-	return false;
+	return pageId < prevId;
 }
 
 bool StorageSearchMin::isIdFound(
@@ -108,7 +105,7 @@ bool StorageSearchMin::isIdFound(
 	const uint32_t pageId,
 	const uint32_t prevId
 ) {
-	return prevId > pageId;
+	return prevId > headerId;
 }
 
 bool StorageSearchMax::isIdFound(
@@ -116,7 +113,7 @@ bool StorageSearchMax::isIdFound(
 	const uint32_t pageId,
 	const uint32_t prevId
 ) {
-	return prevId < pageId;
+	return prevId < headerId;
 }
 
 StorageStatus StorageSearchEmpty::searchPageAddressInSector(

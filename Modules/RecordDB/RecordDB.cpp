@@ -3,14 +3,14 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "UI.h"
 #include "StorageAT.h"
 #include "SettingsDB.h"
 
 #include "utils.h"
-#include "indicate_manager.h"
 
 
-#define EXIT_CODE(_code_) { indicate_set_wait_page(); return _code_; }
+#define EXIT_CODE(_code_) { UI::resetLoad(); return _code_; }
 
 
 extern StorageAT storage;
@@ -28,13 +28,13 @@ RecordDB::RecordDB(uint32_t recordId)
 
 RecordDB::RecordStatus RecordDB::load()
 {
-	indicate_set_load_page();
+	UI::setLoad();
 
 	uint32_t address = 0;
 
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
@@ -42,14 +42,14 @@ RecordDB::RecordStatus RecordDB::load()
 
 	status = storage.load(address, reinterpret_cast<uint8_t*>(&this->record), sizeof(this->record));
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
 
-#if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record loaded");
+#if RECORD_BEDUG
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record loaded from address=%08X", (unsigned int)address);
 #endif
 
 	EXIT_CODE(RECORD_OK);
@@ -57,13 +57,13 @@ RecordDB::RecordStatus RecordDB::load()
 
 RecordDB::RecordStatus RecordDB::loadNext()
 {
-	indicate_set_load_page();
+	UI::setLoad();
 
 	uint32_t address = 0;
 
 	StorageStatus status = storage.find(FIND_MODE_NEXT, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load next record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
@@ -71,14 +71,14 @@ RecordDB::RecordStatus RecordDB::loadNext()
 
 	status = storage.load(address, reinterpret_cast<uint8_t*>(&this->record), sizeof(this->record));
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load next record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}
 
-#if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "next record loaded");
+#if RECORD_BEDUG
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "next record loaded from address=%08X", (unsigned int)address);
 #endif
 
 	EXIT_CODE(RECORD_OK);
@@ -90,7 +90,7 @@ RecordDB::RecordStatus RecordDB::save()
 		EXIT_CODE(RECORD_ERROR);
 	}
 
-	indicate_set_load_page();
+	UI::setLoad();
 
 	uint32_t address = 0;
 
@@ -99,7 +99,7 @@ RecordDB::RecordStatus RecordDB::save()
 		status = storage.find(FIND_MODE_MIN, &address, const_cast<uint8_t*>(RECORD_PREFIX));
 	}
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error save record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
@@ -113,7 +113,7 @@ RecordDB::RecordStatus RecordDB::save()
 		sizeof(this->record)
 	);
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error save record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
@@ -121,8 +121,8 @@ RecordDB::RecordStatus RecordDB::save()
 
 	settings.info.saved_new_data = true;
 
-#if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record saved");
+#if RECORD_BEDUG
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record saved on address=%08X", (unsigned int)address);
 #endif
 
 	EXIT_CODE(RECORD_OK);
@@ -130,13 +130,13 @@ RecordDB::RecordStatus RecordDB::save()
 
 RecordDB::RecordStatus RecordDB::deleteRecord()
 {
-	indicate_set_load_page();
+	UI::setLoad();
 
 	uint32_t address = 0;
 
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error delete record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
@@ -144,7 +144,7 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 
 	storage.deleteData(address);
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error delete record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
@@ -152,8 +152,8 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 
 	settings.info.saved_new_data = true;
 
-#if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record deleted");
+#if RECORD_BEDUG
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "record deleted on address=%08X", (unsigned int)address);
 #endif
 
 	EXIT_CODE(RECORD_OK);
@@ -161,20 +161,20 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 
 RecordDB::RecordStatus RecordDB::getNewId(uint32_t *newId)
 {
-	indicate_set_load_page();
+	UI::setLoad();
 
 	uint32_t address = 0;
 
 	StorageStatus status = storage.find(FIND_MODE_MAX, &address, const_cast<uint8_t*>(RECORD_PREFIX));
 	if (status == STORAGE_NOT_FOUND) {
 		*newId = 1;
-#if SETTINGS_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "new ID received");
+#if RECORD_BEDUG
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "max ID not found, reset max ID");
 #endif
 		EXIT_CODE(RECORD_OK);
 	}
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error get new id");
 #endif
 		EXIT_CODE(RECORD_ERROR);
@@ -183,7 +183,7 @@ RecordDB::RecordStatus RecordDB::getNewId(uint32_t *newId)
 	RecordDB record;
 	status = storage.load(address, reinterpret_cast<uint8_t*>(&record.record), sizeof(record.record));
 	if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
+#if RECORD_BEDUG
 		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error get new id");
 #endif
 		EXIT_CODE(RECORD_ERROR);
@@ -191,8 +191,8 @@ RecordDB::RecordStatus RecordDB::getNewId(uint32_t *newId)
 
 	*newId = record.record.id + 1;
 
-#if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "new ID received");
+#if RECORD_BEDUG
+	LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "new ID received from address=%08X", (unsigned int)address);
 #endif
 
 	EXIT_CODE(RECORD_OK);

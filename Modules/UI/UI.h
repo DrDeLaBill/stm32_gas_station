@@ -14,7 +14,7 @@
 class UIFSMBase
 {
 public:
-	UIFSMBase();
+	UIFSMBase(uint32_t delay);
 
 	void tick();
 
@@ -22,16 +22,14 @@ protected:
 	util_timer_t timer;
 	bool hasErrors;
 
-	virtual void checkState();
+	virtual bool checkState();
 	virtual void proccess() {}
-
-	virtual constexpr uint32_t getTimerDelayMs() { return 0; }
 };
 
 class UIFSMInit: public UIFSMBase
 {
 public:
-	UIFSMInit() { UIFSMBase(); }
+	UIFSMInit();
 
 protected:
 	void proccess() override;
@@ -40,7 +38,7 @@ protected:
 class UIFSMLoad: public UIFSMBase
 {
 public:
-	UIFSMLoad() { UIFSMBase(); }
+	UIFSMLoad();
 
 protected:
 	void proccess() override;
@@ -49,7 +47,7 @@ protected:
 class UIFSMWait: public UIFSMBase
 {
 public:
-	UIFSMWait() { UIFSMBase(); }
+	UIFSMWait();
 
 protected:
 	void proccess() override;
@@ -58,18 +56,20 @@ protected:
 class UIFSMInput: public UIFSMBase
 {
 public:
-	UIFSMInput() { UIFSMBase(); }
+	UIFSMInput();
 
 protected:
 	void proccess() override;
 
-	constexpr uint32_t getTimerDelayMs() override { return 30000; }
+private:
+	static const uint32_t INPUT_DELAY = 30000;
+
 };
 
 class UIFSMStart: public UIFSMBase
 {
 public:
-	UIFSMStart() { UIFSMBase(); }
+	UIFSMStart();
 
 protected:
 	void proccess() override;
@@ -78,63 +78,74 @@ protected:
 class UIFSMCount: public UIFSMBase
 {
 public:
-	UIFSMCount() { UIFSMBase(); }
+	UIFSMCount();
 
 protected:
 	void proccess() override;
+	bool checkState() override;
 
-	constexpr uint32_t getTimerDelayMs() override { return 300000; }
+private:
+	static const uint32_t COUNT_DELAY = 300000;
+
 };
 
 class UIFSMStop: public UIFSMBase
 {
 public:
-	UIFSMStop() { UIFSMBase(); }
+	UIFSMStop();
 
 protected:
 	void proccess() override;
+
 };
 
 class UIFSMResult: public UIFSMBase
 {
 public:
-	UIFSMResult() { UIFSMBase(); }
+	UIFSMResult();
 
 protected:
-	void checkState() override;
+	void proccess() override;
+	bool checkState() override;
 
-	constexpr uint32_t getTimerDelayMs() override { return 300000; }
+private:
+	static const uint32_t RESULT_DELAY = 300000;
+
 };
 
 class UIFSMError: public UIFSMBase
 {
 public:
-	UIFSMError() { UIFSMBase(); this->hasErrors = true; }
+	UIFSMError();
 
 protected:
 	void proccess() override;
 };
 
 
-class UIManager
+class UI
 {
 public:
 	static constexpr const char TAG[] = "UI";
 
-	static std::unique_ptr<UIFSMBase> ui;
+	static std::shared_ptr<UIFSMBase> ui;
+	static uint8_t result[KEYBOARD4X3_BUFFER_SIZE];
 
 	static void UIProccess();
 
-	static bool checkKeyboardStop();
-	static bool checkKeyboardStart();
-
-	static void clear();
-
-private:
-	static bool checkErrors();
-
 	static bool checkStop();
 	static bool checkStart();
+
+	static void setLoad();
+	static void resetLoad();
+
+private:
+	static bool needLoad;
+
+	static bool checkErrors();
+
+	static bool checkKeyboardStop();
+	static bool checkKeyboardStart();
 };
 
 

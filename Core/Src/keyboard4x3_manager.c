@@ -28,7 +28,7 @@ typedef struct _keyboard4x3_state_t {
 	uint8_t      buffer_idx;
 	uint8_t      buffer[KEYBOARD4X3_BUFFER_SIZE];
 
-	bool         canselPressed;
+	bool         cancelPressed;
 	bool         enterPressed;
 } keyboard4x3_state_t;
 
@@ -61,7 +61,7 @@ keyboard4x3_state_t keyboard4x3_state = {
 	.reset_timer          = { 0 },
 	.wait_timer           = { 0 },
 
-	.canselPressed        = false,
+	.cancelPressed        = false,
 	.enterPressed         = false,
 };
 
@@ -94,11 +94,12 @@ uint8_t* keyboard4x3_get_buffer()
 void keyboard4x3_clear()
 {
 	_keyboard4x3_reset_buffer();
+	_keyboard4x3_show_buf();
 }
 
 bool keyboard4x3_is_cancel()
 {
-	return keyboard4x3_state.canselPressed;
+	return keyboard4x3_state.cancelPressed;
 }
 
 bool keyboard4x3_is_enter()
@@ -160,7 +161,7 @@ void _keyboard4x3_fsm_register_button()
 
 	uint8_t ch = keyboard_btns[row][col];
 	if (ch == '*') {
-		keyboard4x3_state.canselPressed = true;
+		keyboard4x3_state.cancelPressed = true;
 	} else if (ch == '#') {
 		keyboard4x3_state.enterPressed = true;
 	} else {
@@ -214,7 +215,7 @@ void _keyboard4x3_reset_buffer()
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_set_row;
 	keyboard4x3_state.last_row = __arr_len(rows_pins);
 	keyboard4x3_state.enterPressed = false;
-	keyboard4x3_state.canselPressed = false;
+	keyboard4x3_state.cancelPressed = false;
 }
 
 void _keyboard4x3_show_buf()
@@ -223,6 +224,12 @@ void _keyboard4x3_show_buf()
 	LOG_BEDUG("%s: \t", KEYBOARD_TAG);
 	for (uint8_t i = 0; i < __arr_len(keyboard4x3_state.buffer); i++) {
 		LOG_BEDUG("%c ", keyboard4x3_state.buffer[i] ? keyboard4x3_state.buffer[i] : (int)'-');
+	}
+	if (keyboard4x3_state.cancelPressed) {
+		LOG_BEDUG(" *");
+	}
+	if (keyboard4x3_state.enterPressed) {
+		LOG_BEDUG(" #");
 	}
 	LOG_BEDUG("\n");
 #endif

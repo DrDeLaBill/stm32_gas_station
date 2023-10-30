@@ -7,7 +7,7 @@
 #include "StorageAT.h"
 
 
-#define RECORD_BEDUG (false)
+#define RECORD_BEDUG (true)
 
 
 class RecordDB

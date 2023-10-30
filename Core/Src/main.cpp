@@ -44,9 +44,9 @@
 #include "Access.h"
 #include "RecordDB.h"
 #include "StorageAT.h"
-#include "UIManager.h"
 #include "SettingsDB.h"
 #include "ModbusManager.h"
+#include "UI.h"
 
 /* USER CODE END Includes */
 
@@ -137,6 +137,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM4_Init();
 //  MX_IWDG_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(100);
 
@@ -145,8 +146,11 @@ int main(void)
   // PUMP initialization
   pump_set_record_handler(&pump_record_handler);
 
-  // Indicators timer init
+  // Indicators timer start
   HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
+
+  // UI timer start
+  HAL_TIM_Base_Start_IT(&UI_TIM);
 
   // Gas sensor encoder
   HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
@@ -156,7 +160,6 @@ int main(void)
 
   // Settings
   while (settings.load() != SettingsDB::SETTINGS_OK) {
-	  UIManager::UIProccess();
 	  settings.reset();
   }
 
@@ -174,8 +177,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-    UIManager::UIProccess();
 
     if (!settings.isLoaded()) {
     	settings.load();
@@ -363,6 +364,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 		indicate_proccess();
 		indicate_display();
+	} else if (htim->Instance == UI_TIM.Instance) {
+		UI::UIProccess();
 	}
 }
 

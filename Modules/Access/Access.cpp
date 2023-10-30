@@ -65,5 +65,6 @@ bool Access::isGranted()
 
 void Access::close()
 {
+	LOG_TAG_BEDUG(Access::TAG, "Access closed");
 	Access::granted = false;
 }
