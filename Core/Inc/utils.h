@@ -115,7 +115,7 @@ uint8_t  util_get_number_len(int number);
 
 #ifdef DEBUG
 
-#define LOG_TAG_BEDUG(MODULE_TAG, format, ...) if (strlen(MODULE_TAG)) { printf("%s: \t", MODULE_TAG); } printf(format __VA_OPT__(,) __VA_ARGS__); printf("\n");
+#define LOG_TAG_BEDUG(MODULE_TAG, format, ...) if (strlen(MODULE_TAG)) { printf("%09lu->%s: \t", HAL_GetTick(), MODULE_TAG); } printf(format __VA_OPT__(,) __VA_ARGS__); printf("\n");
 #define LOG_BEDUG(format, ...)                 printf(format __VA_OPT__(,) __VA_ARGS__);
 
 #else /* DEBUG */

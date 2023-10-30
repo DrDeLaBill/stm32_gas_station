@@ -178,18 +178,13 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    if (!settings.isLoaded()) {
-    	settings.load();
-    	continue;
-    }
-
 	pump_proccess();
 
     if (general_check_errors()) {
     	continue;
     }
 
-//	mbManager.tick();
+	mbManager.tick();
   }
   /* USER CODE END 3 */
 }
@@ -246,6 +241,8 @@ void SystemClock_Config(void)
 
 void pump_record_handler()
 {
+	UI::setLoad();
+
 	RecordDB record;
 //	record.record.cf_id = settings.settings.cf_id;
 	record.record.time[0] = clock_get_year();
@@ -255,7 +252,7 @@ void pump_record_handler()
 	record.record.time[4] = clock_get_minute();
 	record.record.time[5] = clock_get_second();
 	record.record.used_liters = pump_get_fuel_count_ml();
-	record.record.card = Access::getCard();
+	record.record.card = UI::getCard();
 
 	LOG_TAG_BEDUG(MAIN_TAG, "save new log: begin");
 	LOG_TAG_BEDUG(
@@ -276,6 +273,7 @@ void pump_record_handler()
 	RecordDB::RecordStatus status = RecordDB::getNewId(&new_id);
 	if (status != RecordDB::RECORD_OK) {
 		LOG_TAG_BEDUG(MAIN_TAG, "save new log: find new log id error=%02x", status);
+		UI::resetLoad();
 		return;
 	}
 
@@ -286,10 +284,13 @@ void pump_record_handler()
 	status = record.save();
 	if (status != RecordDB::RECORD_OK) {
 		LOG_TAG_BEDUG(MAIN_TAG, "save new log: error=%02x", status);
+		UI::resetLoad();
 		return;
 	}
 
 	LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
+
+	UI::resetLoad();
 }
 
 void reset_eeprom_i2c()

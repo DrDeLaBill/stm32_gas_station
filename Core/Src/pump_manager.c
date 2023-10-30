@@ -146,10 +146,11 @@ void pump_stop()
 
 void pump_clear()
 {
-	pump_state.target_ml = 0;
-	pump_state.need_start = false;
-	pump_state.need_stop = false;
-	pump_state.has_stopped = false;
+	pump_state.target_ml        = 0;
+	pump_state.ml_current_count = 0;
+	pump_state.need_start       = false;
+	pump_state.need_stop        = false;
+	pump_state.has_stopped      = false;
 }
 
 bool pump_is_working()
@@ -204,7 +205,7 @@ void _pump_fsm_init()
 {
 	_pump_fsm_stop();
 #if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_wait_liters", HAL_GetTick());
+	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_wait_liters");
 #endif
 	_pump_set_fsm_state(_pump_fsm_wait_liters);
 }
@@ -213,7 +214,7 @@ void _pump_fsm_wait_liters()
 {
 	if (pump_state.target_ml > 0) {
 #if PUMP_BEDUG
-		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_wait_start", HAL_GetTick());
+		LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_wait_start");
 #endif
 		_pump_set_fsm_state(_pump_fsm_wait_start);
 		pump_start();
@@ -224,7 +225,7 @@ void _pump_fsm_wait_start()
 {
 	if (pump_state.need_stop) {
 #if PUMP_BEDUG
-		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_stop", HAL_GetTick());
+		LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_stop");
 #endif
 		_pump_set_fsm_state(_pump_fsm_stop);
 		return;
@@ -232,7 +233,7 @@ void _pump_fsm_wait_start()
 
 	if (pump_state.need_start && pump_state.target_ml > 0) {
 #if PUMP_BEDUG
-		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_start", HAL_GetTick());
+		LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_start");
 #endif
 		_pump_set_fsm_state(_pump_fsm_start);
 		return;
@@ -254,7 +255,7 @@ void _pump_fsm_wait_start()
 
     if (_is_pump_and_valve_enabled() || !_is_pump_and_valve_operable()) {
 #if PUMP_BEDUG
-    	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
+    	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_error");
 #endif
     	_pump_set_fsm_state(_pump_fsm_error);
     	return;
@@ -272,7 +273,7 @@ void _pump_fsm_start()
     _pump_set_valve2_enable(GPIO_PIN_SET);
 
 #if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_check_start", HAL_GetTick());
+	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_check_start");
 #endif
     _pump_set_fsm_state(_pump_fsm_check_start);
 
@@ -285,7 +286,7 @@ void _pump_fsm_check_start()
 {
     if (!util_is_timer_wait(&pump_state.error_timer)) {
 #if PUMP_BEDUG
-    	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
+    	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_error");
 #endif
         _pump_set_fsm_state(_pump_fsm_error);
         return;
@@ -306,15 +307,16 @@ void _pump_fsm_check_start()
 
     if (!_is_pump_and_valve_enabled() || !_is_pump_and_valve_operable()) {
 #if PUMP_BEDUG
-		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
+		LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_error");
 #endif
 		_pump_set_fsm_state(_pump_fsm_error);
 		return;
 	}
 
 #if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_work", HAL_GetTick());
+	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_work");
 #endif
+	_reset_pump_encoder();
 	_pump_set_fsm_state(_pump_fsm_work);
 }
 
@@ -322,7 +324,7 @@ void _pump_fsm_work()
 {
 	if (pump_state.need_stop) {
 #if PUMP_BEDUG
-		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_stop", HAL_GetTick());
+		LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_stop");
 #endif
 		_pump_set_fsm_state(_pump_fsm_stop);
 		return;
@@ -346,7 +348,7 @@ void _pump_fsm_work()
 
 //	if (_is_pump_not_working()) {
 //#if PUMP_BEDUG
-//		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
+//		LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_error");
 //#endif
 //		_pump_set_fsm_state(_pump_fsm_error);
 //		return;
@@ -354,7 +356,7 @@ void _pump_fsm_work()
 
 	if (!_is_pump_and_valve_enabled() || !_is_pump_and_valve_operable()) {
 #if PUMP_BEDUG
-		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
+		LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_error");
 #endif
 		_pump_set_fsm_state(_pump_fsm_error);
 		return;
@@ -363,14 +365,14 @@ void _pump_fsm_work()
 	int32_t ml_current_count = _get_pump_encoder_current_ticks() * PUMP_MD212_MLS_PER_TICK;
 	if (ml_current_count < 0) {
 #if PUMP_BEDUG
-		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | pump isn't working: current gas ticks=%ld; target=%lu", HAL_GetTick(), ml_current_count, pump_state.target_ml);
+		LOG_TAG_BEDUG(PUMP_TAG, "pump isn't working: current gas ticks=%ld; target=%lu", ml_current_count, pump_state.target_ml);
 #endif
 		_reset_pump_encoder();
 		return;
 	}
 
 #if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | current gas ml: %lu (%ld ticks); target: %lu", HAL_GetTick(), pump_state.ml_current_count, ml_current_count, pump_state.target_ml);
+	LOG_TAG_BEDUG(PUMP_TAG, "current gas ml: %lu (%ld ticks); target: %lu", pump_state.ml_current_count, ml_current_count, pump_state.target_ml);
 #endif
 
 	pump_state.ml_current_count += ml_current_count;
@@ -386,7 +388,7 @@ void _pump_fsm_work()
 
 	if (pump_state.ml_current_count >= (int32_t)pump_state.target_ml) {
 #if PUMP_BEDUG
-		LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_stop", HAL_GetTick());
+		LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_stop");
 #endif
 		_pump_set_fsm_state(&_pump_fsm_stop);
 	}
@@ -399,7 +401,7 @@ void _pump_fsm_stop()
     _pump_set_valve2_enable(GPIO_PIN_RESET);
 
 #if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_check_stop", HAL_GetTick());
+	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_check_stop");
 #endif
     _pump_set_fsm_state(_pump_fsm_check_stop);
     util_timer_start(&pump_state.error_timer, PUMP_CHECK_STOP_DELAY_MS);
@@ -409,7 +411,7 @@ void _pump_fsm_check_stop()
 {
     if (!util_is_timer_wait(&pump_state.error_timer)) {
 #if PUMP_BEDUG
-    	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
+    	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_error");
 #endif
         _pump_set_fsm_state(_pump_fsm_error);
         return;
@@ -428,16 +430,18 @@ void _pump_fsm_check_stop()
 
     if (_is_pump_and_valve_enabled() || !_is_pump_and_valve_operable()) {
 #if PUMP_BEDUG
-    	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_error", HAL_GetTick());
+    	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_error");
 #endif
         _pump_set_fsm_state(_pump_fsm_error);
         return;
     }
 
 #if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_record", HAL_GetTick());
+	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_record");
 #endif
 	_pump_set_fsm_state(_pump_fsm_record);
+
+    pump_state.has_stopped = true;
 }
 
 void _pump_fsm_record()
@@ -446,14 +450,12 @@ void _pump_fsm_record()
 		pump_state.record_handler();
 	}
 #if PUMP_BEDUG
-	LOG_TAG_BEDUG(PUMP_TAG, "%08lu ms | set _pump_fsm_wait_liters", HAL_GetTick());
+	LOG_TAG_BEDUG(PUMP_TAG, "set _pump_fsm_wait_liters");
 #endif
     _pump_set_fsm_state(_pump_fsm_wait_liters);
     pump_state.target_ml = 0;
 
     _reset_pump_encoder();
-
-    pump_state.has_stopped = true;
 }
 
 void _pump_fsm_error()
@@ -502,7 +504,7 @@ void _pump_reset_state()
 
     memset((uint8_t*)&pump_state, 0, sizeof(pump_state));
 
-    pump_state.fsm_pump_state    = &_pump_fsm_stop;
+    pump_state.fsm_pump_state = &_pump_fsm_stop;
     pump_state.record_handler = pump_stop_handler;
 
     _reset_pump_encoder();

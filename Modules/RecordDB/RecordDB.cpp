@@ -10,7 +10,7 @@
 #include "utils.h"
 
 
-#define EXIT_CODE(_code_) { UI::resetLoad(); return _code_; }
+#define EXIT_CODE(_code_) { return _code_; }
 
 
 extern StorageAT storage;
@@ -28,8 +28,6 @@ RecordDB::RecordDB(uint32_t recordId)
 
 RecordDB::RecordStatus RecordDB::load()
 {
-	UI::setLoad();
-
 	uint32_t address = 0;
 
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
@@ -57,8 +55,6 @@ RecordDB::RecordStatus RecordDB::load()
 
 RecordDB::RecordStatus RecordDB::loadNext()
 {
-	UI::setLoad();
-
 	uint32_t address = 0;
 
 	StorageStatus status = storage.find(FIND_MODE_NEXT, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
@@ -89,8 +85,6 @@ RecordDB::RecordStatus RecordDB::save()
 	if (this->record.card == 0 || this->record.used_liters == 0) {
 		EXIT_CODE(RECORD_ERROR);
 	}
-
-	UI::setLoad();
 
 	uint32_t address = 0;
 
@@ -130,8 +124,6 @@ RecordDB::RecordStatus RecordDB::save()
 
 RecordDB::RecordStatus RecordDB::deleteRecord()
 {
-	UI::setLoad();
-
 	uint32_t address = 0;
 
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
@@ -161,8 +153,6 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 
 RecordDB::RecordStatus RecordDB::getNewId(uint32_t *newId)
 {
-	UI::setLoad();
-
 	uint32_t address = 0;
 
 	StorageStatus status = storage.find(FIND_MODE_MAX, &address, const_cast<uint8_t*>(RECORD_PREFIX));

@@ -126,7 +126,7 @@ protected:
 class UI
 {
 public:
-	static constexpr const char TAG[] = "UI";
+	static constexpr const char TAG[] = "UI ";
 
 	static std::shared_ptr<UIFSMBase> ui;
 	static uint8_t result[KEYBOARD4X3_BUFFER_SIZE];
@@ -138,9 +138,14 @@ public:
 
 	static void setLoad();
 	static void resetLoad();
+	static bool needToLoad();
+
+	static void setCard(uint32_t card);
+	static uint32_t getCard();
 
 private:
 	static bool needLoad;
+	static uint32_t lastCard;
 
 	static bool checkErrors();
 

@@ -1,6 +1,7 @@
 #include "UI.h"
 
 #include <cmath>
+#include <typeinfo>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -18,6 +19,7 @@
 extern SettingsDB settings;
 
 
+uint32_t UI::lastCard = 0;
 uint8_t UI::result[] = {};
 bool UI::needLoad = false;
 std::shared_ptr<UIFSMBase> UI::ui = std::make_shared<UIFSMInit>();
@@ -32,7 +34,7 @@ void UI::UIProccess()
 //	}
 
 	std::shared_ptr<UIFSMBase> uiPtr;
-	if (needLoad) {
+	if (UI::needToLoad()) {
 		uiPtr = std::make_shared<UIFSMLoad>();
 	} else {
 		uiPtr = ui;
@@ -66,6 +68,10 @@ bool UIFSMBase::checkState()
 		return false;
 	}
 
+	if (UI::needToLoad()) {
+		return false;
+	}
+
 	if (timer.delay && !util_is_timer_wait(&timer)) {
 		UI::ui = std::make_shared<UIFSMStop>();
 		pump_stop();
@@ -92,6 +98,7 @@ UIFSMInit::UIFSMInit(): UIFSMBase(0)
 	LOG_TAG_BEDUG(UI::TAG, "Set UI UIFSMInit page");
 #endif
 	indicate_set_wait_page();
+	Access::close();
 }
 
 void UIFSMInit::proccess()
@@ -107,10 +114,7 @@ UIFSMLoad::UIFSMLoad(): UIFSMBase(0)
 	indicate_set_load_page();
 }
 
-void UIFSMLoad::proccess()
-{
-
-}
+void UIFSMLoad::proccess() { }
 
 UIFSMWait::UIFSMWait(): UIFSMBase(0)
 {
@@ -118,7 +122,6 @@ UIFSMWait::UIFSMWait(): UIFSMBase(0)
 	LOG_TAG_BEDUG(UI::TAG, "Set UI UIFSMWait page");
 #endif
 	keyboard4x3_clear();
-	Access::close();
 	pump_clear();
 }
 
@@ -128,8 +131,8 @@ void UIFSMWait::proccess()
 
 	if (Access::isGranted()) {
 		UI::ui = std::make_shared<UIFSMInput>();
+		UI::setCard(Access::getCard());
 	}
-//	pump_stop();
 }
 
 UIFSMInput::UIFSMInput(): UIFSMBase(UIFSMInput::INPUT_DELAY)
@@ -138,6 +141,8 @@ UIFSMInput::UIFSMInput(): UIFSMBase(UIFSMInput::INPUT_DELAY)
 	LOG_TAG_BEDUG(UI::TAG, "Set UI UIFSMInput page");
 #endif
 	memset(UI::result, 0, KEYBOARD4X3_BUFFER_SIZE);
+	keyboard4x3_clear();
+	pump_clear();
 }
 
 void UIFSMInput::proccess()
@@ -173,6 +178,7 @@ void UIFSMStart::proccess()
 		LOG_TAG_BEDUG(UI::TAG, "pump start command");
 #endif
 		UI::ui = std::make_shared<UIFSMCount>();
+		pump_clear();
 		pump_set_fuel_ml(user_ml);
 		return;
 	}
@@ -255,6 +261,12 @@ void UIFSMResult::proccess()
 {
 	indicate_set_buffer_page();
 	indicate_set_buffer(UI::result, KEYBOARD4X3_BUFFER_SIZE);
+	if (!pump_has_stopped()) {
+		return;
+	}
+	if (Access::isGranted()) {
+		UI::ui = std::make_shared<UIFSMWait>();
+	}
 }
 
 bool UIFSMResult::checkState()
@@ -296,6 +308,11 @@ bool UI::checkKeyboardStart()
 	return keyboard4x3_is_enter();
 }
 
+bool UI::needToLoad()
+{
+	return needLoad && (typeid(*(UI::ui)) == typeid(UIFSMWait));
+}
+
 void UI::setLoad()
 {
 	needLoad = true;
@@ -304,6 +321,16 @@ void UI::setLoad()
 void UI::resetLoad()
 {
 	needLoad = false;
+}
+
+void UI::setCard(uint32_t card)
+{
+	UI::lastCard = card;
+}
+
+uint32_t UI::getCard()
+{
+	return UI::lastCard;
 }
 
 bool UI::checkStart()

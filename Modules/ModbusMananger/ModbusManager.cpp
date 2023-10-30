@@ -10,6 +10,7 @@
 #include "clock.h"
 #include "modbus_rtu_slave.h"
 
+#include "UI.h"
 #include "RecordDB.h"
 #include "SettingsDB.h"
 #include "ModbusRegister.h"
@@ -45,7 +46,9 @@ ModbusManager::ModbusManager(UART_HandleTypeDef* huart)
 void ModbusManager::tick()
 {
 	if (ModbusManager::requestInProgress && !util_is_timer_wait(&ModbusManager::timer)) {
+#if MB_MANAGER_BEDUG
 		LOG_TAG_BEDUG(ModbusManager::TAG, "Modbus timeout")
+#endif
 		modbus_slave_timeout();
 		ModbusManager::reset();
 		return;
@@ -58,9 +61,13 @@ void ModbusManager::tick()
 	}
 
 	if (ModbusManager::recievedNewData) {
+		UI::setLoad();
 		this->load();
+		UI::resetLoad();
 	} else if (settings.info.saved_new_data) {
+		UI::setLoad();
 		this->save();
+		UI::resetLoad();
 	}
 }
 

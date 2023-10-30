@@ -10,7 +10,7 @@
 #include "utils.h"
 
 
-#define KEYBOARD4X3_DEBOUNCE_DELAY_MS ((uint32_t)150)
+#define KEYBOARD4X3_DEBOUNCE_DELAY_MS ((uint32_t)50)
 #define KEYBOARD4X3_PRESS_DELAY_MS    ((uint32_t)5000)
 #define KEYBOARD4X3_RESET_DELAY_MS    ((uint32_t)30000)
 
@@ -221,7 +221,7 @@ void _keyboard4x3_reset_buffer()
 void _keyboard4x3_show_buf()
 {
 #ifdef DEBUG
-	LOG_BEDUG("%s: \t", KEYBOARD_TAG);
+	LOG_BEDUG("%09lu->%s: \t", HAL_GetTick(), KEYBOARD_TAG);
 	for (uint8_t i = 0; i < __arr_len(keyboard4x3_state.buffer); i++) {
 		LOG_BEDUG("%c ", keyboard4x3_state.buffer[i] ? keyboard4x3_state.buffer[i] : (int)'-');
 	}
