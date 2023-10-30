@@ -12,7 +12,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
-#define PUMP_BEDUG (true)
+
+#define PUMP_BEDUG          (true)
+#define PUMP_PROTECT_ENABLE (false)
 
 
 void pump_proccess();
@@ -20,11 +22,12 @@ void pump_proccess();
 void pump_set_fuel_ml(uint32_t liquid_ml);
 void pump_start();
 void pump_stop();
+void pump_clear();
 
 bool pump_has_error();
 bool pump_is_working();
 bool pump_is_free();
-bool pump_is_stopped();
+bool pump_has_stopped();
 
 void pump_set_record_handler(void (*pump_record_handler) (void));
 

@@ -31,7 +31,7 @@ public:
 	void set_log_id(uint32_t log_id);
 	void set_card(uint32_t card, uint16_t idx);
 	void set_limit(uint32_t limit, uint16_t idx);
-	void set_reresidue(uint32_t used_litters, uint32_t card);
+	void set_residue(uint32_t used_litters, uint32_t card);
 
 	bool isLoaded();
 

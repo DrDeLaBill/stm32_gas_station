@@ -54,6 +54,8 @@ typedef struct _pump_state_t {
 
     bool         need_start;
     bool         need_stop;
+
+    bool         has_stopped;
 } pump_state_t;
 
 
@@ -142,6 +144,14 @@ void pump_stop()
 	pump_state.need_stop = true;
 }
 
+void pump_clear()
+{
+	pump_state.target_ml = 0;
+	pump_state.need_start = false;
+	pump_state.need_stop = false;
+	pump_state.has_stopped = false;
+}
+
 bool pump_is_working()
 {
 	return pump_state.fsm_pump_state == _pump_fsm_work;
@@ -153,9 +163,9 @@ bool pump_is_free()
 		   pump_state.fsm_pump_state == _pump_fsm_init;
 }
 
-bool pump_is_stopped()
+bool pump_has_stopped()
 {
-	return pump_state.fsm_pump_state == _pump_fsm_stop;
+	return pump_state.has_stopped;
 }
 
 bool pump_has_error()
@@ -253,6 +263,8 @@ void _pump_fsm_wait_start()
 
 void _pump_fsm_start()
 {
+	pump_state.has_stopped = false;
+
 	_reset_pump_encoder();
 
     _pump_set_pump_enable(GPIO_PIN_SET);
@@ -439,8 +451,9 @@ void _pump_fsm_record()
     _pump_set_fsm_state(_pump_fsm_wait_liters);
     pump_state.target_ml = 0;
 
-    pump_state.ml_current_count = 0;
     _reset_pump_encoder();
+
+    pump_state.has_stopped = true;
 }
 
 void _pump_fsm_error()
@@ -571,6 +584,7 @@ bool _is_pump_not_working()
 
 bool _is_pump_and_valve_enabled()
 {
+#if PUMP_PROTECT_ENABLE
 	uint32_t pump_average  = _pump_get_average(pump_state.pump_measure_buf, __arr_len(pump_state.pump_measure_buf));
 //	uint32_t valve_average = _pump_get_average(pump_state.valve_measure_buf, __arr_len(pump_state.valve_measure_buf));
 
@@ -583,10 +597,15 @@ bool _is_pump_and_valve_enabled()
 //	}
 
 	return true;
+#else
+	return pump_state.fsm_pump_state == _pump_fsm_check_start ||
+		   pump_state.fsm_pump_state == _pump_fsm_work;
+#endif
 }
 
 bool _is_pump_and_valve_operable()
 {
+#if PUMP_PROTECT_ENABLE
 	uint32_t pump_average  = _pump_get_average(pump_state.pump_measure_buf, __arr_len(pump_state.pump_measure_buf));
 //	uint32_t valve_average = _pump_get_average(pump_state.valve_measure_buf, __arr_len(pump_state.valve_measure_buf));
 
@@ -598,6 +617,9 @@ bool _is_pump_and_valve_operable()
 //	}
 
 	return true;
+#else
+	return true;
+#endif
 }
 
 int32_t _get_pump_encoder_current_ticks()

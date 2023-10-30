@@ -191,6 +191,10 @@ extern TIM_HandleTypeDef         htim4;
 extern IWDG_HandleTypeDef        hiwdg;
 #define DEVICE_IWDG              (hiwdg)
 
+// UI
+extern TIM_HandleTypeDef         htim5;
+#define UI_TIM                   (htim5)
+
 
 bool general_check_errors();
 

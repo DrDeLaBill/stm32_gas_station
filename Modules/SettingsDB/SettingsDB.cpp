@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <string.h>
 
+#include "UI.h"
 #include "StorageAT.h"
 
 #include "utils.h"
-#include "indicate_manager.h"
 
 
-#define EXIT_CODE(_code_) { indicate_set_wait_page(); return _code_; }
+#define EXIT_CODE(_code_) { UI::resetLoad(); return _code_; }
 
 
 extern StorageAT storage;
@@ -28,7 +28,7 @@ SettingsDB::SettingsDB()
 
 SettingsDB::SettingsStatus SettingsDB::load()
 {
-	indicate_set_load_page();
+	UI::setLoad();
 
 	uint32_t address = 0;
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
@@ -66,7 +66,7 @@ SettingsDB::SettingsStatus SettingsDB::load()
 
 SettingsDB::SettingsStatus SettingsDB::save()
 {
-	indicate_set_load_page();
+	UI::setLoad();
 
 	uint32_t address = 0;
 	StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
@@ -175,7 +175,7 @@ void SettingsDB::set_limit(uint32_t limit, uint16_t idx)
 	this->save();
 }
 
-void SettingsDB::set_reresidue(uint32_t used_litters, uint32_t card)
+void SettingsDB::set_residue(uint32_t used_litters, uint32_t card)
 {
 //	unsigned idx = 0;
 //	bool idxFound = false;
