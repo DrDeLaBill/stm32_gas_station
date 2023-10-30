@@ -188,7 +188,7 @@ int main(void)
     	continue;
     }
 
-	mbManager.tick();
+//	mbManager.tick();
   }
   /* USER CODE END 3 */
 }

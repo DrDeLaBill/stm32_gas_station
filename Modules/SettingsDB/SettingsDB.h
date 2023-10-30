@@ -40,7 +40,7 @@ public:
 		uint32_t device_id;
 		uint32_t cards   [GENERAL_RFID_CARDS_COUNT];
 		uint32_t limits  [GENERAL_RFID_CARDS_COUNT]; // Gas limit per month
-		uint32_t residues[GENERAL_RFID_CARDS_COUNT]; // Gas residues in this month (day?)
+//		uint32_t residues[GENERAL_RFID_CARDS_COUNT]; // Gas residues in this month (day?)
 		uint32_t log_id;
 	} Settings;
 
@@ -55,7 +55,7 @@ public:
 	DeviceInfo info;
 
 private:
-	static uint8_t SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE];
+	static const uint8_t SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE];
 	static constexpr const uint8_t TAG[] = "STG";
 
 	static const uint8_t SETTINGS_VERSION            = ((uint8_t)0x01);

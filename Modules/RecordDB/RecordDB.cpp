@@ -18,7 +18,7 @@ extern StorageAT storage;
 extern SettingsDB settings;
 
 
-uint8_t RecordDB::RECORD_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "RCR";
+const uint8_t RecordDB::RECORD_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "RCR";
 
 
 RecordDB::RecordDB(uint32_t recordId)

@@ -1,5 +1,6 @@
 #include "UIManager.h"
 
+#include <cmath>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -18,58 +19,90 @@
 extern SettingsDB settings;
 
 
-bool UIManager::isStartPressed = false;
-char UIManager::constBuffer[KEYBOARD4X3_BUFFER_SIZE] = "";
+std::unique_ptr<UIFSMBase> UIManager::ui = std::make_unique<UIFSMInit>();
 
 
 void UIManager::UIProccess()
 {
 	Access::tick();
 
-	if (general_check_errors()) {
-		indicate_set_error_page();
+	if (UIManager::checkErrors()) {
+		ui = std::make_unique<UIFSMError>();
+	}
+
+	ui->tick();
+}
+
+bool UIManager::checkErrors()
+{
+	return general_check_errors();
+}
+
+UIFSMBase::UIFSMBase()
+{
+	util_timer_start(&timer, getTimerDelayMs());
+}
+
+void UIFSMBase::tick()
+{
+	this->proccess();
+	this->checkState();
+}
+
+void UIFSMBase::checkState()
+{
+	if (this->hasErrors) {
 		return;
 	}
 
-	if (!Access::isGranted() && !pump_is_working()) {
-		UIManager::clear();
+	if (getTimerDelayMs() && !util_is_timer_wait(&timer)) {
+		UIManager::ui = std::make_unique<UIFSMStop>();
 		pump_stop();
 		return;
 	}
 
-	if (UIManager::checkStop()) {
-		UIManager::clear();
+	if (UIManager::checkKeyboardStop()) {
+		UIManager::ui = std::make_unique<UIFSMStop>();
 		pump_stop();
-#if UI_BEDUG
-		LOG_TAG_BEDUG(UIManager::TAG, "pump stop command");
-#endif
 		return;
 	}
 
-	if (!pump_is_free()) {
+	if (pump_is_working()) {
+		UIManager::ui = std::make_unique<UIFSMCount>();
 		return;
 	}
+}
 
-	indicate_set_buffer_page();
-	if (!UIManager::isStartPressed) {
-		indicate_set_buffer(keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
-	} else {
-		indicate_set_buffer(reinterpret_cast<uint8_t*>(UIManager::constBuffer), KEYBOARD4X3_BUFFER_SIZE);
+void UIFSMInit::proccess()
+{
+	UIManager::ui = std::make_unique<UIFSMWait>();
+}
+
+void UIFSMWait::proccess()
+{
+	UIManager::clear();
+
+	if (Access::isGranted()) {
+		UIManager::ui = std::make_unique<UIFSMInput>();
 	}
+//	pump_stop();
+}
 
-	// TODO: add timeout
+void UIFSMInput::proccess()
+{
+	indicate_set_buffer(keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
 
-	if (!UIManager::checkStart()) {
-		return;
+	if (UIManager::checkKeyboardStart()) {
+		UIManager::ui = std::make_unique<UIFSMStart>();
 	}
+}
 
-	UIManager::isStartPressed = true;
-	memcpy(UIManager::constBuffer, keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
-
-	uint32_t user_liters       = (uint32_t)atoi(UIManager::constBuffer);
+void UIFSMStart::proccess()
+{
+	uint32_t user_liters       = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
 	uint32_t liters_multiplier = ML_IN_LTR;
 	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-		liters_multiplier /= (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT * 10);
+		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
 	}
 
 	uint32_t user_ml = user_liters * liters_multiplier;
@@ -78,13 +111,57 @@ void UIManager::UIProccess()
 #if UI_BEDUG
 		LOG_TAG_BEDUG(UIManager::TAG, "pump start command");
 #endif
+		UIManager::ui = std::make_unique<UIFSMCount>();
 		pump_set_fuel_ml(user_ml);
-	} else {
-#if UI_BEDUG
-		LOG_TAG_BEDUG(UIManager::TAG, "invalid liters value");
-#endif
-		UIManager::clear();
+		return;
 	}
+
+#if UI_BEDUG
+	LOG_TAG_BEDUG(UIManager::TAG, "invalid liters value");
+#endif
+	UIManager::clear();
+	UIManager::ui = std::make_unique<UIFSMWait>();
+}
+
+void UIFSMCount::proccess()
+{
+	uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = { 0 };
+	uint32_t curr_count = pump_get_fuel_count_ml() / pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+	for (unsigned i = util_get_number_len(curr_count); i > 0; i--) {
+		buffer[i-1] = '0' + curr_count % 10;
+		curr_count /= 10;
+	}
+	indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
+
+	if (pump_is_stopped()) {
+		UIManager::ui = std::make_unique<UIFSMResult>();
+	}
+}
+
+void UIFSMStop::proccess()
+{
+	UIManager::clear();
+	pump_stop();
+
+	UIManager::ui = std::make_unique<UIFSMResult>();
+}
+
+void UIFSMResult::checkState()
+{
+	if (UIManager::checkKeyboardStop()) {
+		UIManager::ui = std::make_unique<UIFSMWait>();
+	}
+
+	if (!util_is_timer_wait(&timer)) {
+		UIManager::ui = std::make_unique<UIFSMWait>();
+	}
+}
+
+void UIFSMError::proccess()
+{
+	indicate_set_error_page();
+	UIManager::clear();
+	pump_stop();
 }
 
 bool UIManager::checkKeyboardStop()
@@ -97,20 +174,17 @@ bool UIManager::checkKeyboardStart()
 	return keyboard4x3_is_enter();
 }
 
+bool UIManager::checkStart()
+{
+	return UIManager::checkKeyboardStart() || HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
+}
 bool UIManager::checkStop()
 {
 	return UIManager::checkKeyboardStop() || HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
 }
 
-bool UIManager::checkStart()
-{
-	return UIManager::checkKeyboardStart() || HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
-}
-
 void UIManager::clear()
 {
-	memset(UIManager::constBuffer, 0, sizeof(UIManager::constBuffer));
-	UIManager::isStartPressed = false;
-	keyboard4x3_clear();
 	indicate_set_wait_page();
+	keyboard4x3_clear();
 }
