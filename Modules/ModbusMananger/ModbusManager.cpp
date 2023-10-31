@@ -61,13 +61,9 @@ void ModbusManager::tick()
 	}
 
 	if (ModbusManager::recievedNewData) {
-		UI::setLoad();
 		this->load();
-		UI::resetLoad();
 	} else if (settings.info.saved_new_data) {
-		UI::setLoad();
 		this->save();
-		UI::resetLoad();
 	}
 }
 
@@ -91,15 +87,10 @@ void ModbusManager::load()
 #if MB_MANAGER_BEDUG
     LOG_TAG_BEDUG(ModbusManager::TAG, "LOAD MODBUS TABLE");
 #endif
+
 #if MB_MANAGER_BEDUG
     LOG_TAG_BEDUG(ModbusManager::TAG, "#### Load cf_id ####");
 #endif
-    ModbusRegister<int> reg(
-		static_cast<register_type_t>(MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS),
-		static_cast<uint32_t>(0),
-		static_cast<uint32_t>(1)
-	);
-
     std::shared_ptr<ModbusRegister<uint32_t>> reg32 = ModbusRegister<uint32_t>::createRegister(
 		MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
 		0,

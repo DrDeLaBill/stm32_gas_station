@@ -114,6 +114,8 @@ int _write(int file, uint8_t *ptr, int len);
 #define PUMP_START_GPIO_Port GPIOC
 #define PUMP_STOP_Pin GPIO_PIN_9
 #define PUMP_STOP_GPIO_Port GPIOC
+#define GUN_SWITCH_Pin GPIO_PIN_8
+#define GUN_SWITCH_GPIO_Port GPIOA
 #define MODBUS_TX_Pin GPIO_PIN_9
 #define MODBUS_TX_GPIO_Port GPIOA
 #define MODBUS_RX_Pin GPIO_PIN_10

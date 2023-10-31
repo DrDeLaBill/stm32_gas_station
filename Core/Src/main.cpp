@@ -36,17 +36,17 @@
 #include "utils.h"
 #include "clock.h"
 #include "wiegand.h"
-#include "pump_manager.h"
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
 #include "eeprom_at24cm01_storage.h"
 
+#include "UI.h"
+#include "Pump.h"
 #include "Access.h"
 #include "RecordDB.h"
 #include "StorageAT.h"
 #include "SettingsDB.h"
 #include "ModbusManager.h"
-#include "UI.h"
 
 /* USER CODE END Includes */
 
@@ -85,7 +85,7 @@ void SystemClock_Config(void);
 StorageStatus read_driver(uint32_t address, uint8_t* data, uint32_t len);
 StorageStatus write_driver(uint32_t address, uint8_t* data, uint32_t len);
 
-void pump_record_handler();
+void save_new_log(uint32_t mlCount);
 
 void reset_eeprom_i2c();
 
@@ -117,7 +117,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -136,15 +135,17 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
-//  MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(100);
 
-  PRINT_MESSAGE(MAIN_TAG, "The device is started\n");
+  if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+	  LOG_TAG_BEDUG(MAIN_TAG, "IWDG just went off");
+	  PRINT_MESSAGE(MAIN_TAG, "REBOOT DEVICE\n");
+  }
 
-  // PUMP initialization
-  pump_set_record_handler(&pump_record_handler);
+  PRINT_MESSAGE(MAIN_TAG, "The device is started\n");
 
   // Indicators timer start
   HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
@@ -170,7 +171,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	HAL_IWDG_Refresh(&DEVICE_IWDG);
+	HAL_IWDG_Refresh(&DEVICE_IWDG);
 
     soul_proccess();
 
@@ -178,10 +179,15 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	pump_proccess();
+    Pump::measure();
 
     if (general_check_errors()) {
     	continue;
+    }
+
+    if (Pump::getLastMl() > 0) {
+    	save_new_log(Pump::getLastMl());
+    	Pump::setLastMl(0);
     }
 
 	mbManager.tick();
@@ -239,8 +245,12 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-void pump_record_handler()
+void save_new_log(uint32_t mlCount)
 {
+	if (mlCount == 0) {
+		return;
+	}
+
 	UI::setLoad();
 
 	RecordDB record;
@@ -251,7 +261,7 @@ void pump_record_handler()
 	record.record.time[3] = clock_get_hour();
 	record.record.time[4] = clock_get_minute();
 	record.record.time[5] = clock_get_second();
-	record.record.used_liters = pump_get_fuel_count_ml();
+	record.record.used_liters = mlCount;
 	record.record.card = UI::getCard();
 
 	LOG_TAG_BEDUG(MAIN_TAG, "save new log: begin");
@@ -310,7 +320,7 @@ void reset_eeprom_i2c()
 
 bool general_check_errors()
 {
-	if (pump_has_error()) {
+	if (Pump::hasError()) {
 		return true;
 	}
 	return false;
@@ -366,6 +376,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		indicate_proccess();
 		indicate_display();
 	} else if (htim->Instance == UI_TIM.Instance) {
+		Pump::tick();
+
 		UI::UIProccess();
 	}
 }

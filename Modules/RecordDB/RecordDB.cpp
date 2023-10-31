@@ -60,7 +60,7 @@ RecordDB::RecordStatus RecordDB::loadNext()
 	StorageStatus status = storage.find(FIND_MODE_NEXT, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
 	if (status != STORAGE_OK) {
 #if RECORD_BEDUG
-		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load next record");
+		LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error find next record");
 #endif
 		EXIT_CODE(RECORD_ERROR);
 	}

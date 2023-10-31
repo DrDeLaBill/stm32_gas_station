@@ -61,11 +61,13 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, DIGITS_D_Pin|DIGITS_E_Pin|DIGITS_C_Pin|DIGITS_G_Pin
-                          |DIGITS_DP_Pin|DIGITS_F_Pin|DIGITS_A_Pin|DIGITS_B_Pin
-                          |KBD_BL_Pin, GPIO_PIN_RESET);
+                          |DIGITS_DP_Pin|DIGITS_F_Pin|DIGITS_A_Pin|DIGITS_B_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(KBD_ROW4_GPIO_Port, KBD_ROW4_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(KBD_BL_GPIO_Port, KBD_BL_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : PCPin PCPin PCPin PCPin */
   GPIO_InitStruct.Pin = VALVE1_Pin|VALVE2_Pin|DIGITS_5_Pin|DIGITS_6_Pin;
@@ -99,6 +101,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PtPin */
+  GPIO_InitStruct.Pin = GUN_SWITCH_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GUN_SWITCH_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PAPin PAPin */
   GPIO_InitStruct.Pin = RFID_D1_Pin|RFID_D0_Pin;

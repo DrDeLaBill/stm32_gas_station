@@ -18,6 +18,8 @@ public:
 
 	void tick();
 
+	bool hasError();
+
 protected:
 	util_timer_t timer;
 	bool hasErrors;
@@ -117,9 +119,6 @@ class UIFSMError: public UIFSMBase
 {
 public:
 	UIFSMError();
-
-protected:
-	void proccess() override;
 };
 
 
@@ -135,6 +134,7 @@ public:
 
 	static bool checkStop();
 	static bool checkStart();
+	static bool checkGunOnBase();
 
 	static void setLoad();
 	static void resetLoad();

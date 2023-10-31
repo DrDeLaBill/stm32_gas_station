@@ -14,7 +14,7 @@
 #include "modbus_rtu_base.h"
 
 
-#define MB_REGISTER_BEDUG (false)
+#define MB_REGISTER_BEDUG (true)
 
 
 template <typename T>
@@ -66,8 +66,6 @@ public:
 			value >>= 8;
 		}
 	}
-
-	ModbusRegister<T> operator=(const ModbusRegister modbusRegister);
 
 	T get()
 	{

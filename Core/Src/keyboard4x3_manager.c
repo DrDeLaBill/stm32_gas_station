@@ -11,6 +11,7 @@
 
 
 #define KEYBOARD4X3_DEBOUNCE_DELAY_MS ((uint32_t)50)
+#define KEYBOARD4x3_ROW_DELAY_MS      ((uint32_t)5)
 #define KEYBOARD4X3_PRESS_DELAY_MS    ((uint32_t)5000)
 #define KEYBOARD4X3_RESET_DELAY_MS    ((uint32_t)30000)
 
@@ -114,19 +115,25 @@ void _keyboard4x3_fsm_set_row()
 		_keyboard4x3_show_buf();
 	}
 	_keyboard4x3_set_output_pin(keyboard4x3_state.cur_row);
+
+	util_timer_start(&keyboard4x3_state.wait_timer, KEYBOARD4x3_ROW_DELAY_MS);
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_check_button;
 }
 
 void _keyboard4x3_fsm_check_button()
 {
+	if (util_is_timer_wait(&keyboard4x3_state.wait_timer)) {
+		return;
+	}
+
 	GPIO_PinState state = HAL_GPIO_ReadPin(cols_pins[keyboard4x3_state.cur_col].port, cols_pins[keyboard4x3_state.cur_col].pin);
 	if (state == GPIO_PIN_RESET) {
 		util_timer_start(&keyboard4x3_state.wait_timer, KEYBOARD4X3_PRESS_DELAY_MS);
 		keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_wait_button;
 		return;
-	} else {
-		keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
 	}
+
+	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
 }
 
 void _keyboard4x3_fsm_wait_button()
@@ -154,20 +161,22 @@ void _keyboard4x3_fsm_register_button()
 	uint8_t col = keyboard4x3_state.cur_col;
 	uint8_t row = keyboard4x3_state.cur_row;
 
-	if (keyboard4x3_state.buffer_idx >= __arr_len(keyboard4x3_state.buffer)) {
-		memcpy(keyboard4x3_state.buffer, keyboard4x3_state.buffer + 1, sizeof(keyboard4x3_state.buffer) - 1);
-		keyboard4x3_state.buffer_idx = __arr_len(keyboard4x3_state.buffer) - 1;
-	}
-
 	uint8_t ch = keyboard_btns[row][col];
 	if (ch == '*') {
 		keyboard4x3_state.cancelPressed = true;
 	} else if (ch == '#') {
 		keyboard4x3_state.enterPressed = true;
-	} else {
+	}
+
+	if (keyboard4x3_state.buffer_idx >= __arr_len(keyboard4x3_state.buffer)) {
+		goto do_next_button;
+	}
+
+	if (ch >= '0' && ch <= '9') {
 		keyboard4x3_state.buffer[keyboard4x3_state.buffer_idx++] = ch;
 	}
 
+do_next_button:
 	keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
 
 	util_timer_start(&keyboard4x3_state.reset_timer, KEYBOARD4X3_RESET_DELAY_MS);
