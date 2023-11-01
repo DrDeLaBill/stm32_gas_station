@@ -442,6 +442,14 @@ void PumpFSMStart::proccess()
 {
 	hasStopped = false;
 
+	if (needStop) {
+#if PUMP_BEDUG
+		LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMStart->PumpFSMStop");
+#endif
+		Pump::statePtr = std::make_shared<PumpFSMStop>();
+		return;
+	}
+
 	if (Pump::isGunOnBase()) {
 		return;
 	}

@@ -335,6 +335,7 @@ UIFSMResult::UIFSMResult(): UIFSMBase(UIFSMResult::RESULT_DELAY)
 {
 	indicate_set_buffer(UI::result, KEYBOARD4X3_BUFFER_SIZE);
 	Access::close();
+	Pump::stop();
 }
 
 void UIFSMResult::proccess()
