@@ -77,7 +77,7 @@ eeprom_status_t eeprom_read(uint32_t addr, uint8_t* buf, uint16_t len)
     LOG_TAG_BEDUG(EEPROM_TAG, "eeprom read: device i2c address - 0x%02x\n", dev_addr);
 #endif
 
-    HAL_StatusTypeDef status;
+    HAL_StatusTypeDef status = HAL_BUSY;
     util_timer_t timer;
     util_timer_start(&timer, GENERAL_BUS_TIMEOUT_MS);
     while (util_is_timer_wait(&timer)) {
@@ -123,7 +123,7 @@ eeprom_status_t eeprom_write(uint32_t addr, uint8_t* buf, uint16_t len)
     LOG_TAG_BEDUG(EEPROM_TAG, "eeprom write: device i2c address - 0x%02x\n", dev_addr);
 #endif
 
-    HAL_StatusTypeDef status;
+    HAL_StatusTypeDef status = HAL_BUSY;
     util_timer_t timer;
     util_timer_start(&timer, EEPROM_TIMER_DELAY);
     while (util_is_timer_wait(&timer)) {

@@ -145,7 +145,7 @@ int main(void)
 	  PRINT_MESSAGE(MAIN_TAG, "REBOOT DEVICE\n");
   }
 
-  PRINT_MESSAGE(MAIN_TAG, "The device is started\n");
+  PRINT_MESSAGE(MAIN_TAG, "The device is loading\n");
 
   // Indicators timer start
   HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
@@ -316,6 +316,14 @@ void reset_eeprom_i2c()
 	HAL_GPIO_WritePin(EEPROM_SDA_GPIO_Port, EEPROM_SDA_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(EEPROM_SCL_GPIO_Port, EEPROM_SCL_Pin, GPIO_PIN_RESET);
 	HAL_Delay(100);
+
+	HAL_GPIO_WritePin(EEPROM_SDA_GPIO_Port, EEPROM_SDA_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(EEPROM_SCL_GPIO_Port, EEPROM_SCL_Pin, GPIO_PIN_SET);
+	HAL_Delay(100);
+
+	HAL_GPIO_WritePin(EEPROM_SDA_GPIO_Port, EEPROM_SDA_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(EEPROM_SCL_GPIO_Port, EEPROM_SCL_Pin, GPIO_PIN_RESET);
+	HAL_Delay(100);
 }
 
 bool general_check_errors()
@@ -369,22 +377,37 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+//	static uint32_t last_second = HAL_GetTick() / 1000;
+//	static uint32_t ui_counter = 0, ind_counter = 0;
 	if(htim->Instance == INDICATORS_TIM.Instance)
 	{
+		indicate_proccess();
+
+		indicate_display();
+
+//		ind_counter++;
+	} else if (htim->Instance == UI_TIM.Instance) {
 		keyboard4x3_proccess();
 
-		indicate_proccess();
-		indicate_display();
-	} else if (htim->Instance == UI_TIM.Instance) {
 		Pump::tick();
 
 		UI::UIProccess();
+
+//		ui_counter++;
 	}
+
+//	uint32_t cur_second = HAL_GetTick() / 1000;
+//	if (cur_second != last_second) {
+//		LOG_TAG_BEDUG(MAIN_TAG, "UI: %lu kFLOPS; IND: %lu kFLOPS", ui_counter, ind_counter);
+//		ui_counter = 0;
+//		ind_counter = 0;
+//		last_second = cur_second;
+//	}
 }
 
 int _write(int file, uint8_t *ptr, int len) {
-#ifdef DEBUG
     HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, len, GENERAL_BUS_TIMEOUT_MS);
+#ifdef DEBUG
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);
     }

@@ -24,6 +24,8 @@ uint8_t UI::result[] = {};
 bool UI::needLoad = false;
 std::shared_ptr<UIFSMBase> UI::ui = std::make_shared<UIFSMInit>();
 
+uint32_t UIFSMBase::targetMl = 0;
+
 
 void UI::UIProccess()
 {
@@ -148,6 +150,7 @@ void UIFSMWait::proccess()
 
 UIFSMInput::UIFSMInput(): UIFSMBase(UIFSMInput::INPUT_DELAY)
 {
+	UIFSMBase::targetMl = 0;
 	memset(UI::result, 0, KEYBOARD4X3_BUFFER_SIZE);
 	keyboard4x3_clear();
 	Pump::clear();
@@ -171,45 +174,118 @@ UIFSMStart::UIFSMStart(): UIFSMBase(0){ }
 void UIFSMStart::proccess()
 {
 	indicate_set_buffer_page();
-	uint32_t user_liters       = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
+	uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
 	uint32_t liters_multiplier = ML_IN_LTR;
 	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
 		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
 	}
 
-	uint32_t user_ml = user_liters * liters_multiplier;
+	UIFSMBase::targetMl = user_input * liters_multiplier;
 
-	if (user_liters >= GENERAL_SESSION_ML_MIN) {
+	if (UIFSMBase::targetMl >= GENERAL_SESSION_ML_MIN) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMCount");
+		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWaitCount");
 #endif
-		UI::ui = std::make_shared<UIFSMCount>();
+		UI::ui = std::make_shared<UIFSMWaitCount>(0);
 		Pump::clear();
 #if UI_BEDUG
 		LOG_TAG_BEDUG(UI::TAG, "pump set target");
 #endif
-		Pump::setTargetMl(user_ml);
+		Pump::setTargetMl(UIFSMBase::targetMl);
 		return;
 	}
 
 #if UI_BEDUG
 	LOG_TAG_BEDUG(UI::TAG, "invalid liters value");
+	LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWait");
 #endif
 	keyboard4x3_clear();
 	UI::ui = std::make_shared<UIFSMWait>();
 }
 
-UIFSMCount::UIFSMCount(): UIFSMBase(UIFSMCount::COUNT_DELAY) { }
+UIFSMWaitCount::UIFSMWaitCount(uint32_t lastMl): UIFSMBase(UIFSMCount::COUNT_DELAY), lastMl(lastMl) {}
+
+void UIFSMWaitCount::proccess()
+{
+	indicate_set_buffer_page();
+
+	uint32_t liters_multiplier = ML_IN_LTR;
+	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+	}
+	uint32_t curr_count = Pump::getCurrentMl();
+	if (curr_count > UIFSMBase::targetMl) {
+		curr_count = UIFSMBase::targetMl;
+	}
+	curr_count /= liters_multiplier;
+
+	if (Pump::hasStopped()) {
+#if UI_BEDUG
+		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult");
+#endif
+		UI::ui = std::make_shared<UIFSMResult>();
+	}
+
+	if (curr_count != this->lastMl) {
+#if UI_BEDUG
+		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMCount");
+#endif
+		UI::ui = std::make_shared<UIFSMCount>(this->lastMl);
+		return;
+	}
+}
+
+bool UIFSMWaitCount::checkState()
+{
+	if (UI::checkStop()) {
+		keyboard4x3_clear();
+		Pump::stop();
+#if UI_BEDUG
+		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (check stop)");
+#endif
+		UI::ui = std::make_shared<UIFSMResult>();
+		return false;
+	}
+
+	if (!util_is_timer_wait(&timer)) {
+		Pump::stop();
+#if UI_BEDUG
+		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (timer)");
+#endif
+		UI::ui = std::make_shared<UIFSMResult>();
+		return false;
+	}
+
+	return true;
+}
+
+UIFSMCount::UIFSMCount(uint32_t lastMl): UIFSMWaitCount(lastMl) { }
 
 void UIFSMCount::proccess()
 {
 	indicate_set_buffer_page();
+
 	uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = { 0 };
 	uint32_t liters_multiplier = ML_IN_LTR;
 	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
 		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
 	}
-	uint32_t curr_count = Pump::getCurrentMl() / liters_multiplier;
+	uint32_t curr_count = Pump::getCurrentMl();
+	if (curr_count > UIFSMBase::targetMl) {
+		curr_count = UIFSMBase::targetMl;
+	}
+	curr_count /= liters_multiplier;
+
+	if (curr_count == this->lastMl) {
+#if UI_BEDUG
+		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMWaitCount");
+#endif
+		UI::ui = std::make_shared<UIFSMWaitCount>(this->lastMl);
+		return;
+	}
+
+	this->lastMl = curr_count;
+
 	for (unsigned i = util_get_number_len(curr_count); i > 0; i--) {
 		buffer[i-1] = '0' + curr_count % 10;
 		curr_count /= 10;
@@ -234,14 +310,6 @@ bool UIFSMCount::checkState()
 		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
 #endif
 		UI::ui = std::make_shared<UIFSMResult>();
-		return false;
-	}
-
-	if (!util_is_timer_wait(&timer)) {
-#if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMWait");
-#endif
-		UI::ui = std::make_shared<UIFSMWait>();
 		return false;
 	}
 

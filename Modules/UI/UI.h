@@ -24,6 +24,8 @@ protected:
 	util_timer_t timer;
 	bool hasErrors;
 
+	static uint32_t targetMl;
+
 	virtual bool checkState();
 	virtual void proccess() {}
 };
@@ -77,17 +79,30 @@ protected:
 	void proccess() override;
 };
 
-class UIFSMCount: public UIFSMBase
+class UIFSMWaitCount: public UIFSMBase
 {
 public:
-	UIFSMCount();
+	UIFSMWaitCount(uint32_t lastMl);
 
 protected:
+	uint32_t lastMl;
+
 	void proccess() override;
 	bool checkState() override;
 
 private:
-	static const uint32_t COUNT_DELAY = 300000;
+	static const uint32_t COUNT_DELAY = 120000;
+
+};
+
+class UIFSMCount: public UIFSMWaitCount
+{
+public:
+	UIFSMCount(uint32_t lastMl);
+
+protected:
+	void proccess() override;
+	bool checkState() override;
 
 };
 

@@ -162,6 +162,7 @@ public:
 
 	static bool hasError();
 	static bool hasStopped();
+	static bool isGunOnBase();
 
 private:
 	static uint32_t lastUsedMl;

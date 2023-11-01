@@ -16,11 +16,12 @@
 #define PUMP_MD212_CYCLE_ML_VALUE       ((int32_t)1000)
 #define PUMP_MD212_CYCLE_INACCURACY     ((int32_t)20)
 #define PUMP_MD212_MLS_PER_TICK         ((int32_t)5)
+#define PUMP_MD212_MLS_COUNT_MIN        ((uint32_t)10)
 #define PUMP_MD212_MEASURE_DELAY_MS     ((uint32_t)300)
 #define PUMP_MD212_MEASURE_WORKDELAY_MS ((uint32_t)50)
 
 #define PUMP_ADC_READ_TIMEOUT_MS        ((uint32_t)100)
-#define PUMP_ADC_MEASURE_DELAY_MS       ((uint32_t)30)
+#define PUMP_ADC_MEASURE_DELAY_MS       ((uint32_t)5)
 #define PUMP_ADC_OVERHEAD               ((uint32_t)4000)
 #define PUMP_ADC_VALVE_MIN              ((uint32_t)1000)
 #define PUMP_ADC_VALVE_MAX              ((uint32_t)2000)
@@ -33,7 +34,7 @@
 #define PUMP_CHECK_STOP_DELAY_MS        ((uint32_t)5000)
 #define PUMP_MEASURE_BUFFER_SIZE        ((uint8_t)10)
 
-#define PUMP_SLOW_ML_VALUE              ((uint32_t)5000)
+#define PUMP_SLOW_ML_VALUE              ((uint32_t)1000)
 
 
 std::shared_ptr<PumpFSMBase> Pump::statePtr;
@@ -91,6 +92,11 @@ void Pump::start()
 void Pump::stop()
 {
 	Pump::statePtr->stop();
+}
+
+bool Pump::isGunOnBase()
+{
+	return HAL_GPIO_ReadPin(GUN_SWITCH_GPIO_Port, GUN_SWITCH_Pin);
 }
 
 void Pump::clear()
@@ -348,10 +354,16 @@ uint32_t PumpFSMBase::getADCValve()
 int32_t PumpFSMBase::getEncoderTicks()
 {
 	uint32_t value = __HAL_TIM_GET_COUNTER(&MD212_TIM);
+	int32_t result = 0;
 	if (value >= Pump::getPumpEncoderMiddle()) {
-		return (int32_t)(value - Pump::getPumpEncoderMiddle());
+		result = (int32_t)(value - Pump::getPumpEncoderMiddle());
+	} else {
+		result = -((int32_t)(Pump::getPumpEncoderMiddle() - value));
 	}
-	return -((int32_t)(Pump::getPumpEncoderMiddle() - value));
+	if (__abs(result) <= PUMP_MD212_MLS_COUNT_MIN) {
+		return 0;
+	}
+	return result;
 }
 
 bool PumpFSMBase::pumpHasStopped()
@@ -430,10 +442,12 @@ void PumpFSMStart::proccess()
 {
 	hasStopped = false;
 
-	Pump::resetEncoder();
+	if (Pump::isGunOnBase()) {
+		return;
+	}
 
-	this->setPumpPower(GPIO_PIN_SET);
 	this->setValve1Power(GPIO_PIN_SET);
+	this->setPumpPower(GPIO_PIN_SET);
 	this->setValve2Power(GPIO_PIN_SET);
 
 #if PUMP_BEDUG
@@ -494,6 +508,17 @@ void PumpFSMWork::proccess()
 		LOG_TAG_BEDUG(Pump::TAG, "pump isn't working: current gas ticks=%ld; target=%lu", currentEncoderMl, targetMl);
 #endif
 		Pump::resetEncoder();
+		return;
+	}
+
+	if (Pump::isGunOnBase()) {
+#if PUMP_BEDUG
+		LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWork->PumpFSMStop");
+#endif
+		Pump::statePtr = std::make_shared<PumpFSMStop>();
+	}
+
+	if (currentEncoderMl == 0) {
 		return;
 	}
 
