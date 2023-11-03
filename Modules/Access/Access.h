@@ -12,18 +12,18 @@
 class Access
 {
 private:
-	static const char TAG[];
+    static const char TAG[];
 
-	static util_timer_t timer;
-	static uint32_t card;
-	static bool granted;
+    static util_timer_t timer;
+    static uint32_t card;
+    static bool granted;
 
 public:
-	static void tick();
+    static void tick();
 
-	static uint32_t getCard();
-	static bool isGranted();
-	static void close();
+    static uint32_t getCard();
+    static bool isGranted();
+    static void close();
 };
 
 

@@ -20,10 +20,10 @@ extern "C" {
 
 
 typedef enum _eeprom_status_t {
-	EEPROM_OK = 0x00,
-	EEPROM_ERROR,
-	EEPROM_ERROR_OOM,
-	EEPROM_ERROR_BUSY
+    EEPROM_OK = 0x00,
+    EEPROM_ERROR,
+    EEPROM_ERROR_OOM,
+    EEPROM_ERROR_BUSY
 } eeprom_status_t;
 
 

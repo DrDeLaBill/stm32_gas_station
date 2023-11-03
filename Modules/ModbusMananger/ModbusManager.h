@@ -69,6 +69,8 @@ private:
 #if MB_MANAGER_BEDUG
     static uint16_t counter;
     static uint8_t request[20];
+
+    static void showLogLine();
 #endif
     static uint16_t data_length;
     static std::unique_ptr<uint8_t[]> data;

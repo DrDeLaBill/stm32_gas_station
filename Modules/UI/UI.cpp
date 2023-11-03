@@ -29,404 +29,404 @@ uint32_t UIFSMBase::targetMl = 0;
 
 void UI::UIProccess()
 {
-	Access::tick();
+    Access::tick();
 
-	if (ui->hasError()) {
-		return;
-	}
+    if (ui->hasError()) {
+        return;
+    }
 
-	if (UI::checkErrors()){
+    if (UI::checkErrors()){
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIProccess->UIFSMStop");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIProccess->UIFSMStop");
 #endif
-		ui = std::make_shared<UIFSMError>();
-		return;
-	}
+        ui = std::make_shared<UIFSMError>();
+        return;
+    }
 
-	std::shared_ptr<UIFSMBase> uiPtr;
-	if (UI::needToLoad()) {
-		uiPtr = std::make_shared<UIFSMLoad>();
-	} else {
-		uiPtr = ui;
-	}
-	uiPtr->tick();
+    std::shared_ptr<UIFSMBase> uiPtr;
+    if (UI::needToLoad()) {
+        uiPtr = std::make_shared<UIFSMLoad>();
+    } else {
+        uiPtr = ui;
+    }
+    uiPtr->tick();
 }
 
 bool UI::checkErrors()
 {
-	return general_check_errors();
+    return general_check_errors();
 }
 
 UIFSMBase::UIFSMBase(uint32_t delay)
 {
-	this->hasErrors = false;
-	memset(reinterpret_cast<void*>(&timer), 0, sizeof(timer));
-	util_timer_start(&timer, delay);
+    this->hasErrors = false;
+    memset(reinterpret_cast<void*>(&timer), 0, sizeof(timer));
+    util_timer_start(&timer, delay);
 }
 
 void UIFSMBase::tick()
 {
-	if (!this->checkState()) {
-		return;
-	}
-	this->proccess();
+    if (!this->checkState()) {
+        return;
+    }
+    this->proccess();
 }
 
 bool UIFSMBase::hasError()
 {
-	return this->hasErrors;
+    return this->hasErrors;
 }
 
 bool UIFSMBase::checkState()
 {
-	if (this->hasErrors) {
-		return false;
-	}
+    if (this->hasErrors) {
+        return false;
+    }
 
-	if (UI::needToLoad()) {
-		return false;
-	}
+    if (UI::needToLoad()) {
+        return false;
+    }
 
-	if (timer.delay && !util_is_timer_wait(&timer)) {
+    if (timer.delay && !util_is_timer_wait(&timer)) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMBase->UIFSMStop (check timer)");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMBase->UIFSMStop (check timer)");
 #endif
-		UI::ui = std::make_shared<UIFSMStop>();
-		Pump::stop();
-		return false;
-	}
+        UI::ui = std::make_shared<UIFSMStop>();
+        Pump::stop();
+        return false;
+    }
 
-	if (UI::checkStop()) {
+    if (UI::checkStop()) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMBase->UIFSMStop (check stop)");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMBase->UIFSMStop (check stop)");
 #endif
-		UI::ui = std::make_shared<UIFSMStop>();
-		Pump::stop();
-		return false;
-	}
+        UI::ui = std::make_shared<UIFSMStop>();
+        Pump::stop();
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 UIFSMInit::UIFSMInit(): UIFSMBase(0)
 {
-	indicate_set_wait_page();
-	Access::close();
+    indicate_set_wait_page();
+    Access::close();
 }
 
 void UIFSMInit::proccess()
 {
 #if UI_BEDUG
-	LOG_TAG_BEDUG(UI::TAG, "Set UIFSMInit->UIFSMWait");
+    LOG_TAG_BEDUG(UI::TAG, "Set UIFSMInit->UIFSMWait");
 #endif
-	UI::ui = std::make_shared<UIFSMWait>();
+    UI::ui = std::make_shared<UIFSMWait>();
 }
 
 UIFSMLoad::UIFSMLoad(): UIFSMBase(0)
 {
-	indicate_set_load_page();
+    indicate_set_load_page();
 }
 
 void UIFSMLoad::proccess() { }
 
 UIFSMWait::UIFSMWait(): UIFSMBase(0)
 {
-	keyboard4x3_clear();
-	Pump::clear();
+    keyboard4x3_clear();
+    Pump::clear();
 }
 
 void UIFSMWait::proccess()
 {
-	indicate_set_wait_page();
+    indicate_set_wait_page();
 
-	if (Access::isGranted()) {
+    if (Access::isGranted()) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMInput");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMInput");
 #endif
-		UI::ui = std::make_shared<UIFSMInput>();
-		UI::setCard(Access::getCard());
-	}
+        UI::ui = std::make_shared<UIFSMInput>();
+        UI::setCard(Access::getCard());
+    }
 }
 
 UIFSMInput::UIFSMInput(): UIFSMBase(UIFSMInput::INPUT_DELAY)
 {
-	UIFSMBase::targetMl = 0;
-	memset(UI::result, 0, KEYBOARD4X3_BUFFER_SIZE);
-	keyboard4x3_clear();
-	Pump::clear();
+    UIFSMBase::targetMl = 0;
+    memset(UI::result, 0, KEYBOARD4X3_BUFFER_SIZE);
+    keyboard4x3_clear();
+    Pump::clear();
 }
 
 void UIFSMInput::proccess()
 {
-	indicate_set_buffer_page();
-	indicate_set_buffer(keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
+    indicate_set_buffer_page();
+    indicate_set_buffer(keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
 
-	if (UI::checkStart()) {
+    if (UI::checkStart()) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMInput->UIFSMStart");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMInput->UIFSMStart");
 #endif
-		UI::ui = std::make_shared<UIFSMStart>();
-	}
+        UI::ui = std::make_shared<UIFSMStart>();
+    }
 }
 
 UIFSMStart::UIFSMStart(): UIFSMBase(0){ }
 
 void UIFSMStart::proccess()
 {
-	indicate_set_buffer_page();
-	uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
-	uint32_t liters_multiplier = ML_IN_LTR;
-	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
-	}
+    indicate_set_buffer_page();
+    uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
+    uint32_t liters_multiplier = ML_IN_LTR;
+    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+        liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+    }
 
-	UIFSMBase::targetMl = user_input * liters_multiplier;
+    UIFSMBase::targetMl = user_input * liters_multiplier;
 
-	if (UIFSMBase::targetMl >= GENERAL_SESSION_ML_MIN) {
+    if (UIFSMBase::targetMl >= GENERAL_SESSION_ML_MIN) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWaitCount");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWaitCount");
 #endif
-		UI::ui = std::make_shared<UIFSMWaitCount>(0);
-		indicate_clear_buffer();
-		Pump::clear();
+        UI::ui = std::make_shared<UIFSMWaitCount>(0);
+        indicate_clear_buffer();
+        Pump::clear();
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "pump set target");
+        LOG_TAG_BEDUG(UI::TAG, "pump set target");
 #endif
-		Pump::setTargetMl(UIFSMBase::targetMl);
-		return;
-	}
+        Pump::setTargetMl(UIFSMBase::targetMl);
+        return;
+    }
 
 #if UI_BEDUG
-	LOG_TAG_BEDUG(UI::TAG, "invalid liters value");
-	LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWait");
+    LOG_TAG_BEDUG(UI::TAG, "invalid liters value");
+    LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWait");
 #endif
-	keyboard4x3_clear();
-	UI::ui = std::make_shared<UIFSMWait>();
+    keyboard4x3_clear();
+    UI::ui = std::make_shared<UIFSMWait>();
 }
 
 UIFSMWaitCount::UIFSMWaitCount(uint32_t lastMl): UIFSMBase(UIFSMCount::COUNT_DELAY), lastMl(lastMl) {}
 
 void UIFSMWaitCount::proccess()
 {
-	indicate_set_buffer_page();
+    indicate_set_buffer_page();
 
-	uint32_t liters_multiplier = ML_IN_LTR;
-	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
-	}
-	uint32_t curr_count = Pump::getCurrentMl();
-	if (curr_count > UIFSMBase::targetMl) {
-		curr_count = UIFSMBase::targetMl;
-	}
-	curr_count /= liters_multiplier;
+    uint32_t liters_multiplier = ML_IN_LTR;
+    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+        liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+    }
+    uint32_t curr_count = Pump::getCurrentMl();
+    if (curr_count > UIFSMBase::targetMl) {
+        curr_count = UIFSMBase::targetMl;
+    }
+    curr_count /= liters_multiplier;
 
-	if (Pump::hasStopped()) {
+    if (Pump::hasStopped()) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult");
 #endif
-		UI::ui = std::make_shared<UIFSMResult>();
-	}
+        UI::ui = std::make_shared<UIFSMResult>();
+    }
 
-	if (curr_count != this->lastMl) {
+    if (curr_count != this->lastMl) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMCount");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMCount");
 #endif
-		UI::ui = std::make_shared<UIFSMCount>(this->lastMl);
-		return;
-	}
+        UI::ui = std::make_shared<UIFSMCount>(this->lastMl);
+        return;
+    }
 }
 
 bool UIFSMWaitCount::checkState()
 {
-	if (UI::checkStop()) {
-		keyboard4x3_clear();
-		Pump::stop();
+    if (UI::checkStop()) {
+        keyboard4x3_clear();
+        Pump::stop();
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (check stop)");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (check stop)");
 #endif
-		UI::ui = std::make_shared<UIFSMResult>();
-		return false;
-	}
+        UI::ui = std::make_shared<UIFSMResult>();
+        return false;
+    }
 
-	if (!util_is_timer_wait(&timer)) {
-		Pump::stop();
+    if (!util_is_timer_wait(&timer)) {
+        Pump::stop();
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (timer)");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (timer)");
 #endif
-		UI::ui = std::make_shared<UIFSMResult>();
-		return false;
-	}
+        UI::ui = std::make_shared<UIFSMResult>();
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 UIFSMCount::UIFSMCount(uint32_t lastMl): UIFSMWaitCount(lastMl) { }
 
 void UIFSMCount::proccess()
 {
-	indicate_set_buffer_page();
+    indicate_set_buffer_page();
 
-	uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = { 0 };
-	uint32_t liters_multiplier = ML_IN_LTR;
-	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
-	}
-	uint32_t curr_count = Pump::getCurrentMl();
-	if (curr_count > UIFSMBase::targetMl) {
-		curr_count = UIFSMBase::targetMl;
-	}
-	curr_count /= liters_multiplier;
+    uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = { 0 };
+    uint32_t liters_multiplier = ML_IN_LTR;
+    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+        liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+    }
+    uint32_t curr_count = Pump::getCurrentMl();
+    if (curr_count > UIFSMBase::targetMl) {
+        curr_count = UIFSMBase::targetMl;
+    }
+    curr_count /= liters_multiplier;
 
-	if (curr_count == this->lastMl) {
+    if (curr_count == this->lastMl) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMWaitCount");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMWaitCount");
 #endif
-		UI::ui = std::make_shared<UIFSMWaitCount>(this->lastMl);
-		return;
-	}
+        UI::ui = std::make_shared<UIFSMWaitCount>(this->lastMl);
+        return;
+    }
 
-	this->lastMl = curr_count;
+    this->lastMl = curr_count;
 
-	for (unsigned i = util_get_number_len(curr_count); i > 0; i--) {
-		buffer[i-1] = '0' + curr_count % 10;
-		curr_count /= 10;
-	}
-	indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
-	memcpy(UI::result, buffer, KEYBOARD4X3_BUFFER_SIZE);
+    for (unsigned i = util_get_number_len(curr_count); i > 0; i--) {
+        buffer[i-1] = '0' + curr_count % 10;
+        curr_count /= 10;
+    }
+    indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
+    memcpy(UI::result, buffer, KEYBOARD4X3_BUFFER_SIZE);
 
-	if (Pump::hasStopped()) {
+    if (Pump::hasStopped()) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
 #endif
-		UI::ui = std::make_shared<UIFSMResult>();
-	}
+        UI::ui = std::make_shared<UIFSMResult>();
+    }
 }
 
 bool UIFSMCount::checkState()
 {
-	if (UI::checkStop()) {
-		keyboard4x3_clear();
-		Pump::stop();
+    if (UI::checkStop()) {
+        keyboard4x3_clear();
+        Pump::stop();
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
 #endif
-		UI::ui = std::make_shared<UIFSMResult>();
-		return false;
-	}
+        UI::ui = std::make_shared<UIFSMResult>();
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 UIFSMStop::UIFSMStop(): UIFSMBase(0)
 {
-	keyboard4x3_clear();
-	Access::close();
-	Pump::stop();
+    keyboard4x3_clear();
+    Access::close();
+    Pump::stop();
 }
 
 void UIFSMStop::proccess()
 {
 #if UI_BEDUG
-	LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStop->UIFSMWait");
+    LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStop->UIFSMWait");
 #endif
-	UI::ui = std::make_shared<UIFSMWait>();
+    UI::ui = std::make_shared<UIFSMWait>();
 }
 
 UIFSMResult::UIFSMResult(): UIFSMBase(UIFSMResult::RESULT_DELAY)
 {
-	indicate_set_buffer(UI::result, KEYBOARD4X3_BUFFER_SIZE);
-	Access::close();
-	Pump::stop();
+    indicate_set_buffer(UI::result, KEYBOARD4X3_BUFFER_SIZE);
+    Access::close();
+    Pump::stop();
 }
 
 void UIFSMResult::proccess()
 {
-	indicate_set_buffer_page();
-	if (!Pump::hasStopped()) {
-		return;
-	}
-	if (Access::isGranted()) {
+    indicate_set_buffer_page();
+    if (!Pump::hasStopped()) {
+        return;
+    }
+    if (Access::isGranted()) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
 #endif
-		UI::ui = std::make_shared<UIFSMWait>();
-	}
+        UI::ui = std::make_shared<UIFSMWait>();
+    }
 }
 
 bool UIFSMResult::checkState()
 {
-	if (UI::checkStop()) {
+    if (UI::checkStop()) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
 #endif
-		UI::ui = std::make_shared<UIFSMWait>();
-		return false;
-	}
+        UI::ui = std::make_shared<UIFSMWait>();
+        return false;
+    }
 
-	if (!util_is_timer_wait(&timer)) {
+    if (!util_is_timer_wait(&timer)) {
 #if UI_BEDUG
-		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
 #endif
-		UI::ui = std::make_shared<UIFSMWait>();
-		return false;
-	}
+        UI::ui = std::make_shared<UIFSMWait>();
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 UIFSMError::UIFSMError(): UIFSMBase(0)
 {
-	this->hasErrors = true;
-	indicate_set_error_page();
-	Pump::stop();
+    this->hasErrors = true;
+    indicate_set_error_page();
+    Pump::stop();
 }
 
 bool UI::checkKeyboardStop()
 {
-	return keyboard4x3_is_cancel();
+    return keyboard4x3_is_cancel();
 }
 
 bool UI::checkKeyboardStart()
 {
-	return keyboard4x3_is_enter();
+    return keyboard4x3_is_enter();
 }
 
 bool UI::needToLoad()
 {
-	return needLoad && (typeid(*(UI::ui)) == typeid(UIFSMWait));
+    return needLoad && (typeid(*(UI::ui)) == typeid(UIFSMWait));
 }
 
 void UI::setLoad()
 {
-	needLoad = true;
+    needLoad = true;
 }
 
 void UI::resetLoad()
 {
-	needLoad = false;
+    needLoad = false;
 }
 
 void UI::setCard(uint32_t card)
 {
-	UI::lastCard = card;
+    UI::lastCard = card;
 }
 
 uint32_t UI::getCard()
 {
-	return UI::lastCard;
+    return UI::lastCard;
 }
 
 bool UI::checkStart()
 {
-	return UI::checkKeyboardStart() || HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
+    return UI::checkKeyboardStart() || HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
 }
 
 bool UI::checkStop()
 {
-	return UI::checkKeyboardStop() || HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
+    return UI::checkKeyboardStop() || HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
 }
 
 bool UI::checkGunOnBase()
 {
-	return HAL_GPIO_ReadPin(GUN_SWITCH_GPIO_Port, GUN_SWITCH_Pin);
+    return HAL_GPIO_ReadPin(GUN_SWITCH_GPIO_Port, GUN_SWITCH_Pin);
 }

@@ -68,7 +68,7 @@ public:
             T tmpValue = (((regValue >> 8) & 0x00FF) | ((regValue << 8) & 0xFF00));
             value |= (tmpValue << (16 * i));
 #if MB_REGISTER_BEDUG
-            LOG_BEDUG("%04X(value=%d) ", this->serializedData[i], static_cast<int>(this->serializedData[i]));
+            LOG_BEDUG("0x%04X(value=%d) ", this->serializedData[i], static_cast<int>(this->serializedData[i]));
 #endif
         }
 #if MB_REGISTER_BEDUG
@@ -94,7 +94,7 @@ public:
             this->serializedData[i/2] |= (static_cast<uint16_t>(value & 0xFF));
             value >>= 8;
 #if MB_REGISTER_BEDUG
-            LOG_BEDUG("%04X ", this->serializedData[i/2]);
+            LOG_BEDUG("0x%04X ", this->serializedData[i/2]);
 #endif
         }
 #if MB_REGISTER_BEDUG

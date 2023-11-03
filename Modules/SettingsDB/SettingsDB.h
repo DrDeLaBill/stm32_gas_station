@@ -7,62 +7,62 @@
 #include "StoragePage.h"
 
 
-#define SETTINGS_BEDUG (false)
+#define SETTINGS_BEDUG (true)
 
 
 class SettingsDB
 {
 public:
-	typedef enum _SettingsStatus {
-		SETTINGS_OK = 0,
-		SETTINGS_ERROR
-	} SettingsStatus;
+    typedef enum _SettingsStatus {
+        SETTINGS_OK = 0,
+        SETTINGS_ERROR
+    } SettingsStatus;
 
-	SettingsDB();
+    SettingsDB();
 
-	SettingsStatus load();
-	SettingsStatus save();
-	SettingsStatus reset();
+    SettingsStatus load();
+    SettingsStatus save();
+    SettingsStatus reset();
 
-	void set_cf_id(uint32_t cf_id);
-	void set_device_id(uint32_t device_id);
-	void set_cards(void* cards, uint16_t len);
-	void set_limits(void* limits, uint16_t len);
-	void set_log_id(uint32_t log_id);
-	void set_card(uint32_t card, uint16_t idx);
-	void set_limit(uint32_t limit, uint16_t idx);
-	void set_residue(uint32_t used_litters, uint32_t card);
+    void set_cf_id(uint32_t cf_id);
+    void set_device_id(uint32_t device_id);
+    void set_cards(void* cards, uint16_t len);
+    void set_limits(void* limits, uint16_t len);
+    void set_log_id(uint32_t log_id);
+    void set_card(uint32_t card, uint16_t idx);
+    void set_limit(uint32_t limit, uint16_t idx);
+    void set_residue(uint32_t used_litters, uint32_t card);
 
-	bool isLoaded();
+    bool isLoaded();
 
-	typedef struct __attribute__((packed)) _Settings  {
-		uint32_t cf_id;
-		uint32_t device_id;
-		uint32_t cards   [GENERAL_RFID_CARDS_COUNT];
-		uint32_t limits  [GENERAL_RFID_CARDS_COUNT]; // Gas limit per month
-//		uint32_t residues[GENERAL_RFID_CARDS_COUNT]; // Gas residues in this month (day?)
-		uint32_t log_id;
-	} Settings;
+    typedef struct __attribute__((packed)) _Settings  {
+        uint32_t cf_id;
+        uint32_t device_id;
+        uint32_t cards   [GENERAL_RFID_CARDS_COUNT];
+        uint32_t limits  [GENERAL_RFID_CARDS_COUNT]; // Gas limit per month
+//        uint32_t residues[GENERAL_RFID_CARDS_COUNT]; // Gas residues in this month (day?)
+        uint32_t log_id;
+    } Settings;
 
-	Settings settings;
+    Settings settings;
 
-	typedef struct _DeviceInfo {
-		bool     settings_loaded;
-		bool     access_granted;
-		bool     saved_new_data;
-	} DeviceInfo;
+    typedef struct _DeviceInfo {
+        bool     settings_loaded;
+        bool     access_granted;
+        bool     saved_new_data;
+    } DeviceInfo;
 
-	DeviceInfo info;
+    DeviceInfo info;
 
 private:
-	static const uint8_t SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE];
-	static constexpr const uint8_t TAG[] = "STG";
+    static const uint8_t SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE];
+    static constexpr const uint8_t TAG[] = "STG";
 
-	static const uint8_t SETTINGS_VERSION            = ((uint8_t)0x01);
-	static const uint8_t SETTINGS_DEVICE_ID_SIZE     = ((uint8_t)16);
-	static const uint32_t SETTINGS_DEVICE_ID_DEFAULT = ((uint32_t)1);
+    static const uint8_t SETTINGS_VERSION            = ((uint8_t)0x01);
+    static const uint8_t SETTINGS_DEVICE_ID_SIZE     = ((uint8_t)16);
+    static const uint32_t SETTINGS_DEVICE_ID_DEFAULT = ((uint32_t)1);
 
-	bool isSettingsLoaded;
+    bool isSettingsLoaded;
 };
 
 

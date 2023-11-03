@@ -20,14 +20,14 @@
     defined(STM32F105xC) || \
     defined(STM32F107xC)
     #include "stm32f1xx_hal.h"
-	#include "stm32f1xx_hal_i2c.h"
+    #include "stm32f1xx_hal_i2c.h"
 #elif defined(STM32F405xx) || \
-	defined(STM32F415xx) || \
-	defined(STM32F407xx) || \
-	defined(STM32F417xx) || \
-	defined(STM32F427xx) || \
-	defined(STM32F437xx) || \
-	defined(STM32F429xx) || \
+    defined(STM32F415xx) || \
+    defined(STM32F407xx) || \
+    defined(STM32F417xx) || \
+    defined(STM32F427xx) || \
+    defined(STM32F437xx) || \
+    defined(STM32F429xx) || \
     defined(STM32F439xx) || \
     defined(STM32F401xC) || \
     defined(STM32F401xE) || \
@@ -45,9 +45,9 @@
     defined(STM32F413xx) || \
     defined(STM32F423xx)
     #include "stm32f4xx_hal.h"
-	#include "stm32f4xx_hal_i2c.h"
+    #include "stm32f4xx_hal_i2c.h"
 #else
-	#error "Please select first the target STM32Fxxx device used in your application (in eeprom_at24cm01_storage.c file)"
+    #error "Please select first the target STM32Fxxx device used in your application (in eeprom_at24cm01_storage.c file)"
 #endif
 
 #include "main.h"
@@ -81,13 +81,13 @@ eeprom_status_t eeprom_read(uint32_t addr, uint8_t* buf, uint16_t len)
     util_timer_t timer;
     util_timer_start(&timer, GENERAL_BUS_TIMEOUT_MS);
     while (util_is_timer_wait(&timer)) {
-    	status = HAL_I2C_IsDeviceReady(&EEPROM_I2C, dev_addr, 1, GENERAL_BUS_TIMEOUT_MS);
-    	if (status == HAL_OK) {
-    		break;
-    	}
+        status = HAL_I2C_IsDeviceReady(&EEPROM_I2C, dev_addr, 1, GENERAL_BUS_TIMEOUT_MS);
+        if (status == HAL_OK) {
+            break;
+        }
     }
     if (status != HAL_OK) {
-    	return EEPROM_ERROR_BUSY;
+        return EEPROM_ERROR_BUSY;
     }
 
     status = HAL_I2C_Mem_Read(&EEPROM_I2C, dev_addr, (uint16_t)(addr & 0xFFFF), I2C_MEMADD_SIZE_16BIT, buf, len, GENERAL_BUS_TIMEOUT_MS);
@@ -127,13 +127,13 @@ eeprom_status_t eeprom_write(uint32_t addr, uint8_t* buf, uint16_t len)
     util_timer_t timer;
     util_timer_start(&timer, EEPROM_TIMER_DELAY);
     while (util_is_timer_wait(&timer)) {
-    	status = HAL_I2C_IsDeviceReady(&EEPROM_I2C, dev_addr, 1, GENERAL_BUS_TIMEOUT_MS);
-    	if (status == HAL_OK) {
-    		break;
-    	}
+        status = HAL_I2C_IsDeviceReady(&EEPROM_I2C, dev_addr, 1, GENERAL_BUS_TIMEOUT_MS);
+        if (status == HAL_OK) {
+            break;
+        }
     }
     if (status != HAL_OK) {
-    	return EEPROM_ERROR_BUSY;
+        return EEPROM_ERROR_BUSY;
     }
 
     status = HAL_I2C_Mem_Write(&EEPROM_I2C, dev_addr, (uint16_t)(addr & 0xFFFF), I2C_MEMADD_SIZE_16BIT, buf, len, GENERAL_BUS_TIMEOUT_MS);
@@ -153,5 +153,5 @@ eeprom_status_t eeprom_write(uint32_t addr, uint8_t* buf, uint16_t len)
 
 uint32_t eeprom_get_size()
 {
-	return EEPROM_PAGE_SIZE * EEPROM_PAGES_COUNT;
+    return EEPROM_PAGE_SIZE * EEPROM_PAGES_COUNT;
 }
