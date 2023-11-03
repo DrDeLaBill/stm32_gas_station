@@ -187,6 +187,7 @@ void UIFSMStart::proccess()
 		LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWaitCount");
 #endif
 		UI::ui = std::make_shared<UIFSMWaitCount>(0);
+		indicate_clear_buffer();
 		Pump::clear();
 #if UI_BEDUG
 		LOG_TAG_BEDUG(UI::TAG, "pump set target");

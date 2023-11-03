@@ -126,32 +126,44 @@ void SettingsDB::set_cf_id(uint32_t cf_id)
 {
 	if (cf_id) {
 		settings.cf_id = cf_id;
+		this->save();
 	}
-	this->save();
 }
 
 void SettingsDB::set_device_id(uint32_t device_id)
 {
 	if (device_id) {
 		settings.device_id = device_id;
+		this->save();
 	}
-	this->save();
 }
 
 void SettingsDB::set_cards(void* cards, uint16_t len)
 {
+	if (len > __arr_len(settings.cards)) {
+		return;
+	}
+	if (memcmp(settings.cards, cards, std::min(static_cast<unsigned>(len), sizeof(settings.cards)))) {
+		return;
+	}
 	if (cards) {
 		memcpy(settings.cards, cards, std::min(static_cast<unsigned>(len), sizeof(settings.cards)));
+		this->save();
 	}
-	this->save();
 }
 
 void SettingsDB::set_limits(void* limits, uint16_t len)
 {
+	if (len > __arr_len(settings.limits)) {
+		return;
+	}
+	if (memcmp(settings.limits, limits, std::min(static_cast<unsigned>(len), sizeof(settings.limits)))) {
+		return;
+	}
 	if (limits) {
 		memcpy(settings.limits, limits, std::min(static_cast<unsigned>(len), sizeof(settings.limits)));
+		this->save();
 	}
-	this->save();
 }
 
 void SettingsDB::set_log_id(uint32_t log_id)
@@ -161,17 +173,25 @@ void SettingsDB::set_log_id(uint32_t log_id)
 
 void SettingsDB::set_card(uint32_t card, uint16_t idx)
 {
-	if (idx < __arr_len(settings.cards)) {
-		settings.cards[idx] = card;
+	if (idx >= __arr_len(settings.cards)) {
+		return;
 	}
+	if (settings.cards[idx] == card) {
+		return;
+	}
+	settings.cards[idx] = card;
 	this->save();
 }
 
 void SettingsDB::set_limit(uint32_t limit, uint16_t idx)
 {
-	if (idx < __arr_len(settings.limits)) {
-		settings.limits[idx] = limit;
+	if (idx >= __arr_len(settings.limits)) {
+		return;
 	}
+	if (settings.limits[idx] == limit) {
+		return;
+	}
+	settings.limits[idx] = limit;
 	this->save();
 }
 

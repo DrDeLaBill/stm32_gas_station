@@ -26,12 +26,12 @@ extern "C" {
     defined(STM32F107xC)
     #include "stm32f1xx_hal.h"
 #elif defined(STM32F405xx) || \
-	defined(STM32F415xx) || \
-	defined(STM32F407xx) || \
-	defined(STM32F417xx) || \
-	defined(STM32F427xx) || \
-	defined(STM32F437xx) || \
-	defined(STM32F429xx) || \
+    defined(STM32F415xx) || \
+    defined(STM32F407xx) || \
+    defined(STM32F417xx) || \
+    defined(STM32F427xx) || \
+    defined(STM32F437xx) || \
+    defined(STM32F429xx) || \
     defined(STM32F439xx) || \
     defined(STM32F401xC) || \
     defined(STM32F401xE) || \
@@ -50,7 +50,7 @@ extern "C" {
     defined(STM32F423xx)
     #include "stm32f4xx_hal.h"
 #else
-	#error "Please select first the target STM32Fxxx device used in your application (in eeprom_at24cm01_storage.c file)"
+    #error "Please select first the target STM32Fxxx device used in your application (in eeprom_at24cm01_storage.c file)"
 #endif
 
 
@@ -91,8 +91,8 @@ extern "C" {
 
 
 typedef struct _util_timer_t {
-	uint32_t start;
-	uint32_t delay;
+    uint32_t start;
+    uint32_t delay;
 } util_timer_t;
 
 
@@ -101,8 +101,8 @@ bool     util_is_timer_wait(util_timer_t* tm);
 
 
 typedef struct _util_port_pin_t {
-	GPIO_TypeDef* port;
-	uint16_t      pin;
+    GPIO_TypeDef* port;
+    uint16_t      pin;
 } util_port_pin_t;
 
 
@@ -115,7 +115,7 @@ uint8_t  util_get_number_len(int number);
 
 #ifdef DEBUG
 
-#define LOG_TAG_BEDUG(MODULE_TAG, format, ...) if (strlen(MODULE_TAG)) { printf("%09lu->%s: \t", HAL_GetTick(), MODULE_TAG); } printf(format __VA_OPT__(,) __VA_ARGS__); printf("\n");
+#define LOG_TAG_BEDUG(MODULE_TAG, format, ...) if (strlen(MODULE_TAG)) { printf("%09lu->%s:\t", HAL_GetTick(), MODULE_TAG); } printf(format __VA_OPT__(,) __VA_ARGS__); printf("\n");
 #define LOG_BEDUG(format, ...)                 printf(format __VA_OPT__(,) __VA_ARGS__);
 
 #else /* DEBUG */

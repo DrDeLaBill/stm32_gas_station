@@ -153,7 +153,7 @@ int _write(int file, uint8_t *ptr, int len);
 // General settings
 #define GENERAL_RFID_CARDS_COUNT ((uint16_t)20)
 #define GENERAL_BUS_TIMEOUT_MS   ((uint32_t)100)
-#define GENERAL_SESSION_ML_MIN   ((uint32_t)200)
+#define GENERAL_SESSION_ML_MIN   ((uint32_t)2000)
 #define GENERAL_MODBUS_SLAVE_ID  ((uint8_t)0x01)
 
 // Defines

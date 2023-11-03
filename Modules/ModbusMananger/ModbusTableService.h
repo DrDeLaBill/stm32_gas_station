@@ -13,8 +13,8 @@
 class ModbusTableService
 {
 public:
-	static std::shared_ptr<uint16_t[]> getRegisters(register_type_t register_type, uint32_t id, uint32_t reg_count);
-	static void setRegisters(register_type_t register_type, uint32_t id, std::shared_ptr<uint16_t[]> regs, uint8_t reg_count);
+    static std::shared_ptr<uint16_t[]> getRegisters(register_type_t register_type, uint32_t id, uint32_t reg_count);
+    static void setRegisters(register_type_t register_type, uint32_t id, std::shared_ptr<uint16_t[]> regs, uint8_t reg_count);
 };
 
 #endif

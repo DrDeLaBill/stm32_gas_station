@@ -22,12 +22,12 @@
     defined(STM32F107xC)
     #include "stm32f1xx_hal.h"
 #elif defined(STM32F405xx) || \
-	defined(STM32F415xx) || \
-	defined(STM32F407xx) || \
-	defined(STM32F417xx) || \
-	defined(STM32F427xx) || \
-	defined(STM32F437xx) || \
-	defined(STM32F429xx) || \
+    defined(STM32F415xx) || \
+    defined(STM32F407xx) || \
+    defined(STM32F417xx) || \
+    defined(STM32F427xx) || \
+    defined(STM32F437xx) || \
+    defined(STM32F429xx) || \
     defined(STM32F439xx) || \
     defined(STM32F401xC) || \
     defined(STM32F401xE) || \
@@ -46,7 +46,7 @@
     defined(STM32F423xx)
     #include "stm32f4xx_hal.h"
 #else
-	#error "Please select first the target STM32Fxxx device used in your application (in eeprom_at24cm01_storage.c file)"
+    #error "Please select first the target STM32Fxxx device used in your application (in eeprom_at24cm01_storage.c file)"
 #endif
 
 #include "main.h"
@@ -60,38 +60,40 @@
 class ModbusManager
 {
 private:
-	static const char TAG[];
+    static const char TAG[];
 
-	static const uint8_t SLAVE_ID = GENERAL_MODBUS_SLAVE_ID;
+    static const uint8_t SLAVE_ID = GENERAL_MODBUS_SLAVE_ID;
 
-	static UART_HandleTypeDef* huart;
+    static UART_HandleTypeDef* huart;
 
 #if MB_MANAGER_BEDUG
-	static uint16_t counter;
-	static uint8_t request[20];
+    static uint16_t counter;
+    static uint8_t request[20];
 #endif
-	static uint16_t data_length;
-	static std::unique_ptr<uint8_t[]> data;
-	static util_timer_t timer;
+    static uint16_t data_length;
+    static std::unique_ptr<uint8_t[]> data;
+    static util_timer_t timer;
 
-	static bool recievedNewData;
-	static bool requestInProgress;
+    static bool recievedNewData;
+    static bool requestInProgress;
 
 
-	static void response_data_handler(uint8_t* data, uint32_t len);
-	static void request_error_handler();
-	static void send_data();
+    static void response_data_handler(uint8_t* data, uint32_t len);
+    static void request_error_handler();
+    static void send_data();
 
-	static void reset();
+    static void reset();
 
-	void load();
-	void save();
+    static bool isWriteCommand(uint8_t command);
+
+    void loadData();
+    void updateData();
 
 public:
-	ModbusManager(UART_HandleTypeDef* huart);
+    ModbusManager(UART_HandleTypeDef* huart);
 
-	void tick();
-	void recirveByte(uint8_t byte);
+    void tick();
+    void recieveByte(uint8_t byte);
 };
 
 

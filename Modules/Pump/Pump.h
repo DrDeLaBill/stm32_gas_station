@@ -1,7 +1,6 @@
 /* Copyright © 2023 Georgy E. All rights reserved. */
 
-#ifndef PUMP_H
-#define PUMP_H
+#pragma once
 
 
 #include <memory>
@@ -25,7 +24,11 @@ public:
 	void start();
 	void stop();
 	void setTargetMl(uint32_t targetMl);
-	uint32_t getCurrentMl();
+
+	static uint32_t getCurrentMl();
+#if PUMP_BEDUG
+	static uint32_t getDebugTicks();
+#endif
 
 	bool pumpHasStopped();
 	bool foundError();
@@ -44,7 +47,8 @@ protected:
 	static uint32_t     pumpBuf [PUMP_MEASURE_BUFFER_SIZE];
 	static int32_t      md212Buf[PUMP_MEASURE_BUFFER_SIZE];
 
-	static uint32_t     currentMl;
+	static uint32_t     currentMlBase;
+	static int32_t      currentMlAdd;
 
 	static util_timer_t waitTimer;
 	static util_timer_t errorTimer;
@@ -53,6 +57,12 @@ protected:
 	static bool         needStop;
 
 	static bool         hasStopped;
+
+#if PUMP_BEDUG
+	static uint32_t     debugTicksBase;
+	static uint32_t     debugTicksAdd;
+#endif
+
 
 	bool isEnabled();
 	bool isOperable();
@@ -64,9 +74,10 @@ protected:
 	void setValve1Power(GPIO_PinState enable_state);
 	void setValve2Power(GPIO_PinState enable_state);
 
-	int32_t  getEncoderTicks();
-
 	void setError();
+
+	static int32_t getCurrentEncoderMl();
+	static int32_t getEncoderTicks();
 
 private:
 	uint32_t getADCPump();
@@ -168,6 +179,3 @@ private:
 	static uint32_t lastUsedMl;
 
 };
-
-
-#endif
