@@ -57,6 +57,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+class StorageDriver: public IStorageDriver
+{
+public:
+    StorageDriver() {}
+	StorageStatus read(uint32_t address, uint8_t* data, uint32_t len) override;
+	StorageStatus write(uint32_t address, uint8_t* data, uint32_t len) override;
+};
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -93,10 +100,10 @@ void reset_eeprom_i2c();
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+StorageDriver driver;
 StorageAT storage(
     eeprom_get_size(),
-    read_driver,
-    write_driver
+	&driver
 );
 
 ModbusManager mbManager(&MODBUS_UART);
@@ -334,7 +341,7 @@ bool general_check_errors()
     return false;
 }
 
-StorageStatus read_driver(uint32_t address, uint8_t* data, uint32_t len)
+StorageStatus StorageDriver::read(uint32_t address, uint8_t* data, uint32_t len)
 {
     eeprom_status_t status = eeprom_read(address, data, len);
     if (status == EEPROM_ERROR_BUSY) {
@@ -346,7 +353,7 @@ StorageStatus read_driver(uint32_t address, uint8_t* data, uint32_t len)
     return STORAGE_OK;
 };
 
-StorageStatus write_driver(uint32_t address, uint8_t* data, uint32_t len)
+StorageStatus StorageDriver::write(uint32_t address, uint8_t* data, uint32_t len)
 {
     eeprom_status_t status = eeprom_write(address, data, len);
     if (status == EEPROM_ERROR_BUSY) {

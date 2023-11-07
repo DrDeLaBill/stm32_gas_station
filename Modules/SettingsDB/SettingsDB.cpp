@@ -172,6 +172,9 @@ void SettingsDB::set_limits(void* limits, uint16_t len)
 
 void SettingsDB::set_log_id(uint32_t log_id)
 {
+	if (settings.log_id != log_id) {
+		info.saved_new_data = true;
+	}
     settings.log_id = log_id;
 }
 
