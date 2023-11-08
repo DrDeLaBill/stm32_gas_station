@@ -351,20 +351,26 @@ void ModbusManager::updateData()
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Save record time");
 #endif
-    for (unsigned i = 0, addr = reg32->getNextAddress(); i < __arr_len(record.record.time); i++) {
-        reg8 = ModbusRegister<uint8_t>::createRegister(
-            MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
-            addr,
-            record.record.time[i]
-        )->save();
-        addr = reg8->getNextAddress();
-    }
+    RTC_DateTypeDef date = {};
+    date.Year = record.record.time[0];
+	date.Month = record.record.time[1];
+	date.Date = record.record.time[2];
+    RTC_TimeTypeDef time = {};
+    time.Hours = record.record.time[3];
+	time.Minutes = record.record.time[4];
+	time.Seconds = record.record.time[5];
+    reg32 = ModbusRegister<uint32_t>::createRegister(
+        MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
+        reg32->getNextAddress(),
+        datetime_to_seconds(&date, &time)
+    )->save();
+
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Save record card");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
-        reg8->getNextAddress(),
+        reg32->getNextAddress(),
         record.record.card
     )->save();
 #if MB_MANAGER_BEDUG

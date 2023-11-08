@@ -101,3 +101,70 @@ void clock_save_date(RTC_DateTypeDef* date)
         LOG_TAG_BEDUG(CLOCK_TAG, "date was not saved");
     }
 }
+
+enum Months {
+	JANUARY = 0,
+	FEBRUARY,
+	MARCH,
+	APRIL,
+	MAY,
+	JUNE,
+	JULY,
+	AUGUST,
+	SEPTEMBER,
+	OCTOBER,
+	NOVEMBER,
+	DECEMBER
+};
+uint32_t datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
+{
+	uint32_t days = date->Year * 365;
+	if (date->Year > 0) {
+		days += (date->Year / 4) + 1;
+	}
+	for (unsigned i = 0; i < date->Month - 1; i++) {
+		switch (i) {
+		case JANUARY:
+			days += 31;
+			break;
+		case FEBRUARY:
+			days += ((date->Year % 4 == 0) ? 29 : 28);
+			break;
+		case MARCH:
+			days += 31;
+			break;
+		case APRIL:
+			days += 30;
+			break;
+		case MAY:
+			days += 31;
+			break;
+		case JUNE:
+			days += 30;
+			break;
+		case JULY:
+			days += 31;
+			break;
+		case AUGUST:
+			days += 31;
+			break;
+		case SEPTEMBER:
+			days += 30;
+			break;
+		case OCTOBER:
+			days += 31;
+			break;
+		case NOVEMBER:
+			days += 30;
+			break;
+		case DECEMBER:
+			days += 31;
+			break;
+		};
+	}
+	days += (date->Date - 1);
+	uint32_t hours = days * 24 + time->Hours;
+	uint32_t minutes = hours * 60 + time->Minutes;
+	uint32_t seconds = minutes * 60 + time->Seconds;
+	return seconds;
+}
