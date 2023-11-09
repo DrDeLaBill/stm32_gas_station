@@ -136,16 +136,16 @@ int _write(int file, uint8_t *ptr, int len);
 #define KBD_ROW3_GPIO_Port GPIOC
 #define KBD_ROW4_Pin GPIO_PIN_2
 #define KBD_ROW4_GPIO_Port GPIOD
-#define KBD_COL3_Pin GPIO_PIN_4
-#define KBD_COL3_GPIO_Port GPIOB
+#define KBD_COL1_Pin GPIO_PIN_4
+#define KBD_COL1_GPIO_Port GPIOB
 #define KBD_COL2_Pin GPIO_PIN_5
 #define KBD_COL2_GPIO_Port GPIOB
 #define EEPROM_SCL_Pin GPIO_PIN_6
 #define EEPROM_SCL_GPIO_Port GPIOB
 #define EEPROM_SDA_Pin GPIO_PIN_7
 #define EEPROM_SDA_GPIO_Port GPIOB
-#define KBD_COL1_Pin GPIO_PIN_8
-#define KBD_COL1_GPIO_Port GPIOB
+#define KBD_COL3_Pin GPIO_PIN_8
+#define KBD_COL3_GPIO_Port GPIOB
 #define KBD_BL_Pin GPIO_PIN_9
 #define KBD_BL_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */

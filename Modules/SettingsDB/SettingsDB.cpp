@@ -7,6 +7,7 @@
 #include "StorageAT.h"
 
 #include "utils.h"
+#include "clock.h"
 
 
 #define EXIT_CODE(_code_) { UI::resetLoad(); return _code_; }
@@ -50,6 +51,14 @@ SettingsDB::SettingsStatus SettingsDB::load()
         EXIT_CODE(SETTINGS_ERROR);
     }
 
+    if (tmpSettings.cf_id != SETTINGS_VERSION) {
+#if SETTINGS_BEDUG
+        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error settings version");
+#endif
+        this->isSettingsLoaded = false;
+        EXIT_CODE(SETTINGS_ERROR);
+    }
+
     memcpy(reinterpret_cast<void*>(&this->settings), reinterpret_cast<void*>(&tmpSettings), sizeof(this->settings));
 
     this->isSettingsLoaded = true;
@@ -69,24 +78,28 @@ SettingsDB::SettingsStatus SettingsDB::save()
     UI::setLoad();
 
     uint32_t address = 0;
-    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
+    StorageFindMode mode = FIND_MODE_EQUAL;
+    StorageStatus status = storage.find(mode, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
     if (status == STORAGE_NOT_FOUND) {
-        status = storage.find(FIND_MODE_EMPTY, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
+    	mode = FIND_MODE_EMPTY;
+        status = storage.find(mode, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
     }
     if (status == STORAGE_NOT_FOUND) {
         //TODO: save on first page
     }
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error save settings");
+        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error find settings");
 #endif
         EXIT_CODE(SETTINGS_ERROR);
     }
 
-    status = storage.deleteData(address);
+    if (mode != FIND_MODE_EMPTY) {
+    	status = storage.deleteData(address);
+    }
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error rewrite settings");
+        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error delete settings");
 #endif
         EXIT_CODE(SETTINGS_ERROR);
     }
@@ -114,13 +127,16 @@ SettingsDB::SettingsStatus SettingsDB::reset()
     LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "reset settings");
 #endif
 
-    settings.cf_id     = SETTINGS_VERSION;
-    settings.log_id    = 0;
-    settings.device_id = SETTINGS_DEVICE_ID_DEFAULT;
+    settings.cf_id      = SETTINGS_VERSION;
+    settings.log_id     = 0;
+    settings.device_id  = SETTINGS_DEVICE_ID_DEFAULT;
+    settings.last_day   = clock_get_date();
+    settings.last_month = clock_get_month();
 
     memset(settings.cards, 0, sizeof(settings.cards));
     memset(settings.limits, 0, sizeof(settings.limits));
-//    memset(settings.residues, 0, sizeof(settings.residues));
+    memset(settings.limit_type, LIMIT_DAY, sizeof(settings.limit_type));
+    memset(settings.used_liters, 0, sizeof(settings.used_liters));
 
     return this->save();
 }
@@ -128,6 +144,36 @@ SettingsDB::SettingsStatus SettingsDB::reset()
 bool SettingsDB::isLoaded()
 {
     return this->isSettingsLoaded;
+}
+
+SettingsDB::SettingsStatus SettingsDB::getCardIdx(uint32_t card, uint16_t* idx)
+{
+	if (!card) {
+		return SETTINGS_ERROR;
+	}
+	for (unsigned i = 0; i < __arr_len(settings.cards); i++) {
+		if (settings.cards[i] == card) {
+			*idx = i;
+			return SETTINGS_OK;
+		}
+	}
+	return SETTINGS_ERROR;
+}
+
+void SettingsDB::checkResidues()
+{
+	bool settingsChanged = false;
+	for (unsigned i = 0; i < __arr_len(settings.used_liters); i++) {
+		if ((settings.limit_type[i] == LIMIT_DAY && settings.last_day != clock_get_date()) ||
+			(settings.limit_type[i] == LIMIT_MONTH && settings.last_month != clock_get_month())
+		) {
+			settings.used_liters[i] = 0;
+			settingsChanged = true;
+		}
+	}
+	if (settingsChanged) {
+		this->save();
+	}
 }
 
 void SettingsDB::set_cf_id(uint32_t cf_id)
@@ -200,24 +246,24 @@ void SettingsDB::set_limit(uint32_t limit, uint16_t idx)
     settings.limits[idx] = limit;
 }
 
-void SettingsDB::set_residue(uint32_t used_litters, uint32_t card)
+void SettingsDB::set_limit_type(LimitType type, uint16_t idx)
 {
-//    unsigned idx = 0;
-//    bool idxFound = false;
-//    for (unsigned i = 0; i < __arr_len(settings.cards); i++) {
-//        if (settings.cards[i] == card) {
-//            idx = i;
-//            idxFound = true;
-//            break;
-//        }
-//    }
-//    if (!idxFound) {
-//        return;
-//    }
-//    if (used_litters > settings.residues[idx]) {
-//        settings.residues[idx] = 0;
-//    } else {
-//        settings.residues[idx] -= used_litters;
-//    }
-//    this->save();
+	if (idx >= __arr_len(settings.limit_type)) {
+		return;
+	}
+	if (settings.limit_type[idx] == type) {
+		return;
+	}
+	if (type == LIMIT_DAY || type == LIMIT_MONTH) {
+		settings.limit_type[idx] = type;
+	}
+}
+
+void SettingsDB::add_used_liters(uint32_t used_litters, uint32_t card)
+{
+    uint16_t idx = 0;
+    if (this->getCardIdx(card, &idx) != SETTINGS_OK) {
+    	return;
+    }
+    settings.used_liters[idx] += used_litters;
 }

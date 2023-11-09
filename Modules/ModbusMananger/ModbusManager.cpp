@@ -123,10 +123,11 @@ void ModbusManager::loadData()
         )->load();
         tmpSettings.set_card(reg32->get(), i);
     }
+
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Load limits");
 #endif
-    for (unsigned i = 0; i < __arr_len(tmpSettings.settings.cards); i++) {
+    for (unsigned i = 0; i < __arr_len(tmpSettings.settings.limits); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
             MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
             reg32->getNextAddress(),
@@ -134,12 +135,29 @@ void ModbusManager::loadData()
         )->load();
         tmpSettings.set_limit(reg32->get(), i);
     }
+
+#if MB_MANAGER_BEDUG
+    ModbusManager::showLogLine();
+    LOG_TAG_BEDUG(ModbusManager::TAG, "Load limits types");
+#endif
+    uint32_t tmpAddress = reg32->getNextAddress();
+    std::shared_ptr<ModbusRegister<uint8_t>> reg8;
+    for (unsigned i = 0; i < __arr_len(tmpSettings.settings.limit_type); i++) {
+        reg8 = ModbusRegister<uint8_t>::createRegister(
+            MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
+			tmpAddress,
+            tmpSettings.settings.limit_type[i]
+        )->load();
+        tmpSettings.set_limit_type(static_cast<SettingsDB::LimitType>(reg8->get()), i);
+        tmpAddress = reg8->getNextAddress();
+    }
+
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Load log_id");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
-        reg32->getNextAddress(),
+        reg8->getNextAddress(),
         tmpSettings.settings.log_id
     )->load();
     tmpSettings.set_log_id(reg32->get());
@@ -161,7 +179,7 @@ void ModbusManager::loadData()
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Load year");
 #endif
-    std::shared_ptr<ModbusRegister<uint8_t>> reg8 = ModbusRegister<uint8_t>::createRegister(
+    reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
         reg32->getNextAddress(),
         date.Year
@@ -243,9 +261,9 @@ void ModbusManager::updateData()
         reg32->getNextAddress(),
         settings.settings.device_id
     )->save();
+
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Save cards");
-    LOG_TAG_BEDUG(ModbusManager::TAG, "cards count: %d", __arr_len(settings.settings.cards));
 #endif
     for (unsigned i = 0; i < __arr_len(settings.settings.cards); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
@@ -254,9 +272,9 @@ void ModbusManager::updateData()
             settings.settings.cards[i]
         )->save();
     }
+
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Save limits");
-    LOG_TAG_BEDUG(ModbusManager::TAG, "limits count: %d", __arr_len(settings.settings.limits));
 #endif
     for (unsigned i = 0; i < __arr_len(settings.settings.limits); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
@@ -265,19 +283,35 @@ void ModbusManager::updateData()
             settings.settings.limits[i]
         )->save();
     }
+
+#if MB_MANAGER_BEDUG
+    ModbusManager::showLogLine();
+    LOG_TAG_BEDUG(ModbusManager::TAG, "Save limits types");
+#endif
+    uint32_t tmpAddress = reg32->getNextAddress();
+    std::shared_ptr<ModbusRegister<uint8_t>> reg8;
+    for (unsigned i = 0; i < __arr_len(settings.settings.limit_type); i++) {
+        reg8 = ModbusRegister<uint8_t>::createRegister(
+            MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
+			tmpAddress,
+            settings.settings.limit_type[i]
+        )->save();
+        tmpAddress = reg8->getNextAddress();
+    }
+
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Save log_id");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
-        reg32->getNextAddress(),
+        reg8->getNextAddress(),
         settings.settings.log_id
     )->save();
 
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Save year");
 #endif
-    std::shared_ptr<ModbusRegister<uint8_t>> reg8 = ModbusRegister<uint8_t>::createRegister(
+    reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
         reg32->getNextAddress(),
         clock_get_year()

@@ -102,7 +102,7 @@ void reset_eeprom_i2c();
 /* USER CODE BEGIN 0 */
 StorageDriver driver;
 StorageAT storage(
-    eeprom_get_size(),
+    eeprom_get_size() / Page::PAGE_SIZE,
 	&driver
 );
 
@@ -165,7 +165,7 @@ int main(void)
 
   // MODBUS slave initialization
   HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
-
+//  while (1) {}
   // Settings
   while (settings.load() != SettingsDB::SETTINGS_OK) {
       settings.reset();
@@ -191,6 +191,8 @@ int main(void)
     if (general_check_errors()) {
         continue;
     }
+
+    settings.checkResidues();
 
     if (Pump::getLastMl() > 0) {
         save_new_log(Pump::getLastMl());
@@ -307,6 +309,9 @@ void save_new_log(uint32_t mlCount)
 
     LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
 
+	settings.add_used_liters(record.record.used_liters, record.record.card);
+	settings.save();
+
     UI::resetLoad();
 }
 
@@ -347,6 +352,9 @@ StorageStatus StorageDriver::read(uint32_t address, uint8_t* data, uint32_t len)
     if (status == EEPROM_ERROR_BUSY) {
         return STORAGE_BUSY;
     }
+    if (status == EEPROM_ERROR_OOM) {
+    	return STORAGE_OOM;
+    }
     if (status != EEPROM_OK) {
         return STORAGE_ERROR;
     }
@@ -358,6 +366,9 @@ StorageStatus StorageDriver::write(uint32_t address, uint8_t* data, uint32_t len
     eeprom_status_t status = eeprom_write(address, data, len);
     if (status == EEPROM_ERROR_BUSY) {
         return STORAGE_BUSY;
+    }
+    if (status == EEPROM_ERROR_OOM) {
+    	return STORAGE_OOM;
     }
     if (status != EEPROM_OK) {
         return STORAGE_ERROR;

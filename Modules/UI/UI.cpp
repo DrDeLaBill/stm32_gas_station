@@ -141,25 +141,73 @@ void UIFSMWait::proccess()
 
     if (Access::isGranted()) {
 #if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMInput");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMLimit");
+#endif
+        UI::setCard(Access::getCard());
+        UI::ui = std::make_shared<UIFSMLimit>();
+    }
+}
+
+UIFSMLimit::UIFSMLimit(): UIFSMBase(UIFSMLimit::LIMIT_DELAY)
+{
+	indicate_set_blink_buffer_page();
+    keyboard4x3_clear();
+    uint32_t used_liters = 0;
+    uint16_t idx;
+    uint32_t residue = 0;
+    SettingsDB::SettingsStatus status = settings.getCardIdx(UI::getCard(), &idx);
+    if (status == SettingsDB::SETTINGS_OK && used_liters < settings.settings.limits[idx]) {
+    	residue = settings.settings.limits[idx] - settings.settings.used_liters[idx];
+    }
+    if (util_get_number_len(residue) > KEYBOARD4X3_BUFFER_SIZE) {
+    	residue = 999999;
+    }
+
+    uint8_t number_buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
+    for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
+    	if (residue) {
+    		number_buffer[i-1] = residue % 10 + '0';
+        	residue /= 10;
+    	} else {
+    		number_buffer[i-1] = 0;
+    	}
+    }
+
+    indicate_set_buffer(number_buffer, KEYBOARD4X3_BUFFER_SIZE);
+}
+
+void UIFSMLimit::proccess()
+{
+	if (strlen(reinterpret_cast<char*>(keyboard4x3_get_buffer()))) {
+#if UI_BEDUG
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMLimit->UIFSMInput");
 #endif
         UI::ui = std::make_shared<UIFSMInput>();
-        UI::setCard(Access::getCard());
-    }
+	}
 }
 
 UIFSMInput::UIFSMInput(): UIFSMBase(UIFSMInput::INPUT_DELAY)
 {
     UIFSMBase::targetMl = 0;
     memset(UI::result, 0, KEYBOARD4X3_BUFFER_SIZE);
-    keyboard4x3_clear();
     Pump::clear();
 }
 
 void UIFSMInput::proccess()
 {
     indicate_set_buffer_page();
-    indicate_set_buffer(keyboard4x3_get_buffer(), KEYBOARD4X3_BUFFER_SIZE);
+
+    uint8_t number_buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
+    uint32_t number = atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
+	for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
+		if (number) {
+			number_buffer[i-1] = number % 10 + '0';
+		} else {
+			number_buffer[i-1] = '_';
+		}
+		number /= 10;
+	}
+    indicate_set_buffer(number_buffer, KEYBOARD4X3_BUFFER_SIZE);
 
     if (UI::checkStart()) {
 #if UI_BEDUG
@@ -169,9 +217,7 @@ void UIFSMInput::proccess()
     }
 }
 
-UIFSMStart::UIFSMStart(): UIFSMBase(0){ }
-
-void UIFSMStart::proccess()
+UIFSMStart::UIFSMStart(): UIFSMBase(0)
 {
     indicate_set_buffer_page();
     uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
@@ -181,13 +227,38 @@ void UIFSMStart::proccess()
     }
 
     UIFSMBase::targetMl = user_input * liters_multiplier;
+}
+
+void UIFSMStart::proccess()
+{
+    uint32_t used_liters = 0;
+    uint16_t idx;
+    if (settings.getCardIdx(UI::getCard(), &idx) == SettingsDB::SETTINGS_OK) {
+    	used_liters = settings.settings.used_liters[idx];
+    } else {
+#if UI_BEDUG
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMRError");
+#endif
+        UI::ui = std::make_shared<UIFSMError>();
+        return;
+    }
+
+	if (UIFSMBase::targetMl + used_liters > settings.settings.limits[idx]) {
+#if UI_BEDUG
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMLimit");
+#endif
+        UI::ui = std::make_shared<UIFSMLimit>();
+        return;
+	}
 
     if (UIFSMBase::targetMl >= GENERAL_SESSION_ML_MIN) {
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWaitCount");
 #endif
         UI::ui = std::make_shared<UIFSMWaitCount>(0);
-        indicate_clear_buffer();
+        uint8_t number_buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
+        memset(number_buffer, '0', KEYBOARD4X3_BUFFER_SIZE);
+        indicate_set_buffer(number_buffer, KEYBOARD4X3_BUFFER_SIZE);
         Pump::clear();
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "pump set target");
@@ -234,6 +305,18 @@ void UIFSMWaitCount::proccess()
         UI::ui = std::make_shared<UIFSMCount>(this->lastMl);
         return;
     }
+
+    if (curr_count) {
+    	return;
+    }
+    uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
+	for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
+		if (i > KEYBOARD4X3_BUFFER_SIZE - KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT - 1) {
+			buffer[i-1] = '0';
+		}
+	}
+    indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
+    memcpy(UI::result, buffer, KEYBOARD4X3_BUFFER_SIZE);
 }
 
 bool UIFSMWaitCount::checkState()
@@ -287,9 +370,14 @@ void UIFSMCount::proccess()
 
     this->lastMl = curr_count;
 
-    for (unsigned i = util_get_number_len(curr_count); i > 0; i--) {
-        buffer[i-1] = '0' + curr_count % 10;
-        curr_count /= 10;
+    uint32_t tmpCurrCount = curr_count;
+    for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
+    	if (curr_count) {
+    		buffer[i-1] = tmpCurrCount % 10 + '0';
+    		tmpCurrCount /= 10;
+    	} else {
+    		buffer[i-1] = 0;
+    	}
     }
     indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
     memcpy(UI::result, buffer, KEYBOARD4X3_BUFFER_SIZE);

@@ -122,7 +122,7 @@ uint32_t datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 	if (date->Year > 0) {
 		days += (date->Year / 4) + 1;
 	}
-	for (unsigned i = 0; i < date->Month - 1; i++) {
+	for (unsigned i = 0; i < (date->Month > 0 ? date->Month - 1 : 0); i++) {
 		switch (i) {
 		case JANUARY:
 			days += 31;
@@ -162,7 +162,9 @@ uint32_t datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 			break;
 		};
 	}
-	days += (date->Date - 1);
+	if (date->Date > 0) {
+		days += (date->Date - 1);
+	}
 	uint32_t hours = days * 24 + time->Hours;
 	uint32_t minutes = hours * 60 + time->Minutes;
 	uint32_t seconds = minutes * 60 + time->Seconds;

@@ -57,6 +57,18 @@ protected:
     void proccess() override;
 };
 
+class UIFSMLimit: public UIFSMBase
+{
+public:
+	UIFSMLimit();
+
+protected:
+    void proccess() override;
+
+private:
+    static const uint32_t LIMIT_DELAY = 30000;
+};
+
 class UIFSMInput: public UIFSMBase
 {
 public:
