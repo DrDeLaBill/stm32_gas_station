@@ -108,6 +108,16 @@ bool keyboard4x3_is_enter()
     return keyboard4x3_state.enterPressed;
 }
 
+void keyboard4x3_enable_light()
+{
+	HAL_GPIO_WritePin(KBD_BL_GPIO_Port, KBD_BL_Pin, GPIO_PIN_SET);
+}
+
+void keyboard4x3_disable_light()
+{
+	HAL_GPIO_WritePin(KBD_BL_GPIO_Port, KBD_BL_Pin, GPIO_PIN_RESET);
+}
+
 void _keyboard4x3_fsm_set_row()
 {
     if (keyboard4x3_state.buffer_idx && !util_is_timer_wait(&keyboard4x3_state.reset_timer)) {

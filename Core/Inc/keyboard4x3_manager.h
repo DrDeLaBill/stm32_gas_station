@@ -25,6 +25,9 @@ void     keyboard4x3_clear();
 bool     keyboard4x3_is_cancel();
 bool     keyboard4x3_is_enter();
 
+void     keyboard4x3_enable_light();
+void     keyboard4x3_disable_light();
+
 
 #ifdef __cplusplus
 }

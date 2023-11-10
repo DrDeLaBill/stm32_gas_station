@@ -21,7 +21,8 @@ public:
     bool hasError();
 
 protected:
-    util_timer_t timer;
+    util_timer_t reset_timer;
+    util_timer_t page_timer;
     bool hasErrors;
 
     static uint32_t targetMl;
@@ -57,6 +58,30 @@ protected:
     void proccess() override;
 };
 
+class UIFSMAccess: public UIFSMBase
+{
+public:
+	UIFSMAccess();
+
+protected:
+    void proccess() override;
+
+private:
+    static const uint32_t PAGE_DELAY = 2500;
+};
+
+class UIFSMDenied: public UIFSMBase
+{
+public:
+	UIFSMDenied();
+
+protected:
+    void proccess() override;
+
+private:
+    static const uint32_t PAGE_DELAY = 2500;
+};
+
 class UIFSMLimit: public UIFSMBase
 {
 public:
@@ -67,6 +92,10 @@ protected:
 
 private:
     static const uint32_t LIMIT_DELAY = 30000;
+    static const uint32_t BLINK_DELAY = 2000;
+
+    bool isLimitPage;
+    uint8_t number_buffer[KEYBOARD4X3_BUFFER_SIZE];
 };
 
 class UIFSMInput: public UIFSMBase

@@ -29,8 +29,6 @@ uint32_t UIFSMBase::targetMl = 0;
 
 void UI::UIProccess()
 {
-    Access::tick();
-
     if (ui->hasError()) {
         return;
     }
@@ -60,8 +58,8 @@ bool UI::checkErrors()
 UIFSMBase::UIFSMBase(uint32_t delay)
 {
     this->hasErrors = false;
-    memset(reinterpret_cast<void*>(&timer), 0, sizeof(timer));
-    util_timer_start(&timer, delay);
+    memset(reinterpret_cast<void*>(&reset_timer), 0, sizeof(reset_timer));
+    util_timer_start(&reset_timer, delay);
 }
 
 void UIFSMBase::tick()
@@ -87,7 +85,7 @@ bool UIFSMBase::checkState()
         return false;
     }
 
-    if (timer.delay && !util_is_timer_wait(&timer)) {
+    if (reset_timer.delay && !util_is_timer_wait(&reset_timer)) {
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMBase->UIFSMStop (check timer)");
 #endif
@@ -131,6 +129,7 @@ void UIFSMLoad::proccess() { }
 
 UIFSMWait::UIFSMWait(): UIFSMBase(0)
 {
+    keyboard4x3_disable_light();
     keyboard4x3_clear();
     Pump::clear();
 }
@@ -141,16 +140,58 @@ void UIFSMWait::proccess()
 
     if (Access::isGranted()) {
 #if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMLimit");
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMAccess");
 #endif
         UI::setCard(Access::getCard());
-        UI::ui = std::make_shared<UIFSMLimit>();
+        Access::close();
+        UI::ui = std::make_shared<UIFSMAccess>();
     }
+
+    if (Access::isDenied()) {
+#if UI_BEDUG
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMDenied");
+#endif
+        UI::setCard(Access::getCard());
+        Access::close();
+        UI::ui = std::make_shared<UIFSMDenied>();
+    }
+}
+
+UIFSMAccess::UIFSMAccess(): UIFSMBase(0)
+{
+	indicate_set_access_page();
+	util_timer_start(&page_timer, UIFSMAccess::PAGE_DELAY);
+}
+
+void UIFSMAccess::proccess()
+{
+	if (!util_is_timer_wait(&page_timer)) {
+#if UI_BEDUG
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMAccess->UIFSMLimit");
+#endif
+        UI::ui = std::make_shared<UIFSMLimit>();
+	}
+}
+
+UIFSMDenied::UIFSMDenied(): UIFSMBase(0)
+{
+	indicate_set_denied_page();
+	util_timer_start(&page_timer, UIFSMDenied::PAGE_DELAY);
+}
+
+void UIFSMDenied::proccess()
+{
+	if (!util_is_timer_wait(&page_timer)) {
+#if UI_BEDUG
+        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMDenied->UIFSMWait");
+#endif
+        UI::ui = std::make_shared<UIFSMWait>();
+	}
 }
 
 UIFSMLimit::UIFSMLimit(): UIFSMBase(UIFSMLimit::LIMIT_DELAY)
 {
-	indicate_set_blink_buffer_page();
+	keyboard4x3_enable_light();
     keyboard4x3_clear();
     uint32_t used_liters = 0;
     uint16_t idx;
@@ -163,7 +204,7 @@ UIFSMLimit::UIFSMLimit(): UIFSMBase(UIFSMLimit::LIMIT_DELAY)
     	residue = 999999;
     }
 
-    uint8_t number_buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
+    memset(number_buffer, 0, sizeof(number_buffer));
     for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
     	if (residue) {
     		number_buffer[i-1] = residue % 10 + '0';
@@ -173,11 +214,20 @@ UIFSMLimit::UIFSMLimit(): UIFSMBase(UIFSMLimit::LIMIT_DELAY)
     	}
     }
 
-    indicate_set_buffer(number_buffer, KEYBOARD4X3_BUFFER_SIZE);
+	this->isLimitPage = true;
+	indicate_set_limit_page();
+	util_timer_start(&page_timer, UIFSMLimit::BLINK_DELAY);
 }
 
 void UIFSMLimit::proccess()
 {
+	if (!util_is_timer_wait(&page_timer)) {
+		this->isLimitPage ? indicate_set_buffer_page() : indicate_set_limit_page();
+	    indicate_set_buffer(number_buffer, KEYBOARD4X3_BUFFER_SIZE);
+		this->isLimitPage = !this->isLimitPage;
+		util_timer_start(&page_timer, UIFSMLimit::BLINK_DELAY);
+	}
+
 	if (strlen(reinterpret_cast<char*>(keyboard4x3_get_buffer()))) {
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMLimit->UIFSMInput");
@@ -331,7 +381,7 @@ bool UIFSMWaitCount::checkState()
         return false;
     }
 
-    if (!util_is_timer_wait(&timer)) {
+    if (!util_is_timer_wait(&reset_timer)) {
         Pump::stop();
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (timer)");
@@ -407,6 +457,7 @@ bool UIFSMCount::checkState()
 
 UIFSMStop::UIFSMStop(): UIFSMBase(0)
 {
+	keyboard4x3_disable_light();
     keyboard4x3_clear();
     Access::close();
     Pump::stop();
@@ -451,7 +502,7 @@ bool UIFSMResult::checkState()
         return false;
     }
 
-    if (!util_is_timer_wait(&timer)) {
+    if (!util_is_timer_wait(&reset_timer)) {
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
 #endif
@@ -464,6 +515,7 @@ bool UIFSMResult::checkState()
 
 UIFSMError::UIFSMError(): UIFSMBase(0)
 {
+	keyboard4x3_disable_light();
     this->hasErrors = true;
     indicate_set_error_page();
     Pump::stop();

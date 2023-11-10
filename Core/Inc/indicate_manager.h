@@ -21,6 +21,9 @@ void indicate_set_wait_page();
 void indicate_set_buffer_page();
 void indicate_set_blink_buffer_page();
 void indicate_set_load_page();
+void indicate_set_limit_page();
+void indicate_set_access_page();
+void indicate_set_denied_page();
 void indicate_set_error_page();
 
 

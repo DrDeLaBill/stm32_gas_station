@@ -17,12 +17,14 @@ private:
     static util_timer_t timer;
     static uint32_t card;
     static bool granted;
+    static bool denied;
+
+    static void check();
 
 public:
-    static void tick();
-
     static uint32_t getCard();
     static bool isGranted();
+    static bool isDenied();
     static void close();
 };
 

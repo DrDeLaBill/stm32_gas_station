@@ -58,6 +58,36 @@ const bool error_arr[][__arr_len(segments_pins)] = {
     {0, 0, 0, 0, 0, 0, 0}   // empty
 };
 
+const bool limit_arr[][__arr_len(segments_pins)] = {
+/*   A  B  C  D  E  F  G    */
+    {0, 0, 0, 1, 1, 1, 0},  // L
+    {0, 0, 0, 0, 1, 0, 0},  // i_
+    {1, 1, 0, 0, 1, 1, 0},  // M_
+    {1, 1, 1, 0, 0, 1, 0},  // _M
+    {0, 0, 1, 0, 0, 0, 0},  // _i
+    {0, 0, 0, 1, 1, 1, 1}   // t
+};
+
+const bool access_arr[][__arr_len(segments_pins)] = {
+/*   A  B  C  D  E  F  G    */
+	{1, 1, 1, 0, 1, 1, 1},  // A
+    {0, 0, 0, 1, 1, 0, 1},  // c
+    {0, 0, 0, 1, 1, 0, 1},  // c
+    {1, 0, 0, 1, 1, 1, 1},  // E
+    {1, 0, 1, 1, 0, 1, 1},  // S
+    {1, 0, 1, 1, 0, 1, 1}   // S
+};
+
+const bool denied_arr[][__arr_len(segments_pins)] = {
+/*   A  B  C  D  E  F  G    */
+	{0, 1, 1, 1, 1, 0, 1},  // d
+    {1, 0, 0, 1, 1, 1, 1},  // E
+    {0, 0, 1, 0, 1, 0, 1},  // n
+    {0, 0, 1, 0, 0, 0, 0},  // _i
+    {1, 0, 0, 1, 1, 1, 1},  // E
+	{0, 1, 1, 1, 1, 0, 1}   // d
+};
+
 
 #define INDICATE_INDICATORS_COUNT  ((uint32_t)__arr_len(indicators_pins))
 #define INDICATE_SHOW_DELAY_MS     ((uint32_t)50)
@@ -89,6 +119,9 @@ void _indicate_fsm_wait();
 void _indicate_fsm_buffer();
 void _indicate_fsm_blink_buffer();
 void _indicate_fsm_load();
+void _indicate_fsm_limit();
+void _indicate_fsm_access();
+void _indicate_fsm_denied();
 void _indicate_fsm_error();
 
 void _indicate_set_page(void (*new_page) (void));
@@ -186,6 +219,21 @@ void indicate_set_load_page()
     _indicate_set_page(&_indicate_fsm_load);
 }
 
+void indicate_set_limit_page()
+{
+    _indicate_set_page(&_indicate_fsm_limit);
+}
+
+void indicate_set_access_page()
+{
+    _indicate_set_page(&_indicate_fsm_access);
+}
+
+void indicate_set_denied_page()
+{
+    _indicate_set_page(&_indicate_fsm_denied);
+}
+
 void indicate_set_error_page()
 {
     _indicate_set_page(&_indicate_fsm_error);
@@ -269,11 +317,23 @@ void _indicate_fsm_load()
 
     util_timer_start(&indicate_state.wait_timer, INDICATE_FSM_LOAD_DELAY_MS);
 }
+
+void _indicate_fsm_limit()
+{
+	memcpy(display_buffer, limit_arr, sizeof(display_buffer));
+}
+
+void _indicate_fsm_access()
+{
+	memcpy(display_buffer, access_arr, sizeof(display_buffer));
+}
+
+void _indicate_fsm_denied()
+{
+	memcpy(display_buffer, denied_arr, sizeof(display_buffer));
+}
+
 void _indicate_fsm_error()
 {
-    for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
-        for (uint8_t j = 0; j < __arr_len(segments_pins); j++) {
-            display_buffer[i][j] = error_arr[i][j];
-        }
-    }
+	memcpy(display_buffer, error_arr, sizeof(display_buffer));
 }
