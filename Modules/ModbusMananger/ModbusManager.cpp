@@ -25,7 +25,7 @@ util_timer_t ModbusManager::timer;
 bool ModbusManager::recievedNewData = false;
 bool ModbusManager::requestInProgress = false;
 
-#if MB_MANAGER_BEDUG
+#if MB_PROTOCOL_BEDUG
 uint16_t ModbusManager::counter = 0;
 uint8_t ModbusManager::request[20] = {};
 #endif
@@ -75,7 +75,7 @@ void ModbusManager::recieveByte(uint8_t byte)
 {
     modbus_slave_recieve_data_byte(byte);
     ModbusManager::requestInProgress = true;
-#if MB_MANAGER_BEDUG
+#if MB_PROTOCOL_BEDUG
     if (counter < sizeof(ModbusManager::request)) {
         ModbusManager::request[ModbusManager::counter++] = byte;
     }
@@ -88,9 +88,8 @@ void ModbusManager::loadData()
     ModbusManager::recievedNewData = false;
 
     SettingsDB tmpSettings;
-#if MB_MANAGER_BEDUG
+    memcpy(&tmpSettings.settings, &settings.settings, sizeof(tmpSettings.settings));
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "LOAD FROM MODBUS TABLE");
-#endif
 
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Load cf_id");
@@ -164,7 +163,7 @@ void ModbusManager::loadData()
 
     SettingsDB::SettingsStatus status = SettingsDB::SETTINGS_OK;
     if (memcmp(&tmpSettings.settings, &settings.settings, sizeof(tmpSettings.settings))) {
-        memcpy(&settings.settings, &tmpSettings.settings, sizeof(tmpSettings.settings));
+        memcpy(&settings.settings, &tmpSettings.settings, sizeof(settings.settings));
         status = settings.save();
     }
 
@@ -242,9 +241,7 @@ void ModbusManager::loadData()
 void ModbusManager::updateData()
 {
     settings.info.saved_new_data = false;
-#if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "UPDATE TO MODBUS TABLE");
-#endif
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Save cf_id");
 #endif
@@ -430,7 +427,11 @@ void ModbusManager::response_data_handler(uint8_t* data, uint32_t len)
     }
     ModbusManager::data_length = len;
 
-    if (ModbusManager::isWriteCommand(data[1])) {
+    if (!ModbusManager::data) {
+    	return;
+    }
+
+    if (ModbusManager::isWriteCommand(ModbusManager::data[1])) {
         ModbusManager::recievedNewData = true;
     }
 }
@@ -445,7 +446,7 @@ void ModbusManager::send_data()
     if (!ModbusManager::data || !ModbusManager::huart) {
         return;
     }
-#if MB_MANAGER_BEDUG
+#if MB_PROTOCOL_BEDUG
     LOG_BEDUG("%s:\trequest  - ", ModbusManager::TAG);
     for (unsigned i = 0; i < ModbusManager::counter; i++) {
         LOG_BEDUG("%02X ", ModbusManager::request[i]);
@@ -468,8 +469,9 @@ void ModbusManager::reset()
 
 //    ModbusManager::recievedNewData = false;
     ModbusManager::requestInProgress = false;
+    ModbusManager::data.reset();
 
-#if MB_MANAGER_BEDUG
+#if MB_PROTOCOL_BEDUG
     ModbusManager::counter = 0;
     memset(ModbusManager::request, 0, sizeof(ModbusManager::request));
 #endif
@@ -477,12 +479,13 @@ void ModbusManager::reset()
 
 bool ModbusManager::isWriteCommand(uint8_t command)
 {
-    return command > MODBUS_READ_INPUT_REGISTERS;
+    return command == MODBUS_FORCE_SINGLE_COIL ||
+		   command == MODBUS_PRESET_SINGLE_REGISTER ||
+		   command == MODBUS_FORCE_MULTIPLE_COILS ||
+		   command == MODBUS_PRESET_MULTIPLE_REGISTERS;
 }
 
 void ModbusManager::showLogLine()
 {
-#if MB_MANAGER_BEDUG
 	LOG_TAG_BEDUG(ModbusManager::TAG, "------------------------------------------------------------------");
-#endif
 }

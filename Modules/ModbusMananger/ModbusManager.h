@@ -54,7 +54,8 @@
 #include "modbus_rtu_slave.h"
 
 
-#define MB_MANAGER_BEDUG (true)
+#define MB_MANAGER_BEDUG  (false)
+#define MB_PROTOCOL_BEDUG (false)
 
 
 class ModbusManager
@@ -66,11 +67,10 @@ private:
 
     static UART_HandleTypeDef* huart;
 
-#if MB_MANAGER_BEDUG
+#if MB_PROTOCOL_BEDUG
     static uint16_t counter;
     static uint8_t request[20];
 
-    static void showLogLine();
 #endif
     static uint16_t data_length;
     static std::unique_ptr<uint8_t[]> data;
@@ -83,8 +83,8 @@ private:
     static void response_data_handler(uint8_t* data, uint32_t len);
     static void request_error_handler();
     static void send_data();
-
     static void reset();
+    static void showLogLine();
 
     static bool isWriteCommand(uint8_t command);
 

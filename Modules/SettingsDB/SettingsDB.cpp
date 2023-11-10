@@ -17,13 +17,14 @@ extern StorageAT storage;
 
 
 const uint8_t SettingsDB::SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "STG";
+const char SettingsDB::TAG[] = "STG";
 
 
 SettingsDB::SettingsDB()
 {
-    memset(reinterpret_cast<void*>(&this->settings), 0, sizeof(this->settings));
-    memset(reinterpret_cast<void*>(&this->info), 0, sizeof(this->info));
-    this->isSettingsLoaded = false;
+    memset(reinterpret_cast<void*>(&(this->settings)), 0, sizeof(this->settings));
+    memset(reinterpret_cast<void*>(&(this->info)), 0, sizeof(this->info));
+    this->info.settings_loaded = false;
     this->info.saved_new_data = true;
 }
 
@@ -35,9 +36,9 @@ SettingsDB::SettingsStatus SettingsDB::load()
     StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error load settings");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings");
 #endif
-        this->isSettingsLoaded = false;
+        this->info.settings_loaded = false;
         EXIT_CODE(SETTINGS_ERROR);
     }
 
@@ -45,29 +46,27 @@ SettingsDB::SettingsStatus SettingsDB::load()
     status = storage.load(address, reinterpret_cast<uint8_t*>(&tmpSettings), sizeof(tmpSettings));
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error load settings");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings");
 #endif
-        this->isSettingsLoaded = false;
+        this->info.settings_loaded = false;
         EXIT_CODE(SETTINGS_ERROR);
     }
 
     if (tmpSettings.cf_id != SETTINGS_VERSION) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error settings version");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error settings version");
 #endif
-        this->isSettingsLoaded = false;
+        this->info.settings_loaded = false;
         EXIT_CODE(SETTINGS_ERROR);
     }
 
-    memcpy(reinterpret_cast<void*>(&this->settings), reinterpret_cast<void*>(&tmpSettings), sizeof(this->settings));
+    memcpy(reinterpret_cast<void*>(&(this->settings)), reinterpret_cast<void*>(&tmpSettings), sizeof(this->settings));
 
-    this->isSettingsLoaded = true;
-
-    settings.cards[0]  = 20056288; //TODO: test
-    settings.limits[0] = 100000;   //TODO: test
+    this->info.settings_loaded = true;
 
 #if SETTINGS_BEDUG
-    LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "settings loaded");
+    LOG_TAG_BEDUG(SettingsDB::TAG, "settings loaded");
+    this->show();
 #endif
 
     EXIT_CODE(SETTINGS_OK);
@@ -89,7 +88,7 @@ SettingsDB::SettingsStatus SettingsDB::save()
     }
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error find settings");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error find settings (address=%lu)", address);
 #endif
         EXIT_CODE(SETTINGS_ERROR);
     }
@@ -99,51 +98,54 @@ SettingsDB::SettingsStatus SettingsDB::save()
     }
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error delete settings");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error delete settings (address=%lu)", address);
 #endif
         EXIT_CODE(SETTINGS_ERROR);
     }
 
-    status = storage.save(address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1, reinterpret_cast<uint8_t*>(&this->settings), sizeof(this->settings));
+    status = storage.save(address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1, reinterpret_cast<uint8_t*>(&(this->settings)), sizeof(this->settings));
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "error save settings");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error save settings (address=%lu)", address);
 #endif
         EXIT_CODE(SETTINGS_ERROR);
     }
 
     info.saved_new_data = true;
+    info.settings_loaded = false;
 
 #if SETTINGS_BEDUG
-    LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "settings saved");
+    LOG_TAG_BEDUG(SettingsDB::TAG, "settings saved (address=%lu)", address);
+    this->show();
 #endif
 
-    EXIT_CODE(SETTINGS_OK);
+    EXIT_CODE(this->load());
 }
 
 SettingsDB::SettingsStatus SettingsDB::reset()
 {
 #if SETTINGS_BEDUG
-    LOG_TAG_BEDUG(reinterpret_cast<const char*>(SettingsDB::TAG), "reset settings");
+    LOG_TAG_BEDUG(SettingsDB::TAG, "reset settings");
 #endif
 
     settings.cf_id      = SETTINGS_VERSION;
     settings.log_id     = 0;
     settings.device_id  = SETTINGS_DEVICE_ID_DEFAULT;
-    settings.last_day   = clock_get_date();
-    settings.last_month = clock_get_month();
 
     memset(settings.cards, 0, sizeof(settings.cards));
     memset(settings.limits, 0, sizeof(settings.limits));
     memset(settings.limit_type, LIMIT_DAY, sizeof(settings.limit_type));
     memset(settings.used_liters, 0, sizeof(settings.used_liters));
 
+    settings.last_day   = clock_get_date();
+    settings.last_month = clock_get_month();
+
     return this->save();
 }
 
 bool SettingsDB::isLoaded()
 {
-    return this->isSettingsLoaded;
+    return this->info.settings_loaded;
 }
 
 SettingsDB::SettingsStatus SettingsDB::getCardIdx(uint32_t card, uint16_t* idx)
@@ -163,10 +165,12 @@ SettingsDB::SettingsStatus SettingsDB::getCardIdx(uint32_t card, uint16_t* idx)
 void SettingsDB::checkResidues()
 {
 	bool settingsChanged = false;
-	for (unsigned i = 0; i < __arr_len(settings.used_liters); i++) {
+	for (unsigned i = 0; i < __arr_len(settings.limit_type); i++) {
 		if ((settings.limit_type[i] == LIMIT_DAY && settings.last_day != clock_get_date()) ||
 			(settings.limit_type[i] == LIMIT_MONTH && settings.last_month != clock_get_month())
 		) {
+			settings.last_day = clock_get_date();
+			settings.last_month = clock_get_month();
 			settings.used_liters[i] = 0;
 			settingsChanged = true;
 		}
@@ -174,6 +178,22 @@ void SettingsDB::checkResidues()
 	if (settingsChanged) {
 		this->save();
 	}
+}
+
+void SettingsDB::show()
+{
+#if SETTINGS_BEDUG
+	LOG_TAG_BEDUG(SettingsDB::TAG, "------------------------------------------------------------------");
+	LOG_TAG_BEDUG(SettingsDB::TAG, "cf_id = %lu", settings.cf_id);
+	LOG_TAG_BEDUG(SettingsDB::TAG, "device_id = %lu", settings.device_id);
+	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
+		LOG_TAG_BEDUG(SettingsDB::TAG, "CARD %lu: card=%u, limit=%lu, used_liters=%lu, limit_type=%s", i, settings.cards[i], settings.limits[i], settings.used_liters[i], (settings.limit_type[i] == LIMIT_DAY ? "DAY" : (settings.limit_type[i] == LIMIT_MONTH ? "MONTH" : "UNKNOWN")));
+	}
+	LOG_TAG_BEDUG(SettingsDB::TAG, "log_id = %lu", settings.log_id);
+	LOG_TAG_BEDUG(SettingsDB::TAG, "last_day = %u (current=%u)", settings.last_day, clock_get_date());
+	LOG_TAG_BEDUG(SettingsDB::TAG, "last_month = %u (current=%u)", settings.last_month, clock_get_month());
+	LOG_TAG_BEDUG(SettingsDB::TAG, "------------------------------------------------------------------");
+#endif
 }
 
 void SettingsDB::set_cf_id(uint32_t cf_id)
@@ -218,8 +238,8 @@ void SettingsDB::set_limits(void* limits, uint16_t len)
 
 void SettingsDB::set_log_id(uint32_t log_id)
 {
-	if (settings.log_id != log_id) {
-		info.saved_new_data = true;
+	if (settings.log_id == log_id) {
+		return;
 	}
     settings.log_id = log_id;
 }
