@@ -16,7 +16,9 @@
 #define KEYBOARD4X3_RESET_DELAY_MS    ((uint32_t)30000)
 
 
+#if DEBUG
 static const char KEYBOARD_TAG[] = "KBD";
+#endif
 
 
 typedef struct _keyboard4x3_state_t {

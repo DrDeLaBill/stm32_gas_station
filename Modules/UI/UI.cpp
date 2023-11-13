@@ -200,6 +200,11 @@ UIFSMLimit::UIFSMLimit(): UIFSMBase(UIFSMLimit::LIMIT_DELAY)
     if (status == SettingsDB::SETTINGS_OK && used_liters < settings.settings.limits[idx]) {
     	residue = settings.settings.limits[idx] - settings.settings.used_liters[idx];
     }
+    uint32_t liters_multiplier = ML_IN_LTR;
+	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+	}
+	residue /= liters_multiplier;
     if (util_get_number_len(residue) > KEYBOARD4X3_BUFFER_SIZE) {
     	residue = 999999;
     }

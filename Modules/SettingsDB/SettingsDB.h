@@ -68,7 +68,7 @@ public:
     DeviceInfo info;
 
 private:
-    static const uint8_t SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE];
+    static const char SETTINGS_PREFIX[Page::PREFIX_SIZE];
     static const char TAG[];
 
     static const uint8_t SETTINGS_VERSION            = ((uint8_t)0x02);

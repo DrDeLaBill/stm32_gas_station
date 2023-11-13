@@ -40,19 +40,34 @@ uint16_t util_get_crc16(uint8_t* buf, uint16_t len) {
 #ifdef DEBUG
 void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint32_t start_counter, uint16_t len) {
     const uint8_t cols_count = 16;
-    for (uint32_t i = 0; i < len / cols_count; i++) {
-        LOG_BEDUG("%08X: ", (unsigned int)(start_counter + i));
+    uint32_t i = 0;
+    LOG_BEDUG("- offset -  0  1  2  3  4  5  6  7 |  8  9  A  B  C  D  E  F | 0123456789ABCDEF\n");
+    do {
+        LOG_BEDUG("0x%08X:  ", (unsigned int)(start_counter + i));
         for (uint32_t j = 0; j < cols_count; j++) {
-            if (i + j > len) {
+            if (i * cols_count + j > len) {
+            	LOG_BEDUG("   ");
+            } else {
+            	LOG_BEDUG("%02X ", buf[i * cols_count + j]);
+            }
+            if ((j + 1) % 8 == 0) {
+            	LOG_BEDUG("| ");
+            }
+        }
+        for (uint32_t j = 0; j < cols_count; j++) {
+            if (i * cols_count + j > len) {
                 break;
             }
-            LOG_BEDUG("%02X ", buf[i * cols_count + j]);
-            if ((j + 1) % 8 == 0) {
-                LOG_BEDUG("| ");
+            char c = buf[i * cols_count + j];
+            if (c > 31 && c != 0xFF) {
+                LOG_BEDUG("%c", (char)c);
+            } else {
+                LOG_BEDUG(".");
             }
         }
         LOG_BEDUG("\n");
-    }
+        i++;
+    } while (i * cols_count < len);
 }
 #else /* DEBUG */
 void util_debug_hex_dump(const char* tag, const uint8_t* buf, uint32_t start_counter, uint16_t len) {}

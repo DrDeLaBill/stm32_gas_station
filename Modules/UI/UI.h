@@ -8,7 +8,7 @@
 #include "keyboard4x3_manager.h"
 
 
-#define UI_BEDUG (true)
+#define UI_BEDUG (false)
 
 
 class UIFSMBase
@@ -67,7 +67,7 @@ protected:
     void proccess() override;
 
 private:
-    static const uint32_t PAGE_DELAY = 2500;
+    static const uint32_t PAGE_DELAY = 1500;
 };
 
 class UIFSMDenied: public UIFSMBase
@@ -79,7 +79,7 @@ protected:
     void proccess() override;
 
 private:
-    static const uint32_t PAGE_DELAY = 2500;
+    static const uint32_t PAGE_DELAY = 1500;
 };
 
 class UIFSMLimit: public UIFSMBase

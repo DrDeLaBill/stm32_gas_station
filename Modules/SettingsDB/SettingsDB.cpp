@@ -16,7 +16,7 @@
 extern StorageAT storage;
 
 
-const uint8_t SettingsDB::SETTINGS_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "STG";
+const char SettingsDB::SETTINGS_PREFIX[Page::PREFIX_SIZE] = "STG";
 const char SettingsDB::TAG[] = "STG";
 
 
@@ -33,7 +33,7 @@ SettingsDB::SettingsStatus SettingsDB::load()
     UI::setLoad();
 
     uint32_t address = 0;
-    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
+    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, SETTINGS_PREFIX, 1);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings");
@@ -78,10 +78,10 @@ SettingsDB::SettingsStatus SettingsDB::save()
 
     uint32_t address = 0;
     StorageFindMode mode = FIND_MODE_EQUAL;
-    StorageStatus status = storage.find(mode, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
+    StorageStatus status = storage.find(mode, &address, SETTINGS_PREFIX, 1);
     if (status == STORAGE_NOT_FOUND) {
     	mode = FIND_MODE_EMPTY;
-        status = storage.find(mode, &address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1);
+        status = storage.find(mode, &address, SETTINGS_PREFIX, 1);
     }
     if (status == STORAGE_NOT_FOUND) {
         //TODO: save on first page
@@ -103,7 +103,7 @@ SettingsDB::SettingsStatus SettingsDB::save()
         EXIT_CODE(SETTINGS_ERROR);
     }
 
-    status = storage.save(address, const_cast<uint8_t*>(SETTINGS_PREFIX), 1, reinterpret_cast<uint8_t*>(&(this->settings)), sizeof(this->settings));
+    status = storage.save(address, SETTINGS_PREFIX, 1, reinterpret_cast<uint8_t*>(&(this->settings)), sizeof(this->settings));
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         LOG_TAG_BEDUG(SettingsDB::TAG, "error save settings (address=%lu)", address);
@@ -187,7 +187,7 @@ void SettingsDB::show()
 	LOG_TAG_BEDUG(SettingsDB::TAG, "cf_id = %lu", settings.cf_id);
 	LOG_TAG_BEDUG(SettingsDB::TAG, "device_id = %lu", settings.device_id);
 	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
-		LOG_TAG_BEDUG(SettingsDB::TAG, "CARD %lu: card=%u, limit=%lu, used_liters=%lu, limit_type=%s", i, settings.cards[i], settings.limits[i], settings.used_liters[i], (settings.limit_type[i] == LIMIT_DAY ? "DAY" : (settings.limit_type[i] == LIMIT_MONTH ? "MONTH" : "UNKNOWN")));
+		LOG_TAG_BEDUG(SettingsDB::TAG, "CARD %u: card=%lu, limit=%lu, used_liters=%lu, limit_type=%s", i, settings.cards[i], settings.limits[i], settings.used_liters[i], (settings.limit_type[i] == LIMIT_DAY ? "DAY" : (settings.limit_type[i] == LIMIT_MONTH ? "MONTH" : "UNKNOWN")));
 	}
 	LOG_TAG_BEDUG(SettingsDB::TAG, "log_id = %lu", settings.log_id);
 	LOG_TAG_BEDUG(SettingsDB::TAG, "last_day = %u (current=%u)", settings.last_day, clock_get_date());

@@ -18,7 +18,7 @@ extern StorageAT storage;
 extern SettingsDB settings;
 
 
-const uint8_t RecordDB::RECORD_PREFIX[Page::STORAGE_PAGE_PREFIX_SIZE] = "RCR";
+const char RecordDB::RECORD_PREFIX[Page::PREFIX_SIZE] = "RCR";
 
 
 RecordDB::RecordDB(uint32_t recordId)
@@ -30,7 +30,7 @@ RecordDB::RecordStatus RecordDB::load()
 {
     uint32_t address = 0;
 
-    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
+    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, RECORD_PREFIX, this->record.id);
     if (status != STORAGE_OK) {
 #if RECORD_BEDUG
         LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error load record");
@@ -57,7 +57,7 @@ RecordDB::RecordStatus RecordDB::loadNext()
 {
     uint32_t address = 0;
 
-    StorageStatus status = storage.find(FIND_MODE_NEXT, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
+    StorageStatus status = storage.find(FIND_MODE_NEXT, &address, RECORD_PREFIX, this->record.id);
     if (status != STORAGE_OK) {
 #if RECORD_BEDUG
         LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error find next record");
@@ -90,7 +90,7 @@ RecordDB::RecordStatus RecordDB::save()
 
     StorageStatus status = storage.find(FIND_MODE_EMPTY, &address);
     if (status == STORAGE_NOT_FOUND) {
-        status = storage.find(FIND_MODE_MIN, &address, const_cast<uint8_t*>(RECORD_PREFIX));
+        status = storage.find(FIND_MODE_MIN, &address, RECORD_PREFIX);
     }
     if (status != STORAGE_OK) {
 #if RECORD_BEDUG
@@ -101,7 +101,7 @@ RecordDB::RecordStatus RecordDB::save()
 
     status = storage.save(
         address,
-        const_cast<uint8_t*>(RECORD_PREFIX),
+        RECORD_PREFIX,
         this->record.id,
         reinterpret_cast<uint8_t*>(&this->record),
         sizeof(this->record)
@@ -126,7 +126,7 @@ RecordDB::RecordStatus RecordDB::deleteRecord()
 {
     uint32_t address = 0;
 
-    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, const_cast<uint8_t*>(RECORD_PREFIX), this->record.id);
+    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, RECORD_PREFIX, this->record.id);
     if (status != STORAGE_OK) {
 #if RECORD_BEDUG
         LOG_TAG_BEDUG(reinterpret_cast<const char*>(RecordDB::TAG), "error delete record");
@@ -155,7 +155,7 @@ RecordDB::RecordStatus RecordDB::getNewId(uint32_t *newId)
 {
     uint32_t address = 0;
 
-    StorageStatus status = storage.find(FIND_MODE_MAX, &address, const_cast<uint8_t*>(RECORD_PREFIX));
+    StorageStatus status = storage.find(FIND_MODE_MAX, &address, RECORD_PREFIX);
     if (status == STORAGE_NOT_FOUND) {
         *newId = 1;
 #if RECORD_BEDUG
