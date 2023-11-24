@@ -10,6 +10,7 @@ extern "C" {
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "stm32f4xx_hal.h"
 
@@ -22,6 +23,8 @@ uint8_t clock_get_minute();
 uint8_t clock_get_second();
 void    clock_save_time(RTC_TimeTypeDef* time);
 void    clock_save_date(RTC_DateTypeDef* date);
+bool    clock_get_rtc_time(RTC_TimeTypeDef* time);
+bool    clock_get_rtc_date(RTC_DateTypeDef* date);
 uint32_t datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time);
 
 

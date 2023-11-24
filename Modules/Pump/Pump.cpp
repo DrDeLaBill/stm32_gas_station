@@ -371,9 +371,9 @@ uint32_t PumpFSMBase::getADCValve()
 
 int32_t PumpFSMBase::getEncoderTicks()
 {
-    uint32_t value = __HAL_TIM_GET_COUNTER(&MD212_TIM);
+    int32_t value = __HAL_TIM_GET_COUNTER(&MD212_TIM);
     int32_t result = 0;
-    if (value >= Pump::getPumpEncoderMiddle()) {
+    if (value >= static_cast<int32_t>(Pump::getPumpEncoderMiddle())) {
         result = (int32_t)(value - Pump::getPumpEncoderMiddle());
     } else {
         result = -((int32_t)(Pump::getPumpEncoderMiddle() - value));
@@ -464,6 +464,7 @@ void PumpFSMStart::proccess()
 #if PUMP_BEDUG
         LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMStart->PumpFSMStop");
 #endif
+        Pump::reset();
         Pump::statePtr = std::make_shared<PumpFSMStop>();
         return;
     }
@@ -528,19 +529,19 @@ void PumpFSMWork::proccess()
         return;
     }
 
+    if (Pump::isGunOnBase()) {
+#if PUMP_BEDUG
+        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWork->PumpFSMStop");
+#endif
+        Pump::statePtr = std::make_shared<PumpFSMStop>();
+    }
+
     int32_t currentEncoderMl = getCurrentEncoderMl();
     if (currentEncoderMl < 0) {
 #if PUMP_BEDUG
         LOG_TAG_BEDUG(Pump::TAG, "pump isn't working: current gas ticks=%ld; target=%lu", currentEncoderMl, targetMl);
 #endif
         return;
-    }
-
-    if (Pump::isGunOnBase()) {
-#if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWork->PumpFSMStop");
-#endif
-        Pump::statePtr = std::make_shared<PumpFSMStop>();
     }
 
     if (__abs_dif(static_cast<uint32_t>(currentEncoderMl), Pump::getCurrentMl()) == 0) {
@@ -616,13 +617,16 @@ void PumpFSMCheckStop::proccess()
     }
 
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMCheckStop->PumpFSMrecord");
+    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMCheckStop->PumpFSMRecord");
 #endif
     Pump::statePtr = std::make_shared<PumpFSMRecord>();
 
     hasStopped = true;
 
     currentMlAdd = getCurrentEncoderMl();
+    if (currentMlAdd < 0) {
+    	currentMlAdd = 0;
+    }
 }
 
 void PumpFSMRecord::proccess()

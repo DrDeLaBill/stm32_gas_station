@@ -16,7 +16,7 @@
 #include "stm32f4xx_hal.h"
 
 
-#define MB_REGISTER_BEDUG (false)
+#define MB_REGISTER_BEDUG (true)
 
 
 template <typename T>
@@ -153,7 +153,7 @@ public:
         return this->getId() + this->getRegSize();
     }
 
-    static inline uint32_t getRegSize() { return ((sizeof(T) / 2) + (sizeof(T) % 2)); }
+    static uint32_t getRegSize() { return ((sizeof(T) / sizeof(uint16_t)) + (sizeof(T) % sizeof(uint16_t))); }
 };
 
 

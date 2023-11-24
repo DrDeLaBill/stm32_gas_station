@@ -89,9 +89,6 @@ SettingsDB settings;
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
-StorageStatus read_driver(uint32_t address, uint8_t* data, uint32_t len);
-StorageStatus write_driver(uint32_t address, uint8_t* data, uint32_t len);
-
 void save_new_log(uint32_t mlCount);
 
 void reset_eeprom_i2c();
@@ -100,10 +97,9 @@ void reset_eeprom_i2c();
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-StorageDriver driver;
 StorageAT storage(
     eeprom_get_size() / Page::PAGE_SIZE,
-	&driver
+	(new StorageDriver())
 );
 
 ModbusManager mbManager(&MODBUS_UART);
@@ -260,47 +256,29 @@ void save_new_log(uint32_t mlCount)
         return;
     }
 
+    RTC_DateTypeDef date;
+    RTC_TimeTypeDef time;
+    if (!clock_get_rtc_date(&date)) {
+    	memset(reinterpret_cast<void*>(&date), 0, sizeof(date));
+    }
+    if (!clock_get_rtc_time(&time)) {
+    	memset(reinterpret_cast<void*>(&time), 0, sizeof(time));
+    }
+    uint32_t datetimeSeconds = datetime_to_seconds(&date, &time);
+
+
     UI::setLoad();
 
-    RecordDB record;
+    RecordDB record(0);
 //    record.record.cf_id = settings.settings.cf_id;
-    record.record.time[0] = clock_get_year();
-    record.record.time[1] = clock_get_month();
-    record.record.time[2] = clock_get_date();
-    record.record.time[3] = clock_get_hour();
-    record.record.time[4] = clock_get_minute();
-    record.record.time[5] = clock_get_second();
+
+    record.record.time = datetimeSeconds;
     record.record.used_liters = mlCount;
     record.record.card = UI::getCard();
 
     LOG_TAG_BEDUG(MAIN_TAG, "save new log: begin");
-    LOG_TAG_BEDUG(
-        MAIN_TAG,
-        "save new log: time=20%02u-%02u-%02u %02u:%02u:%02u",
-        record.record.time[0],
-        record.record.time[1],
-        record.record.time[2],
-        record.record.time[3],
-        record.record.time[4],
-        record.record.time[5]
-    );
-//    LOG_TAG_BEDUG(MAIN_TAG, "save new log: cf_id=%lu", record.record.cf_id);
-    LOG_TAG_BEDUG(MAIN_TAG, "save new log: card=%lu", record.record.card);
-    LOG_TAG_BEDUG(MAIN_TAG, "save new log: used_liters=%lu", record.record.used_liters);
 
-    uint32_t new_id = 0;
-    RecordDB::RecordStatus status = RecordDB::getNewId(&new_id);
-    if (status != RecordDB::RECORD_OK) {
-        LOG_TAG_BEDUG(MAIN_TAG, "save new log: find new log id error=%02x", status);
-        UI::resetLoad();
-        return;
-    }
-
-    record.record.id = new_id;
-
-    LOG_TAG_BEDUG(MAIN_TAG, "save new log: id=%lu", record.record.id);
-
-    status = record.save();
+    RecordDB::RecordStatus status = record.save();
     if (status != RecordDB::RECORD_OK) {
         LOG_TAG_BEDUG(MAIN_TAG, "save new log: error=%02x", status);
         UI::resetLoad();
@@ -416,7 +394,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 //    uint32_t cur_second = HAL_GetTick() / 1000;
 //    if (cur_second != last_second) {
-//        LOG_TAG_BEDUG(MAIN_TAG, "UI: %lu kFLOPS; IND: %lu kFLOPS", ui_counter, ind_counter);
+//        LOG_TAG_BEDUG(MAIN_TAG, "UI: %lu FLOPS; IND: %lu FLOPS", ui_counter, ind_counter);
 //        ui_counter = 0;
 //        ind_counter = 0;
 //        last_second = cur_second;

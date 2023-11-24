@@ -46,7 +46,9 @@ public:
     void show();
 
     typedef struct __attribute__((packed)) _Settings  {
-        uint32_t cf_id;
+        uint32_t cf_id; // Configuration version
+        uint8_t  sw_id; // Software version
+        uint8_t  fw_id; // Firmware version
         uint32_t device_id;
         uint32_t cards      [GENERAL_RFID_CARDS_COUNT];
         uint32_t limits     [GENERAL_RFID_CARDS_COUNT];
@@ -68,12 +70,15 @@ public:
     DeviceInfo info;
 
 private:
-    static const char SETTINGS_PREFIX[Page::PREFIX_SIZE];
-    static const char TAG[];
+    static const char* SETTINGS_PREFIX;
+    static const char* TAG;
 
-    static const uint8_t SETTINGS_VERSION            = ((uint8_t)0x02);
-    static const uint8_t SETTINGS_DEVICE_ID_SIZE     = ((uint8_t)16);
-    static const uint32_t SETTINGS_DEVICE_ID_DEFAULT = ((uint32_t)1);
+    static const uint8_t CF_VERSION  = ((uint8_t)0x02);
+    static const uint8_t SW_VERSION  = ((uint8_t)0x02);
+    static const uint8_t FW_VERSION  = ((uint8_t)0x01);
+    static const uint32_t DEFAULT_ID = ((uint32_t)1);
+
+    bool check(Settings* settings);
 };
 
 

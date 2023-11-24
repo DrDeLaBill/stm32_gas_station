@@ -193,11 +193,10 @@ UIFSMLimit::UIFSMLimit(): UIFSMBase(UIFSMLimit::LIMIT_DELAY)
 {
 	keyboard4x3_enable_light();
     keyboard4x3_clear();
-    uint32_t used_liters = 0;
     uint16_t idx;
     uint32_t residue = 0;
     SettingsDB::SettingsStatus status = settings.getCardIdx(UI::getCard(), &idx);
-    if (status == SettingsDB::SETTINGS_OK && used_liters < settings.settings.limits[idx]) {
+    if (status == SettingsDB::SETTINGS_OK && settings.settings.used_liters[idx] < settings.settings.limits[idx]) {
     	residue = settings.settings.limits[idx] - settings.settings.used_liters[idx];
     }
     uint32_t liters_multiplier = ML_IN_LTR;
@@ -211,7 +210,7 @@ UIFSMLimit::UIFSMLimit(): UIFSMBase(UIFSMLimit::LIMIT_DELAY)
 
     memset(number_buffer, 0, sizeof(number_buffer));
     for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
-    	if (residue) {
+    	if (residue || i > KEYBOARD4X3_BUFFER_SIZE - KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT - 1) {
     		number_buffer[i-1] = residue % 10 + '0';
         	residue /= 10;
     	} else {
@@ -563,12 +562,12 @@ uint32_t UI::getCard()
 
 bool UI::checkStart()
 {
-    return UI::checkKeyboardStart() || HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
+    return UI::checkKeyboardStart() || !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
 }
 
 bool UI::checkStop()
 {
-    return UI::checkKeyboardStop() || HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
+    return UI::checkKeyboardStop() || !HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
 }
 
 bool UI::checkGunOnBase()

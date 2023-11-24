@@ -102,6 +102,16 @@ void clock_save_date(RTC_DateTypeDef* date)
     }
 }
 
+bool clock_get_rtc_time(RTC_TimeTypeDef* time)
+{
+	return HAL_OK == HAL_RTC_GetTime(&CLOCK_RTC, time, RTC_FORMAT_BCD);
+}
+
+bool clock_get_rtc_date(RTC_DateTypeDef* date)
+{
+	return HAL_OK == HAL_RTC_GetDate(&CLOCK_RTC, date, RTC_FORMAT_BCD);
+}
+
 enum Months {
 	JANUARY = 0,
 	FEBRUARY,
@@ -116,6 +126,7 @@ enum Months {
 	NOVEMBER,
 	DECEMBER
 };
+
 uint32_t datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 {
 	uint32_t days = date->Year * 365;

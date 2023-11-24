@@ -16,8 +16,8 @@
 extern StorageAT storage;
 
 
-const char SettingsDB::SETTINGS_PREFIX[Page::PREFIX_SIZE] = "STG";
-const char SettingsDB::TAG[] = "STG";
+const char* SettingsDB::SETTINGS_PREFIX = "STG";
+const char* SettingsDB::TAG = "STG";
 
 
 SettingsDB::SettingsDB()
@@ -52,9 +52,10 @@ SettingsDB::SettingsStatus SettingsDB::load()
         EXIT_CODE(SETTINGS_ERROR);
     }
 
-    if (tmpSettings.cf_id != SETTINGS_VERSION) {
+    if (!this->check(&tmpSettings)) {
+    	this->show();
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error settings version");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error settings check");
 #endif
         this->info.settings_loaded = false;
         EXIT_CODE(SETTINGS_ERROR);
@@ -74,8 +75,6 @@ SettingsDB::SettingsStatus SettingsDB::load()
 
 SettingsDB::SettingsStatus SettingsDB::save()
 {
-    UI::setLoad();
-
     uint32_t address = 0;
     StorageFindMode mode = FIND_MODE_EQUAL;
     StorageStatus status = storage.find(mode, &address, SETTINGS_PREFIX, 1);
@@ -83,8 +82,13 @@ SettingsDB::SettingsStatus SettingsDB::save()
     	mode = FIND_MODE_EMPTY;
         status = storage.find(mode, &address, SETTINGS_PREFIX, 1);
     }
-    if (status == STORAGE_NOT_FOUND) {
-        //TODO: save on first page
+    while (status == STORAGE_NOT_FOUND) {
+        // Search for any address
+        mode = FIND_MODE_NEXT;
+    	status = storage.find(mode, &address, "", 1);
+    	if (status != STORAGE_OK) {
+    		continue;
+    	}
     }
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
@@ -128,9 +132,11 @@ SettingsDB::SettingsStatus SettingsDB::reset()
     LOG_TAG_BEDUG(SettingsDB::TAG, "reset settings");
 #endif
 
-    settings.cf_id      = SETTINGS_VERSION;
+    settings.cf_id      = CF_VERSION;
+    settings.sw_id      = SW_VERSION;
+    settings.fw_id      = FW_VERSION;
     settings.log_id     = 0;
-    settings.device_id  = SETTINGS_DEVICE_ID_DEFAULT;
+    settings.device_id  = DEFAULT_ID;
 
     memset(settings.cards, 0, sizeof(settings.cards));
     memset(settings.limits, 0, sizeof(settings.limits));
@@ -178,6 +184,11 @@ void SettingsDB::checkResidues()
 	if (settingsChanged) {
 		this->save();
 	}
+}
+
+bool SettingsDB::check(Settings* settings)
+{
+	return settings->sw_id == SW_VERSION && settings->fw_id == FW_VERSION;
 }
 
 void SettingsDB::show()

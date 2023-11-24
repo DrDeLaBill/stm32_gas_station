@@ -8,7 +8,7 @@
 #include "keyboard4x3_manager.h"
 
 
-#define UI_BEDUG (false)
+#define UI_BEDUG (true)
 
 
 class UIFSMBase
