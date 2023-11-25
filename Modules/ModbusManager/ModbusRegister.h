@@ -16,7 +16,7 @@
 #include "stm32f4xx_hal.h"
 
 
-#define MB_REGISTER_BEDUG (true)
+#define MB_REGISTER_BEDUG (false)
 
 
 template <typename T>

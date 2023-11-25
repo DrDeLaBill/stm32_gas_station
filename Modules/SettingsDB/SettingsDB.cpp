@@ -298,3 +298,11 @@ void SettingsDB::add_used_liters(uint32_t used_litters, uint32_t card)
     }
     settings.used_liters[idx] += used_litters;
 }
+
+void SettingsDB::clear_limit(uint32_t idx)
+{
+	if (idx >= __arr_len(settings.used_liters)) {
+		return;
+	}
+	settings.used_liters[idx] = 0;
+}

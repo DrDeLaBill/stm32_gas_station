@@ -54,7 +54,7 @@
 #include "modbus_rtu_slave.h"
 
 
-#define MB_MANAGER_BEDUG  (true)
+#define MB_MANAGER_BEDUG  (false)
 #define MB_PROTOCOL_BEDUG (false)
 
 

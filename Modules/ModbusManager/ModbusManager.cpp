@@ -161,6 +161,34 @@ void ModbusManager::loadData()
     )->load();
     tmpSettings.set_log_id(reg32->get());
 
+#if MB_MANAGER_BEDUG
+    ModbusManager::showLogLine();
+    LOG_TAG_BEDUG(ModbusManager::TAG, "Load enable clear limit");
+#endif
+    uint8_t enableClearLimit = 0;
+    reg8 = ModbusRegister<uint8_t>::createRegister(
+		MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
+		reg32->getNextAddress(),
+		enableClearLimit
+	)->load();
+    enableClearLimit = reg8->get();
+
+#if MB_MANAGER_BEDUG
+    ModbusManager::showLogLine();
+    LOG_TAG_BEDUG(ModbusManager::TAG, "Load clear limit index");
+#endif
+    uint32_t clearLimitIdx = 0;
+    reg32 = ModbusRegister<uint32_t>::createRegister(
+		MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
+		reg8->getNextAddress(),
+		clearLimitIdx
+	)->load();
+    clearLimitIdx = reg32->get();
+
+    if (enableClearLimit) {
+    	tmpSettings.clear_limit(clearLimitIdx);
+    }
+
     SettingsDB::SettingsStatus status = SettingsDB::SETTINGS_OK;
     if (memcmp(&tmpSettings.settings, &settings.settings, sizeof(tmpSettings.settings))) {
         memcpy(&settings.settings, &tmpSettings.settings, sizeof(settings.settings));
@@ -304,6 +332,26 @@ void ModbusManager::updateData()
         reg8->getNextAddress(),
         settings.settings.log_id
     )->save();
+
+#if MB_MANAGER_BEDUG
+    ModbusManager::showLogLine();
+    LOG_TAG_BEDUG(ModbusManager::TAG, "Save enable clear limit");
+#endif
+    reg8 = ModbusRegister<uint8_t>::createRegister(
+		MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
+		reg32->getNextAddress(),
+		0
+	)->save();
+
+#if MB_MANAGER_BEDUG
+    ModbusManager::showLogLine();
+    LOG_TAG_BEDUG(ModbusManager::TAG, "Save clear limit index");
+#endif
+    reg32 = ModbusRegister<uint32_t>::createRegister(
+		MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
+		reg8->getNextAddress(),
+		0
+	);
 
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    LOG_TAG_BEDUG(ModbusManager::TAG, "Save year");

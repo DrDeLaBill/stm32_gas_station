@@ -39,6 +39,7 @@ public:
     void set_limit(uint32_t limit, uint16_t idx);
     void set_limit_type(LimitType type, uint16_t idx);
     void add_used_liters(uint32_t used_litters, uint32_t card);
+    void clear_limit(uint32_t idx);
 
     bool isLoaded();
     SettingsStatus getCardIdx(uint32_t card, uint16_t* idx);

@@ -57,162 +57,42 @@ new registers_values[MODBUS_REGISTER_SIZE] = { 0 }
 
 main()
 {
-	SetVar(globTime, GetVar(TIME))
-    SetVar(globResult, SCRIPT_RESPONSE_SUCCESS)
-	SetVar(globTimeDelay, 10000)
-    new cards_count = GetVar(globCardsCount)
+    SetVar(result, SCRIPT_RESPONSE_SUCCESS)
+    new cards_count = GetVar(cards_count)
     if (cards_count <= 0) {
-        SetVar(globResult, SCRIPT_RESPONSE_ERROR_CNFG)
+        SetVar(result, SCRIPT_RESPONSE_ERROR_CNFG)
         return
     }
+	
+	new enable_clear_limit = 1
+	new card_id = GetVar(card_id)
+	
+	
+	// Set clear limit index
+	new val_l = 0x00000000;
+    val_l += ((card_id & 0x000000FF) << 8)
+    val_l += ((card_id & 0x0000FF00) >> 8)
+	val_l = ((val_l) & 0xFFFF)
+    new addr = MODBUS_REGISTER_CARDS_IDX + 5 * cards_count + 2 + 1
+	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val_l) 
+    modbus_master_preset_single_register(1, addr, val_l)
     
-    new unix_time = GetVar(UNIX_TIME)
-    Diagnostics("############## CURRENT TIME: %d ##############", unix_time)
-    
-    new year = 0
-    new month = 0
-    new date = 0
-    new hour = 0
-    new minute = 0
-    new second = 0
-    
-    new tmp_time = unix_time
-    
-    second = tmp_time % 60
-    tmp_time /= 60
-    
-    minute = tmp_time % 60
-    tmp_time /= 60
-    
-    hour = tmp_time % 24
-    tmp_time /= 24
-    
-    year = 1970
-    month = 1
-    while (tmp_time > 0)
-    {
-        new days_in_month = get_days_in_month(year, month)
-        if (days_in_month > tmp_time) {
-            date = tmp_time + 1
-            break;
-        }
-        if (month == 12) {
-            month = 0
-            year++
-        }
-        month++
-        tmp_time -= days_in_month
-    }
-    year %= 100
-    
-    Diagnostics("############## CURRENT TIME: %d-%d-%dT%d:%d:%d ##############", year, month, date, hour, minute, second)
-    
-	// Set year
+    new val_h = 0x000000000;
+    val_h += ((card_id & 0x00FF0000) << 8)
+    val_h += ((card_id & 0xFF000000) >> 8)
+	val_h = ((val_h >> 16) & 0xFFFF)
+    addr = MODBUS_REGISTER_CARDS_IDX + 5 * cards_count + 2 + 2
+	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val_h) 
+    modbus_master_preset_single_register(1, addr, val_h)
+	
+	// Set enable clear limit
 	new val = 0x00000000;
-    val += ((year & 0x000000FF) << 8)
-    val += ((year & 0x0000FF00) >> 8)
+    val += ((enable_clear_limit & 0x000000FF) << 8)
+    val += ((enable_clear_limit & 0x0000FF00) >> 8)
 	val = ((val) & 0xFFFF)
-    new addr = MODBUS_REGISTER_CARDS_IDX + 5 * cards_count + 2
+    addr = MODBUS_REGISTER_CARDS_IDX + 5 * cards_count + 2
 	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
     modbus_master_preset_single_register(1, addr, val)
-    addr++
-	
-	// Set month
-	val = 0x00000000;
-    val += ((month & 0x000000FF) << 8)
-    val += ((month & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
-    modbus_master_preset_single_register(1, addr, val)
-    addr++
-	
-	// Set date
-	val = 0x00000000;
-    val += ((date & 0x000000FF) << 8)
-    val += ((date & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
-    modbus_master_preset_single_register(1, addr, val)
-    addr++
-	
-	// Set hour
-	val = 0x00000000;
-    val += ((hour & 0x000000FF) << 8)
-    val += ((hour & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
-    modbus_master_preset_single_register(1, addr, val)
-    addr++
-	
-	// Set minute
-	val = 0x00000000;
-    val += ((minute & 0x000000FF) << 8)
-    val += ((minute & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
-    modbus_master_preset_single_register(1, addr, val)
-    addr++
-	
-	// Set second
-	val = 0x00000000;
-    val += ((second & 0x000000FF) << 8)
-    val += ((second & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
-    modbus_master_preset_single_register(1, addr, val)
-	
-	SetVar(globTimeDelay, 86400)
-}
-
-get_days_in_month(year, month_num)
-{
-    if (year <= 2) {
-        return 0
-    }
-    if (month_num == JANUARY) {
-        return 31
-    }
-    if (month_num == FEBRUARY) {
-        return ((year % 4 == 0) ? 29 : 28)
-    }
-    if (month_num == MARCH) {
-        return 31
-    }
-    if (month_num == APRIL) {
-        return 30
-    }
-    if (month_num == MAY) {
-        return 31
-    }
-    if (month_num == JUNE) {
-        return 30
-    }
-    if (month_num == JULY) {
-        return 31
-    }
-    if (month_num == AUGUST) {
-        return 31
-    }
-    if (month_num == SEPTEMBER) {
-        return 30
-    }
-    if (month_num == OCTOBER) {
-        return 31
-    }
-    if (month_num == NOVEMBER) {
-        return 30
-    }
-    if (month_num == DECEMBER) {
-        return 31
-    }
-    return 0
-}
-
-array8_copy(dest{}, src{}, size)
-{
-    for (new i = 0; i < size; i++) {
-        dest{i} = src{i}
-    }
 }
 
 array32_copy(dest[], src[], size)
@@ -237,7 +117,7 @@ modbus_recieve_data(start_addr, reg_count)
     }
     
     if (rec_counter <= MODBUS_ERROR_MESSAGE_LEN) {
-        SetVar(globResult, SCRIPT_RESPONSE_ERROR_MB_MSG)
+        SetVar(result, SCRIPT_RESPONSE_ERROR_MB_MSG)
         Diagnostics("COMMAND: moddbus receive data error - unexceptable message")
         array32_copy(registers_values, empty_data, MODBUS_REGISTER_SIZE)
         return
@@ -245,7 +125,7 @@ modbus_recieve_data(start_addr, reg_count)
     
     new counter = 0
     if (data{counter} != request{counter}) {
-        SetVar(globResult, SCRIPT_RESPONSE_ERROR_MB_ID)
+        SetVar(result, SCRIPT_RESPONSE_ERROR_MB_ID)
         Diagnostics("COMMAND: moddbus receive data error - unexceptable device ID")
         array32_copy(registers_values, empty_data, MODBUS_REGISTER_SIZE)
         return
@@ -254,7 +134,7 @@ modbus_recieve_data(start_addr, reg_count)
     
     new command = data{counter}
     if (command != request{counter}) {
-        SetVar(globResult, SCRIPT_RESPONSE_ERROR_MB_CMD)
+        SetVar(result, SCRIPT_RESPONSE_ERROR_MB_CMD)
         Diagnostics("COMMAND: moddbus receive data error - wrong modbus command")
         array32_copy(registers_values, empty_data, MODBUS_REGISTER_SIZE)
         return
@@ -268,7 +148,7 @@ modbus_recieve_data(start_addr, reg_count)
     } else if (_mb_ms_is_write_single_reg_command(command) || _mb_ms_is_write_multiple_reg_command(command)) {
         response_data_len = 0
     } else {
-        SetVar(globResult, SCRIPT_RESPONSE_ERROR_MB_CMD)
+        SetVar(result, SCRIPT_RESPONSE_ERROR_MB_CMD)
         Diagnostics("COMMAND: moddbus receive data error - unexceptable command")
         array32_copy(registers_values, empty_data, MODBUS_REGISTER_SIZE)
         return
@@ -293,7 +173,7 @@ modbus_recieve_data(start_addr, reg_count)
     new tmp_crc = CRC16(data, counter)
     tmp_crc = ((tmp_crc << 8) + (tmp_crc >> 8)) & 0xFFFF
     if (crc != tmp_crc) {
-        SetVar(globResult, SCRIPT_RESPONSE_ERROR_MB_CRC)
+        SetVar(result, SCRIPT_RESPONSE_ERROR_MB_CRC)
         Diagnostics("COMMAND: moddbus receive data error - unexceptable command")
         array32_copy(registers_values, empty_data, MODBUS_REGISTER_SIZE)
         return
@@ -376,7 +256,7 @@ _mb_ms_get_response_bytes_count(command)
     if (_mb_ms_is_read_command(command)) {
         return response_data_len
     }
-    SetVar(globResult, SCRIPT_RESPONSE_ERROR_MB_CNT)
+    SetVar(result, SCRIPT_RESPONSE_ERROR_MB_CNT)
     Diagnostics("COMMAND: moddbus receive data error - wrong registers bytes count")
     return 0
 }
