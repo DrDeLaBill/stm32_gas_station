@@ -41,6 +41,7 @@ uint32_t PumpFSMBase::targetMl = 0;
 uint32_t PumpFSMBase::currentMlBase = 0;
 int32_t PumpFSMBase::currentMlAdd = 0;
 bool PumpFSMBase::hasError = false;
+bool PumpFSMBase::hasStarted = false;
 bool PumpFSMBase::hasStopped = false;
 uint32_t PumpFSMBase::measureCounter = 0;
 uint32_t PumpFSMBase::pumpBuf[PUMP_MEASURE_BUFFER_SIZE] = { 0 };
@@ -138,6 +139,11 @@ uint32_t Pump::getLastMl()
 bool Pump::hasError()
 {
     return statePtr->foundError();
+}
+
+bool Pump::hasStarted()
+{
+    return statePtr->pumpHasStarted();
 }
 
 bool Pump::hasStopped()
@@ -324,6 +330,7 @@ void PumpFSMBase::clear()
     currentMlAdd  = 0;
     needStart     = false;
     needStop      = false;
+    hasStarted    = false;
     hasStopped    = false;
 #if PUMP_BEDUG
     debugTicksBase = 0;
@@ -382,6 +389,11 @@ int32_t PumpFSMBase::getEncoderTicks()
         return 0;
     }
     return result;
+}
+
+bool PumpFSMBase::pumpHasStarted()
+{
+    return hasStarted;
 }
 
 bool PumpFSMBase::pumpHasStopped()
@@ -459,6 +471,7 @@ void PumpFSMWaitStart::proccess()
 void PumpFSMStart::proccess()
 {
     hasStopped = false;
+    hasStarted = false;
 
     if (needStop) {
 #if PUMP_BEDUG
@@ -501,6 +514,8 @@ void PumpFSMCheckStart::proccess()
         this->setError();
         return;
     }
+
+    hasStarted = true;
 
 #if PUMP_BEDUG
     LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMCheckStart->PumpFSMWork");
@@ -596,6 +611,8 @@ void PumpFSMStop::proccess()
     LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMStop->PumpFSMCheckStop");
 #endif
     Pump::statePtr = std::make_shared<PumpFSMCheckStop>();
+
+    hasStarted = false;
 
     util_timer_start(&errorTimer, PUMP_CHECK_STOP_DELAY_MS);
 }

@@ -194,16 +194,16 @@ bool SettingsDB::check(Settings* settings)
 void SettingsDB::show()
 {
 #if SETTINGS_BEDUG
-	LOG_TAG_BEDUG(SettingsDB::TAG, "------------------------------------------------------------------");
-	LOG_TAG_BEDUG(SettingsDB::TAG, "cf_id = %lu", settings.cf_id);
-	LOG_TAG_BEDUG(SettingsDB::TAG, "device_id = %lu", settings.device_id);
+	PRINT_MESSAGE(SettingsDB::TAG, "------------------------------------------------------------------\n");
+	PRINT_MESSAGE(SettingsDB::TAG, "cf_id = %lu\n", settings.cf_id);
+	PRINT_MESSAGE(SettingsDB::TAG, "device_id = %lu\n", settings.device_id);
 	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
-		LOG_TAG_BEDUG(SettingsDB::TAG, "CARD %u: card=%lu, limit=%lu, used_liters=%lu, limit_type=%s", i, settings.cards[i], settings.limits[i], settings.used_liters[i], (settings.limit_type[i] == LIMIT_DAY ? "DAY" : (settings.limit_type[i] == LIMIT_MONTH ? "MONTH" : "UNKNOWN")));
+		PRINT_MESSAGE(SettingsDB::TAG, "CARD %u: card=%lu, limit=%lu, used_liters=%lu, limit_type=%s\n", i, settings.cards[i], settings.limits[i], settings.used_liters[i], (settings.limit_type[i] == LIMIT_DAY ? "DAY" : (settings.limit_type[i] == LIMIT_MONTH ? "MONTH" : "UNKNOWN")));
 	}
-	LOG_TAG_BEDUG(SettingsDB::TAG, "log_id = %lu", settings.log_id);
-	LOG_TAG_BEDUG(SettingsDB::TAG, "last_day = %u (current=%u)", settings.last_day, clock_get_date());
-	LOG_TAG_BEDUG(SettingsDB::TAG, "last_month = %u (current=%u)", settings.last_month, clock_get_month());
-	LOG_TAG_BEDUG(SettingsDB::TAG, "------------------------------------------------------------------");
+	PRINT_MESSAGE(SettingsDB::TAG, "log_id = %lu\n", settings.log_id);
+	PRINT_MESSAGE(SettingsDB::TAG, "last_day = %u (current=%u)\n", settings.last_day, clock_get_date());
+	PRINT_MESSAGE(SettingsDB::TAG, "last_month = %u (current=%u)\n", settings.last_month, clock_get_month());
+	PRINT_MESSAGE(SettingsDB::TAG, "------------------------------------------------------------------\n");
 #endif
 }
 

@@ -61,8 +61,8 @@ class StorageDriver: public IStorageDriver
 {
 public:
     StorageDriver() {}
-	StorageStatus read(uint32_t address, uint8_t* data, uint32_t len) override;
-	StorageStatus write(uint32_t address, uint8_t* data, uint32_t len) override;
+    StorageStatus read(uint32_t address, uint8_t* data, uint32_t len) override;
+    StorageStatus write(uint32_t address, uint8_t* data, uint32_t len) override;
 };
 /* USER CODE END PD */
 
@@ -99,7 +99,7 @@ void reset_eeprom_i2c();
 /* USER CODE BEGIN 0 */
 StorageAT storage(
     eeprom_get_size() / Page::PAGE_SIZE,
-	(new StorageDriver())
+    (new StorageDriver())
 );
 
 ModbusManager mbManager(&MODBUS_UART);
@@ -143,11 +143,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_Delay(100);
 
-  if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
-      LOG_TAG_BEDUG(MAIN_TAG, "IWDG just went off");
-      PRINT_MESSAGE(MAIN_TAG, "REBOOT DEVICE\n");
-  }
-
   PRINT_MESSAGE(MAIN_TAG, "The device is loading\n");
 
   // Indicators timer start
@@ -156,12 +151,21 @@ int main(void)
   // UI timer start
   HAL_TIM_Base_Start_IT(&UI_TIM);
 
+  // IWDG check reboot
+  if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
+      LOG_TAG_BEDUG(MAIN_TAG, "IWDG just went off");
+      LOG_TAG_BEDUG(MAIN_TAG, "REBOOT DEVICE");
+      UI::setReboot();
+      HAL_Delay(2500);
+  }
+  UI::resetReboot();
+
   // Gas sensor encoder
   HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
 
   // MODBUS slave initialization
   HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
-//  while (1) {}
+
   // Settings
   while (settings.load() != SettingsDB::SETTINGS_OK) {
       settings.reset();
@@ -259,10 +263,10 @@ void save_new_log(uint32_t mlCount)
     RTC_DateTypeDef date;
     RTC_TimeTypeDef time;
     if (!clock_get_rtc_date(&date)) {
-    	memset(reinterpret_cast<void*>(&date), 0, sizeof(date));
+        memset(reinterpret_cast<void*>(&date), 0, sizeof(date));
     }
     if (!clock_get_rtc_time(&time)) {
-    	memset(reinterpret_cast<void*>(&time), 0, sizeof(time));
+        memset(reinterpret_cast<void*>(&time), 0, sizeof(time));
     }
     uint32_t datetimeSeconds = datetime_to_seconds(&date, &time);
 
@@ -270,7 +274,6 @@ void save_new_log(uint32_t mlCount)
     UI::setLoad();
 
     RecordDB record(0);
-//    record.record.cf_id = settings.settings.cf_id;
 
     record.record.time = datetimeSeconds;
     record.record.used_liters = mlCount;
@@ -287,8 +290,8 @@ void save_new_log(uint32_t mlCount)
 
     LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
 
-	settings.add_used_liters(record.record.used_liters, record.record.card);
-	settings.save();
+    settings.add_used_liters(record.record.used_liters, record.record.card);
+    settings.save();
 
     UI::resetLoad();
 }
@@ -331,7 +334,7 @@ StorageStatus StorageDriver::read(uint32_t address, uint8_t* data, uint32_t len)
         return STORAGE_BUSY;
     }
     if (status == EEPROM_ERROR_OOM) {
-    	return STORAGE_OOM;
+        return STORAGE_OOM;
     }
     if (status != EEPROM_OK) {
         return STORAGE_ERROR;
@@ -346,7 +349,7 @@ StorageStatus StorageDriver::write(uint32_t address, uint8_t* data, uint32_t len
         return STORAGE_BUSY;
     }
     if (status == EEPROM_ERROR_OOM) {
-    	return STORAGE_OOM;
+        return STORAGE_OOM;
     }
     if (status != EEPROM_OK) {
         return STORAGE_ERROR;
@@ -373,32 +376,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-//    static uint32_t last_second = HAL_GetTick() / 1000;
-//    static uint32_t ui_counter = 0, ind_counter = 0;
     if(htim->Instance == INDICATORS_TIM.Instance)
     {
         indicate_proccess();
 
         indicate_display();
 
-//        ind_counter++;
     } else if (htim->Instance == UI_TIM.Instance) {
         keyboard4x3_proccess();
 
         Pump::tick();
 
         UI::UIProccess();
-
-//        ui_counter++;
     }
-
-//    uint32_t cur_second = HAL_GetTick() / 1000;
-//    if (cur_second != last_second) {
-//        LOG_TAG_BEDUG(MAIN_TAG, "UI: %lu FLOPS; IND: %lu FLOPS", ui_counter, ind_counter);
-//        ui_counter = 0;
-//        ind_counter = 0;
-//        last_second = cur_second;
-//    }
 }
 
 int _write(int file, uint8_t *ptr, int len) {
@@ -407,9 +397,8 @@ int _write(int file, uint8_t *ptr, int len) {
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);
     }
-    return len;
 #endif
-    return 0;
+    return len;
 }
 
 

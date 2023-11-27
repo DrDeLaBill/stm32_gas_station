@@ -195,12 +195,16 @@ public:
     static void setLoad();
     static void resetLoad();
     static bool needToLoad();
+    static void setReboot();
+    static void resetReboot();
+    static bool needToReboot();
 
     static void setCard(uint32_t card);
     static uint32_t getCard();
 
 private:
     static bool needLoad;
+    static bool needReboot;
     static uint32_t lastCard;
 
     static bool checkErrors();

@@ -92,12 +92,12 @@ void _wiegand_parse_data()
     }
     counter += WIEGAND_VALUE_LEN / 2;
 
-    if (((bool)control_bit_first) != ((bool)unit_counter % 2 == 0)) {
+    if (!(((uint8_t)control_bit_first) ^ ((uint8_t)(unit_counter % 2 == 0)))) {
         _wiegand_clear();
         return;
     }
 
-    wiegand_state.value = (((uint32_t)value) << 16);
+    wiegand_state.value = (((uint32_t)value) << WIEGAND_VALUE_LEN / 2);
 
     unit_counter = 0;
     value = 0;
@@ -110,7 +110,7 @@ void _wiegand_parse_data()
 
     bool control_bit_last = wiegand_state.data[counter++];
 
-    if (((bool)control_bit_last) == ((bool)unit_counter % 2 == 0)) {
+    if (!(((uint8_t)control_bit_last) ^ ((uint8_t)(unit_counter % 2 == 1)))) {
         _wiegand_clear();
         return;
     }

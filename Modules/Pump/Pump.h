@@ -30,6 +30,7 @@ public:
     static uint32_t getDebugTicks();
 #endif
 
+    bool pumpHasStarted();
     bool pumpHasStopped();
     bool foundError();
 
@@ -56,6 +57,7 @@ protected:
     static bool         needStart;
     static bool         needStop;
 
+    static bool         hasStarted;
     static bool         hasStopped;
 
 #if PUMP_BEDUG
@@ -172,6 +174,7 @@ public:
     static uint32_t getLastMl();
 
     static bool hasError();
+    static bool hasStarted();
     static bool hasStopped();
     static bool isGunOnBase();
 

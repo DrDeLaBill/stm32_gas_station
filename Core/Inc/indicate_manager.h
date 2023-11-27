@@ -18,6 +18,7 @@ void indicate_clear_buffer();
 void indicate_proccess();
 void indicate_display();
 void indicate_set_wait_page();
+void indicate_set_reboot_page();
 void indicate_set_buffer_page();
 void indicate_set_blink_buffer_page();
 void indicate_set_load_page();

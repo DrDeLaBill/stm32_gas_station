@@ -88,6 +88,15 @@ const bool denied_arr[][__arr_len(segments_pins)] = {
 	{0, 1, 1, 1, 1, 0, 1}   // d
 };
 
+const bool reboot_arr[][__arr_len(segments_pins)] = {
+/*   A  B  C  D  E  F  G    */
+	{0, 0, 0, 0, 1, 0, 1},  // r
+	{1, 0, 0, 1, 1, 1, 1},  // E
+	{0, 0, 1, 1, 1, 1, 1},  // b
+	{1, 1, 1, 1, 1, 1, 0},  // O
+	{1, 1, 1, 1, 1, 1, 0},  // O
+    {0, 0, 0, 1, 1, 1, 1}   // t
+};
 
 #define INDICATE_INDICATORS_COUNT  ((uint32_t)__arr_len(indicators_pins))
 #define INDICATE_SHOW_DELAY_MS     ((uint32_t)50)
@@ -116,6 +125,7 @@ bool display_buffer[][__arr_len(segments_pins)] = {
 void _indicate_clear_buffer();
 
 void _indicate_fsm_wait();
+void _indicate_fsm_reboot();
 void _indicate_fsm_buffer();
 void _indicate_fsm_blink_buffer();
 void _indicate_fsm_load();
@@ -204,6 +214,11 @@ void indicate_set_wait_page()
     _indicate_set_page(&_indicate_fsm_wait);
 }
 
+void indicate_set_reboot_page()
+{
+    _indicate_set_page(&_indicate_fsm_reboot);
+}
+
 void indicate_set_buffer_page()
 {
     _indicate_set_page(&_indicate_fsm_buffer);
@@ -254,6 +269,11 @@ void _indicate_fsm_wait()
         display_buffer[i][__arr_len(segments_pins) - 1] = !display_buffer[i][__arr_len(segments_pins) - 1];
     }
     util_timer_start(&indicate_state.wait_timer, INDICATE_FSM_WAIT_DELAY_MS);
+}
+
+void _indicate_fsm_reboot()
+{
+	memcpy(display_buffer, reboot_arr, sizeof(display_buffer));
 }
 
 void _indicate_fsm_buffer()

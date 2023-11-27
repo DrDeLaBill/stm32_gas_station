@@ -41,9 +41,14 @@ void Access::check()
         return;
     }
 
+    if (Access::granted) {
+    	return;
+    }
+
     LOG_TAG_BEDUG(Access::TAG, "Card: %lu", user_card);
     for (uint16_t i = 0; i < __arr_len(settings.settings.cards); i++) {
         if (settings.settings.cards[i] == user_card) {
+            Access::denied  = false;
             Access::granted = true;
             Access::card    = user_card;
             util_timer_start(&Access::timer, ACCESS_TIMEOUT_MS);
@@ -51,7 +56,8 @@ void Access::check()
             return;
         }
     }
-    Access::denied = true;
+    Access::denied  = true;
+    Access::granted = false;
     LOG_TAG_BEDUG(Access::TAG, "Access denied");
 }
 
@@ -78,4 +84,5 @@ void Access::close()
     LOG_TAG_BEDUG(Access::TAG, "Access closed");
     Access::granted = false;
     Access::denied = false;
+    Access::card = 0;
 }

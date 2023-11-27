@@ -22,6 +22,7 @@ extern SettingsDB settings;
 uint32_t UI::lastCard = 0;
 uint8_t UI::result[] = {};
 bool UI::needLoad = false;
+bool UI::needReboot = false;
 std::shared_ptr<UIFSMBase> UI::ui = std::make_shared<UIFSMInit>();
 
 uint32_t UIFSMBase::targetMl = 0;
@@ -136,7 +137,11 @@ UIFSMWait::UIFSMWait(): UIFSMBase(0)
 
 void UIFSMWait::proccess()
 {
-    indicate_set_wait_page();
+	if (UI::needToReboot()) {
+		indicate_set_reboot_page();
+	} else {
+		indicate_set_wait_page();
+	}
 
     if (Access::isGranted()) {
 #if UI_BEDUG
@@ -548,6 +553,21 @@ void UI::setLoad()
 void UI::resetLoad()
 {
     needLoad = false;
+}
+
+void UI::setReboot()
+{
+	needReboot = true;
+}
+
+void UI::resetReboot()
+{
+	needReboot = false;
+}
+
+bool UI::needToReboot()
+{
+    return needReboot && (typeid(*(UI::ui)) == typeid(UIFSMWait));
 }
 
 void UI::setCard(uint32_t card)
