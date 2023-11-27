@@ -284,12 +284,11 @@ void save_new_log(uint32_t mlCount)
     RecordDB::RecordStatus status = record.save();
     if (status != RecordDB::RECORD_OK) {
         LOG_TAG_BEDUG(MAIN_TAG, "save new log: error=%02x", status);
-        UI::resetLoad();
-        return;
+    } else {
+    	LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
     }
 
-    LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
-
+	LOG_TAG_BEDUG(MAIN_TAG, "adding %lu used milliliters for %lu card", record.record.used_liters, record.record.card);
     settings.add_used_liters(record.record.used_liters, record.record.card);
     settings.save();
 

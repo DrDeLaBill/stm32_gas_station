@@ -15,6 +15,7 @@ extern "C" {
 
 bool     wiegand_available();
 uint32_t wiegant_get_value();
+void     wiegand_reset();
 void     wiegand_set_value(uint8_t value);
 
 

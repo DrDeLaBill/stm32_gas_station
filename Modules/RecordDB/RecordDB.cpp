@@ -28,6 +28,9 @@ RecordDB::RecordStatus RecordDB::load()
 
     StorageStatus storageStatus = storage.find(FIND_MODE_EQUAL, &address, RECORD_PREFIX, this->record.id);
     if (storageStatus == STORAGE_BUSY) {
+#if RECORD_BEDUG
+        LOG_TAG_BEDUG(RecordDB::TAG, "error load: storage find error=%02X", storageStatus);
+#endif
     	return RECORD_ERROR;
     }
     if (storageStatus != STORAGE_OK) {
@@ -35,7 +38,7 @@ RecordDB::RecordStatus RecordDB::load()
     }
     if (storageStatus != STORAGE_OK) {
 #if RECORD_BEDUG
-        LOG_TAG_BEDUG(RecordDB::TAG, "error load: find clust");
+        LOG_TAG_BEDUG(RecordDB::TAG, "error load: storage find clust error=%02X", storageStatus);
 #endif
         return (storageStatus == STORAGE_NOT_FOUND) ? RECORD_NO_LOG : RECORD_ERROR;
     }
@@ -43,7 +46,7 @@ RecordDB::RecordStatus RecordDB::load()
     RecordStatus recordStatus = this->loadClust(address);
     if (recordStatus != RECORD_OK) {
 #if RECORD_BEDUG
-        LOG_TAG_BEDUG(RecordDB::TAG, "error load: load clust");
+        LOG_TAG_BEDUG(RecordDB::TAG, "error load: storage load clust error=%02X", storageStatus);
 #endif
         return (storageStatus == STORAGE_NOT_FOUND) ? RECORD_NO_LOG : RECORD_ERROR;
     }
@@ -59,7 +62,7 @@ RecordDB::RecordStatus RecordDB::load()
     }
     if (!recordFound) {
 #if RECORD_BEDUG
-        LOG_TAG_BEDUG(RecordDB::TAG, "error load: find record");
+        LOG_TAG_BEDUG(RecordDB::TAG, "error load: storage find record error=%02X", storageStatus);
 #endif
         return RECORD_NO_LOG;
     }
@@ -80,7 +83,7 @@ RecordDB::RecordStatus RecordDB::loadNext()
     StorageStatus storageStatus = storage.find(FIND_MODE_NEXT, &address, RECORD_PREFIX, this->m_recordId);
     if (storageStatus != STORAGE_OK) {
 #if RECORD_BEDUG
-        LOG_TAG_BEDUG(RecordDB::TAG, "error load next: find next record");
+        LOG_TAG_BEDUG(RecordDB::TAG, "error load next: storage find next record error=%02X", storageStatus);
 #endif
         return (storageStatus == STORAGE_NOT_FOUND) ? RECORD_NO_LOG : RECORD_ERROR;
     }
@@ -148,17 +151,27 @@ RecordDB::RecordStatus RecordDB::save()
     StorageFindMode findMode = FIND_MODE_MAX;
     StorageStatus storageStatus = storage.find(findMode, &address, RECORD_PREFIX);
     if (storageStatus == STORAGE_BUSY) {
+#if RECORD_BEDUG
+        LOG_TAG_BEDUG(RecordDB::TAG, "error save: storage find error=%02X", storageStatus);
+#endif
     	return RECORD_ERROR;
     }
 
+	recordStatus = RECORD_OK;
 	bool idFound = false;
 	uint32_t idx;
     while (storageStatus != STORAGE_OOM) {
 		if (storageStatus != STORAGE_OK) {
+#if RECORD_BEDUG
+			LOG_TAG_BEDUG(RecordDB::TAG, "error save: storage find error=%02X; try find empty", storageStatus);
+#endif
 			findMode = FIND_MODE_EMPTY;
-			storageStatus = storage.find(findMode, &address, RECORD_PREFIX);
+			storageStatus = storage.find(findMode, &address);
 		}
 		if (storageStatus != STORAGE_OK) {
+#if RECORD_BEDUG
+			LOG_TAG_BEDUG(RecordDB::TAG, "error save: storage find empty error=%02X; try find min", storageStatus);
+#endif
 			findMode = FIND_MODE_MIN;
 			storageStatus = storage.find(findMode, &address, RECORD_PREFIX);
 		}
@@ -170,7 +183,7 @@ RecordDB::RecordStatus RecordDB::save()
 		}
 		if (storageStatus != STORAGE_OK) {
 #if RECORD_BEDUG
-			LOG_TAG_BEDUG(RecordDB::TAG, "error save: find address for save record");
+			LOG_TAG_BEDUG(RecordDB::TAG, "error save: find address for save record error=%02X", storageStatus);
 #endif
 			return RECORD_ERROR;
 		}
@@ -182,10 +195,12 @@ RecordDB::RecordStatus RecordDB::save()
 #if RECORD_BEDUG
 			LOG_TAG_BEDUG(RecordDB::TAG, "error save: load clust");
 #endif
-			return RECORD_ERROR;
+			storageStatus = STORAGE_NOT_FOUND;
+			recordStatus = RECORD_OK;
+			continue;
 		}
 		if (findMode == FIND_MODE_MIN || findMode == FIND_MODE_EMPTY) {
-			memset(reinterpret_cast<void*>(&(this->m_clust)), 0, sizeof(this->m_clust));
+			memset(reinterpret_cast<void*>(&(this->m_clust)), 0, sizeof(RecordClust));
 		}
 
 		idFound = false;
@@ -265,22 +280,22 @@ RecordDB::RecordStatus RecordDB::loadClust(uint32_t address)
     StorageStatus status = storage.load(address, reinterpret_cast<uint8_t*>(&tmpClust), sizeof(tmpClust));
     if (status != STORAGE_OK) {
 #if RECORD_BEDUG
-        LOG_TAG_BEDUG(RecordDB::TAG, "error load clust");
+        LOG_TAG_BEDUG(RecordDB::TAG, "error load clust: storage load address=%lu error=%02X", address, status);
 #endif
         return RECORD_ERROR;
     }
 
     if (tmpClust.record_magic != CLUST_MAGIC) {
 #if RECORD_BEDUG
-        LOG_TAG_BEDUG(RecordDB::TAG, "error record magic clust");
+        LOG_TAG_BEDUG(RecordDB::TAG, "error load clust: record clust magic=%u, needed=%lu", tmpClust.record_magic, CLUST_MAGIC);
 #endif
         return RECORD_ERROR;
     }
 
-    memcpy(reinterpret_cast<void*>(&this->m_clust), reinterpret_cast<void*>(&tmpClust), sizeof(this->m_clust));
+    memcpy(reinterpret_cast<void*>(&this->m_clust), reinterpret_cast<void*>(&tmpClust), sizeof(RecordClust));
 
 #if RECORD_BEDUG
-    LOG_TAG_BEDUG(RecordDB::TAG, "clust loaded from address=%08X", (unsigned int)address);
+    LOG_TAG_BEDUG(RecordDB::TAG, "clust loaded successfully from address=%08X", (unsigned int)address);
 #endif
 
     return RECORD_OK;

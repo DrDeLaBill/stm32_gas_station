@@ -36,7 +36,7 @@ SettingsDB::SettingsStatus SettingsDB::load()
     StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, SETTINGS_PREFIX, 1);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings: storage find error=%02X", status);
 #endif
         this->info.settings_loaded = false;
         EXIT_CODE(SETTINGS_ERROR);
@@ -46,7 +46,7 @@ SettingsDB::SettingsStatus SettingsDB::load()
     status = storage.load(address, reinterpret_cast<uint8_t*>(&tmpSettings), sizeof(tmpSettings));
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings");
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings: storage load error=%02X address=%lu", status, address);
 #endif
         this->info.settings_loaded = false;
         EXIT_CODE(SETTINGS_ERROR);
@@ -80,7 +80,7 @@ SettingsDB::SettingsStatus SettingsDB::save()
     StorageStatus status = storage.find(mode, &address, SETTINGS_PREFIX, 1);
     if (status == STORAGE_NOT_FOUND) {
     	mode = FIND_MODE_EMPTY;
-        status = storage.find(mode, &address, SETTINGS_PREFIX, 1);
+        status = storage.find(mode, &address);
     }
     while (status == STORAGE_NOT_FOUND) {
         // Search for any address
@@ -92,25 +92,15 @@ SettingsDB::SettingsStatus SettingsDB::save()
     }
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error find settings (address=%lu)", address);
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error save settings: storage find error=%02X", status);
 #endif
         EXIT_CODE(SETTINGS_ERROR);
     }
 
-    if (mode != FIND_MODE_EMPTY) {
-    	status = storage.deleteData(address);
-    }
+	status = storage.rewrite(address, SETTINGS_PREFIX, 1, reinterpret_cast<uint8_t*>(&(this->settings)), sizeof(this->settings));
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error delete settings (address=%lu)", address);
-#endif
-        EXIT_CODE(SETTINGS_ERROR);
-    }
-
-    status = storage.save(address, SETTINGS_PREFIX, 1, reinterpret_cast<uint8_t*>(&(this->settings)), sizeof(this->settings));
-    if (status != STORAGE_OK) {
-#if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error save settings (address=%lu)", address);
+        LOG_TAG_BEDUG(SettingsDB::TAG, "error save settings: storage save error=%02X address=%lu", status, address);
 #endif
         EXIT_CODE(SETTINGS_ERROR);
     }

@@ -53,6 +53,11 @@ uint32_t wiegant_get_value()
     return 0;
 }
 
+void wiegand_reset()
+{
+	_wiegand_clear();
+}
+
 void wiegand_set_value(uint8_t value)
 {
     if (!util_is_timer_wait(&wiegand_state.reset_timer)) {

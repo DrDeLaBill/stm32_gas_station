@@ -85,4 +85,5 @@ void Access::close()
     Access::granted = false;
     Access::denied = false;
     Access::card = 0;
+    wiegand_reset();
 }
