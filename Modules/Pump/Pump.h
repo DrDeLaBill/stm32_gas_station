@@ -26,9 +26,7 @@ public:
     void setTargetMl(uint32_t targetMl);
 
     static uint32_t getCurrentMl();
-#if PUMP_BEDUG
-    static uint32_t getDebugTicks();
-#endif
+    static int32_t getCurrentTicks();
 
     bool pumpHasStarted();
     bool pumpHasStopped();
@@ -50,6 +48,8 @@ protected:
 
     static uint32_t     currentMlBase;
     static int32_t      currentMlAdd;
+    static int32_t      currentTicksBase;
+    static int32_t      currentTicksAdd;
 
     static util_timer_t waitTimer;
     static util_timer_t errorTimer;
@@ -59,11 +59,6 @@ protected:
 
     static bool         hasStarted;
     static bool         hasStopped;
-
-#if PUMP_BEDUG
-    static uint32_t     debugTicksBase;
-    static uint32_t     debugTicksAdd;
-#endif
 
 
     bool isEnabled();
@@ -80,6 +75,7 @@ protected:
 
     static int32_t getCurrentEncoderMl();
     static int32_t getEncoderTicks();
+    static void setEncoderTicks(int32_t ticks);
 
 private:
     uint32_t getADCPump();

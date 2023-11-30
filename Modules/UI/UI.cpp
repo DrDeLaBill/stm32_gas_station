@@ -21,6 +21,7 @@ extern SettingsDB settings;
 
 uint32_t UI::lastCard = 0;
 uint8_t UI::result[] = {};
+uint32_t UI::resultMl = 0;
 bool UI::needLoad = false;
 bool UI::needReboot = false;
 std::shared_ptr<UIFSMBase> UI::ui = std::make_shared<UIFSMInit>();
@@ -249,6 +250,7 @@ UIFSMInput::UIFSMInput(): UIFSMBase(UIFSMInput::INPUT_DELAY)
 {
     UIFSMBase::targetMl = 0;
     memset(UI::result, 0, KEYBOARD4X3_BUFFER_SIZE);
+    UI::setResultMl(0);
     Pump::clear();
 }
 
@@ -348,13 +350,12 @@ void UIFSMWaitCount::proccess()
     if (curr_count > UIFSMBase::targetMl) {
         curr_count = UIFSMBase::targetMl;
     }
-    curr_count /= liters_multiplier;
 
     if (Pump::hasStopped()) {
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult");
 #endif
-        UI::ui = std::make_shared<UIFSMResult>();
+        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
     }
 
     if (curr_count != this->lastMl) {
@@ -376,6 +377,7 @@ void UIFSMWaitCount::proccess()
 	}
     indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
     memcpy(UI::result, buffer, KEYBOARD4X3_BUFFER_SIZE);
+    UI::setResultMl(0);
 }
 
 bool UIFSMWaitCount::checkState()
@@ -386,7 +388,7 @@ bool UIFSMWaitCount::checkState()
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (check stop)");
 #endif
-        UI::ui = std::make_shared<UIFSMResult>();
+        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
         return false;
     }
 
@@ -395,7 +397,7 @@ bool UIFSMWaitCount::checkState()
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (timer)");
 #endif
-        UI::ui = std::make_shared<UIFSMResult>();
+        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
         return false;
     }
 
@@ -409,15 +411,10 @@ void UIFSMCount::proccess()
     indicate_set_buffer_page();
 
     uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = { 0 };
-    uint32_t liters_multiplier = ML_IN_LTR;
-    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-        liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
-    }
     uint32_t curr_count = Pump::getCurrentMl();
     if (curr_count > UIFSMBase::targetMl) {
         curr_count = UIFSMBase::targetMl;
     }
-    curr_count /= liters_multiplier;
 
     if (curr_count == this->lastMl) {
 #if UI_BEDUG
@@ -429,9 +426,13 @@ void UIFSMCount::proccess()
 
     this->lastMl = curr_count;
 
-    uint32_t tmpCurrCount = curr_count;
+    uint32_t liters_multiplier = ML_IN_LTR;
+    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+        liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+    }
+    uint32_t tmpCurrCount = curr_count / liters_multiplier;
     for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
-    	if (curr_count) {
+    	if (tmpCurrCount || i > KEYBOARD4X3_BUFFER_SIZE - KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT - 1) {
     		buffer[i-1] = tmpCurrCount % 10 + '0';
     		tmpCurrCount /= 10;
     	} else {
@@ -445,7 +446,7 @@ void UIFSMCount::proccess()
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
 #endif
-        UI::ui = std::make_shared<UIFSMResult>();
+        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
     }
 }
 
@@ -457,7 +458,7 @@ bool UIFSMCount::checkState()
 #if UI_BEDUG
         LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
 #endif
-        UI::ui = std::make_shared<UIFSMResult>();
+        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
         return false;
     }
 
@@ -480,9 +481,10 @@ void UIFSMStop::proccess()
     UI::ui = std::make_shared<UIFSMWait>();
 }
 
-UIFSMResult::UIFSMResult(): UIFSMBase(UIFSMResult::RESULT_DELAY)
+UIFSMResult::UIFSMResult(uint32_t resultMl): UIFSMBase(UIFSMResult::RESULT_DELAY)
 {
     indicate_set_buffer(UI::result, KEYBOARD4X3_BUFFER_SIZE);
+	UI::setResultMl(resultMl);
     Access::close();
     Pump::stop();
 }
@@ -578,6 +580,16 @@ void UI::setCard(uint32_t card)
 uint32_t UI::getCard()
 {
     return UI::lastCard;
+}
+
+uint32_t UI::getResultMl()
+{
+	return UI::resultMl;
+}
+
+void UI::setResultMl(uint32_t resultMl)
+{
+	UI::resultMl = resultMl;
 }
 
 bool UI::checkStart()

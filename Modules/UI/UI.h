@@ -160,7 +160,7 @@ protected:
 class UIFSMResult: public UIFSMBase
 {
 public:
-    UIFSMResult();
+    UIFSMResult(uint32_t resultMl);
 
 protected:
     void proccess() override;
@@ -201,11 +201,14 @@ public:
 
     static void setCard(uint32_t card);
     static uint32_t getCard();
+    static uint32_t getResultMl();
+    static void setResultMl(uint32_t resultMl);
 
 private:
     static bool needLoad;
     static bool needReboot;
     static uint32_t lastCard;
+    static uint32_t resultMl;
 
     static bool checkErrors();
 

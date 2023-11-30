@@ -193,6 +193,15 @@ void SettingsDB::show()
 	PRINT_MESSAGE(SettingsDB::TAG, "log_id = %lu\n", settings.log_id);
 	PRINT_MESSAGE(SettingsDB::TAG, "last_day = %u (current=%u)\n", settings.last_day, clock_get_date());
 	PRINT_MESSAGE(SettingsDB::TAG, "last_month = %u (current=%u)\n", settings.last_month, clock_get_month());
+    RTC_DateTypeDef date;
+    RTC_TimeTypeDef time;
+    if (!clock_get_rtc_date(&date)) {
+        memset(reinterpret_cast<void*>(&date), 0, sizeof(date));
+    }
+    if (!clock_get_rtc_time(&time)) {
+        memset(reinterpret_cast<void*>(&time), 0, sizeof(time));
+    }
+	PRINT_MESSAGE(SettingsDB::TAG, "Current time: 20%02u-%02u-%02uT%02u:%02u:%02u\n", date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
 	PRINT_MESSAGE(SettingsDB::TAG, "------------------------------------------------------------------\n");
 #endif
 }

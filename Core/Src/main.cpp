@@ -75,7 +75,7 @@ public:
 
 /* USER CODE BEGIN PV */
 
-const char* MAIN_TAG = "MAIN";
+const char* MAIN_TAG = "MN";
 
 uint8_t umka200_uart_byte = 0;
 
@@ -138,7 +138,7 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
-//  MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(100);
@@ -178,7 +178,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//    HAL_IWDG_Refresh(&DEVICE_IWDG);
+    HAL_IWDG_Refresh(&DEVICE_IWDG);
 
     soul_proccess();
 
@@ -194,9 +194,9 @@ int main(void)
 
     settings.checkResidues();
 
-    if (Pump::getLastMl() > 0) {
-        save_new_log(Pump::getLastMl());
-        Pump::setLastMl(0);
+    if (UI::getResultMl() > 0) {
+        save_new_log(UI::getResultMl());
+        UI::setResultMl(0);
     }
 
     mbManager.tick();
@@ -280,6 +280,7 @@ void save_new_log(uint32_t mlCount)
     record.record.card = UI::getCard();
 
     LOG_TAG_BEDUG(MAIN_TAG, "save new log: begin");
+    LOG_TAG_BEDUG(MAIN_TAG, "save new log: real mls=%lu", Pump::getCurrentMl());
 
     RecordDB::RecordStatus status = record.save();
     if (status != RecordDB::RECORD_OK) {

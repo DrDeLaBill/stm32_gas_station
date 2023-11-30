@@ -40,6 +40,8 @@ uint32_t Pump::lastUsedMl = 0;
 uint32_t PumpFSMBase::targetMl = 0;
 uint32_t PumpFSMBase::currentMlBase = 0;
 int32_t PumpFSMBase::currentMlAdd = 0;
+int32_t PumpFSMBase::currentTicksBase = 0;
+int32_t PumpFSMBase::currentTicksAdd = 0;
 bool PumpFSMBase::hasError = false;
 bool PumpFSMBase::hasStarted = false;
 bool PumpFSMBase::hasStopped = false;
@@ -51,11 +53,6 @@ util_timer_t PumpFSMBase::waitTimer = { 0 };
 util_timer_t PumpFSMBase::errorTimer = { 0 };
 bool PumpFSMBase::needStart = false;
 bool PumpFSMBase::needStop = false;
-
-#if PUMP_BEDUG
-uint32_t PumpFSMBase::debugTicksBase = 0;
-uint32_t PumpFSMBase::debugTicksAdd = 0;
-#endif
 
 
 
@@ -202,14 +199,14 @@ uint32_t PumpFSMBase::getCurrentMl()
     return currentMlBase + currentMlAdd;
 }
 
+int32_t PumpFSMBase::getCurrentTicks()
+{
+	return currentTicksBase + currentTicksAdd;
+}
+
 int32_t PumpFSMBase::getCurrentEncoderMl()
 {
     return (getEncoderTicks() * PUMP_MD212_MLS_PER_TICK) / 10;
-}
-
-uint32_t PumpFSMBase::getDebugTicks()
-{
-    return debugTicksBase + debugTicksAdd;
 }
 
 bool PumpFSMBase::isEnabled()
@@ -325,17 +322,15 @@ void PumpFSMBase::reset()
 
 void PumpFSMBase::clear()
 {
-    targetMl      = 0;
-    currentMlBase = 0;
-    currentMlAdd  = 0;
-    needStart     = false;
-    needStop      = false;
-    hasStarted    = false;
-    hasStopped    = false;
-#if PUMP_BEDUG
-    debugTicksBase = 0;
-    debugTicksAdd  = 0;
-#endif
+    targetMl         = 0;
+    currentMlBase    = 0;
+    currentMlAdd     = 0;
+    needStart        = false;
+    needStop         = false;
+    hasStarted       = false;
+    hasStopped       = false;
+    currentTicksBase = 0;
+    currentTicksAdd  = 0;
 }
 
 uint32_t PumpFSMBase::getADCPump()
@@ -389,6 +384,11 @@ int32_t PumpFSMBase::getEncoderTicks()
         return 0;
     }
     return result;
+}
+
+void PumpFSMBase::setEncoderTicks(int32_t ticks)
+{
+	__HAL_TIM_SET_COUNTER(&MD212_TIM, ticks + static_cast<int32_t>(Pump::getPumpEncoderMiddle()));
 }
 
 bool PumpFSMBase::pumpHasStarted()
@@ -552,26 +552,23 @@ void PumpFSMWork::proccess()
     }
 
     int32_t currentEncoderMl = getCurrentEncoderMl();
-    if (currentEncoderMl < 0) {
+    if (this->getEncoderTicks() < currentTicksAdd) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "pump isn't working: current gas ticks=%ld; target=%lu", currentEncoderMl, targetMl);
+        LOG_TAG_BEDUG(Pump::TAG, "pump isn't working: current gas ticks=%ld; target=%lu", currentTicksAdd, targetMl);
 #endif
-        return;
+        setEncoderTicks(currentTicksAdd);
     }
 
     if (__abs_dif(static_cast<uint32_t>(currentEncoderMl), Pump::getCurrentMl()) == 0) {
         return;
     }
 
-    debugTicksAdd = this->getEncoderTicks();
     if (this->getEncoderTicks() >= PUMP_MD212_TRIGGER_VAL_MAX) {
         Pump::resetEncoder();
         currentMlBase += currentMlAdd;
         currentMlAdd = 0;
-#if PUMP_BEDUG
-        debugTicksBase += debugTicksAdd;
-        debugTicksAdd = 0;
-#endif
+        currentTicksBase += currentTicksAdd;
+        currentTicksAdd = 0;
     }
 
     if (currentMlAdd == getCurrentEncoderMl()) {
@@ -579,10 +576,11 @@ void PumpFSMWork::proccess()
     }
 
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "current gas ml: %lu (%ld ticks, current tim: %lu ticks); target: %lu", Pump::getCurrentMl(), PumpFSMBase::getDebugTicks(), debugTicksAdd, targetMl);
+    LOG_TAG_BEDUG(Pump::TAG, "current gas ml: %lu (%ld ticks, current tim: %lu ticks); target: %lu", Pump::getCurrentMl(), PumpFSMBase::getCurrentTicks(), currentTicksAdd, targetMl);
 #endif
 
     currentMlAdd = getCurrentEncoderMl();
+    currentTicksAdd = getEncoderTicks();
 
 
     uint32_t fastMlTarget =
@@ -641,19 +639,23 @@ void PumpFSMCheckStop::proccess()
     hasStopped = true;
 
     currentMlAdd = getCurrentEncoderMl();
+    currentTicksAdd = getEncoderTicks();
     if (currentMlAdd < 0) {
     	currentMlAdd = 0;
+    }
+    if (currentTicksAdd < 0) {
+    	currentTicksAdd = 0;
     }
 }
 
 void PumpFSMRecord::proccess()
 {
-    if (Pump::getCurrentMl() > 0) {
-        Pump::setLastMl(Pump::getCurrentMl());
-    }
+//    if (Pump::getCurrentMl() > 0) {
+//        Pump::setLastMl(Pump::getCurrentMl());
+//    }
 #if PUMP_BEDUG
     LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMRecord->PumpFSMWaitLiters");
-    LOG_TAG_BEDUG(Pump::TAG, "Result TIM ticks: %lu", PumpFSMBase::getDebugTicks());
+    LOG_TAG_BEDUG(Pump::TAG, "Result TIM ticks: %lu", PumpFSMBase::getCurrentTicks());
 #endif
     Pump::statePtr = std::make_shared<PumpFSMWaitLiters>();
 
@@ -665,7 +667,7 @@ void PumpFSMRecord::proccess()
 void PumpFSMError::proccess()
 {
     hasError = true;
-    Pump::setLastMl(0);
+//    Pump::setLastMl(0);
 
     this->setPumpPower(GPIO_PIN_RESET);
     this->setValve1Power(GPIO_PIN_RESET);
