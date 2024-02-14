@@ -32,10 +32,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "soul.h"
+#include "log.h"
 #include "utils.h"
 #include "clock.h"
 #include "wiegand.h"
+#include "settings.h"
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
 #include "eeprom_at24cm01_storage.h"
@@ -44,8 +45,8 @@
 #include "Pump.h"
 #include "Access.h"
 #include "RecordDB.h"
+#include "SoulGuard.h"
 #include "StorageAT.h"
-#include "SettingsDB.h"
 #include "ModbusManager.h"
 
 /* USER CODE END Includes */
@@ -57,13 +58,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-class StorageDriver: public IStorageDriver
-{
-public:
-    StorageDriver() {}
-    StorageStatus read(uint32_t address, uint8_t* data, uint32_t len) override;
-    StorageStatus write(uint32_t address, uint8_t* data, uint32_t len) override;
-};
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -75,13 +69,13 @@ public:
 
 /* USER CODE BEGIN PV */
 
-const char* MAIN_TAG = "MN";
+const char* MAIN_TAG = "MAIN";
 
 uint8_t umka200_uart_byte = 0;
 
 uint8_t modbus_uart_byte = 0;
 
-SettingsDB settings;
+extern settings_t settings;
 
 /* USER CODE END PV */
 
@@ -91,17 +85,10 @@ void SystemClock_Config(void);
 
 void save_new_log(uint32_t mlCount);
 
-void reset_eeprom_i2c();
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-StorageAT storage(
-    eeprom_get_size() / Page::PAGE_SIZE,
-    (new StorageDriver())
-);
-
 ModbusManager mbManager(&MODBUS_UART);
 /* USER CODE END 0 */
 
@@ -120,13 +107,13 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  reset_eeprom_i2c();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -138,12 +125,17 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
-  MX_IWDG_Init();
+//  MX_IWDG_Init();
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
+//  while (1);
+//  RestartWatchdog::reset_i2c_errata(); // TODO: move reset_i2c to memory watchdog
+  UI::setLoading();
+
   HAL_Delay(100);
 
-  PRINT_MESSAGE(MAIN_TAG, "The device is loading\n");
+  gprint("\n\n\n");
+  printTagLog(MAIN_TAG, "The device is loading");
 
   // Indicators timer start
   HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
@@ -151,56 +143,51 @@ int main(void)
   // UI timer start
   HAL_TIM_Base_Start_IT(&UI_TIM);
 
-  // IWDG check reboot
-  if (__HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)) {
-      LOG_TAG_BEDUG(MAIN_TAG, "IWDG just went off");
-      LOG_TAG_BEDUG(MAIN_TAG, "REBOOT DEVICE");
-      UI::setReboot();
-      HAL_Delay(2500);
-  }
-  UI::resetReboot();
-
   // Gas sensor encoder
   HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
 
   // MODBUS slave initialization
   HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
 
-  // Settings
-  while (settings.load() != SettingsDB::SETTINGS_OK) {
-      settings.reset();
-  }
-
-  PRINT_MESSAGE(MAIN_TAG, "The device is loaded successfully\n");
+  printTagLog(MAIN_TAG, "The device is loaded successfully");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    HAL_IWDG_Refresh(&DEVICE_IWDG);
+	SoulGuard<
+		RestartWatchdog,
+		MemoryWatchdog,
+		StackWatchdog,
+		SettingsWatchdog,
+		RTCWatchdog
+	> soulGuard;
+	while (1)
+	{
+		soulGuard.defend();
 
-    soul_proccess();
+		Pump::measure();
 
-    /* USER CODE END WHILE */
+		if (soulGuard.hasErrors()) {
+			UI::setError();
+			continue;
+		}
 
-    /* USER CODE BEGIN 3 */
+		UI::resetError();
 
-    Pump::measure();
+//		HAL_IWDG_Refresh(&DEVICE_IWDG);
+	/* USER CODE END WHILE */
 
-    if (general_check_errors()) {
-        continue;
-    }
+	/* USER CODE BEGIN 3 */
 
-    settings.checkResidues();
+		settings_check_residues();
 
-    if (UI::getResultMl() > 0) {
-        save_new_log(UI::getResultMl());
-        UI::setResultMl(0);
-    }
+		if (UI::getResultMl() > 0) {
+			save_new_log(UI::getResultMl());
+			UI::resetResultMl();
+		}
 
-    mbManager.tick();
-  }
+		mbManager.tick();
+	}
   /* USER CODE END 3 */
 }
 
@@ -210,8 +197,8 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_OscInitTypeDef RCC_OscInitStruct = {};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {};
 
   /** Configure the main internal regulator output voltage
   */
@@ -268,10 +255,10 @@ void save_new_log(uint32_t mlCount)
     if (!clock_get_rtc_time(&time)) {
         memset(reinterpret_cast<void*>(&time), 0, sizeof(time));
     }
-    uint32_t datetimeSeconds = datetime_to_seconds(&date, &time);
+    uint32_t datetimeSeconds = clock_datetime_to_seconds(&date, &time);
 
 
-    UI::setLoad();
+    UI::setLoading();
 
     RecordDB record(0);
 
@@ -279,83 +266,22 @@ void save_new_log(uint32_t mlCount)
     record.record.used_liters = mlCount;
     record.record.card = UI::getCard();
 
-    LOG_TAG_BEDUG(MAIN_TAG, "save new log: begin");
-    LOG_TAG_BEDUG(MAIN_TAG, "save new log: real mls=%lu", Pump::getCurrentMl());
+    printTagLog(MAIN_TAG, "save new log: begin");
+    printTagLog(MAIN_TAG, "save new log: real mls=%lu", Pump::getCurrentMl());
 
     RecordDB::RecordStatus status = record.save();
     if (status != RecordDB::RECORD_OK) {
-        LOG_TAG_BEDUG(MAIN_TAG, "save new log: error=%02x", status);
+        printTagLog(MAIN_TAG, "save new log: error=%02x", status);
     } else {
-    	LOG_TAG_BEDUG(MAIN_TAG, "save new log: success");
+    	printTagLog(MAIN_TAG, "save new log: success");
     }
 
-	LOG_TAG_BEDUG(MAIN_TAG, "adding %lu used milliliters for %lu card", record.record.used_liters, record.record.card);
-    settings.add_used_liters(record.record.used_liters, record.record.card);
-    settings.save();
+	printTagLog(MAIN_TAG, "adding %lu used milliliters for %lu card", record.record.used_liters, record.record.card);
+    settings_add_used_liters(record.record.used_liters, record.record.card);
+    set_settings_update_status(true);
 
-    UI::resetLoad();
+    UI::setLoaded();
 }
-
-void reset_eeprom_i2c()
-{
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-    GPIO_InitStruct.Pin   = EEPROM_SDA_Pin | EEPROM_SCL_Pin;
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
-    GPIO_InitStruct.Pull  = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    HAL_GPIO_WritePin(EEPROM_SDA_GPIO_Port, EEPROM_SDA_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(EEPROM_SCL_GPIO_Port, EEPROM_SCL_Pin, GPIO_PIN_RESET);
-    HAL_Delay(100);
-
-    HAL_GPIO_WritePin(EEPROM_SDA_GPIO_Port, EEPROM_SDA_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(EEPROM_SCL_GPIO_Port, EEPROM_SCL_Pin, GPIO_PIN_SET);
-    HAL_Delay(100);
-
-    HAL_GPIO_WritePin(EEPROM_SDA_GPIO_Port, EEPROM_SDA_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(EEPROM_SCL_GPIO_Port, EEPROM_SCL_Pin, GPIO_PIN_RESET);
-    HAL_Delay(100);
-}
-
-bool general_check_errors()
-{
-    if (Pump::hasError()) {
-        return true;
-    }
-    return false;
-}
-
-StorageStatus StorageDriver::read(uint32_t address, uint8_t* data, uint32_t len)
-{
-    eeprom_status_t status = eeprom_read(address, data, len);
-    if (status == EEPROM_ERROR_BUSY) {
-        return STORAGE_BUSY;
-    }
-    if (status == EEPROM_ERROR_OOM) {
-        return STORAGE_OOM;
-    }
-    if (status != EEPROM_OK) {
-        return STORAGE_ERROR;
-    }
-    return STORAGE_OK;
-};
-
-StorageStatus StorageDriver::write(uint32_t address, uint8_t* data, uint32_t len)
-{
-    eeprom_status_t status = eeprom_write(address, data, len);
-    if (status == EEPROM_ERROR_BUSY) {
-        return STORAGE_BUSY;
-    }
-    if (status == EEPROM_ERROR_OOM) {
-        return STORAGE_OOM;
-    }
-    if (status != EEPROM_OK) {
-        return STORAGE_ERROR;
-    }
-    return STORAGE_OK;
-};
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -387,12 +313,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
         Pump::tick();
 
-        UI::UIProccess();
+        UI::proccess();
     }
 }
 
 int _write(int file, uint8_t *ptr, int len) {
-    HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, len, GENERAL_BUS_TIMEOUT_MS);
+	(void)file;
+    HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, static_cast<uint16_t>(len), GENERAL_TIMEOUT_MS);
 #ifdef DEBUG
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);

@@ -8,13 +8,15 @@
 
 #include "utils.h"
 
+#include "Timer.h"
+
 
 class Access
 {
 private:
     static const char TAG[];
 
-    static util_timer_t timer;
+    static utl::Timer timer;
     static uint32_t card;
     static bool granted;
     static bool denied;

@@ -8,7 +8,9 @@
 
 #include "UI.h"
 
+#include "log.h"
 #include "main.h"
+#include "soul.h"
 #include "utils.h"
 
 
@@ -27,8 +29,7 @@
 
 #define PUMP_SESSION_ML_MAX             ((uint32_t)50000)
 #define PUMP_SESSION_ML_MIN             ((uint32_t)1000)
-#define PUMP_CHECK_START_DELAY_MS       ((uint32_t)5000)
-#define PUMP_CHECK_STOP_DELAY_MS        ((uint32_t)5000)
+#define PUMP_CHECK_DELAY_MS             ((uint32_t)5000)
 #define PUMP_MEASURE_BUFFER_SIZE        ((uint8_t)10)
 
 #define PUMP_SLOW_ML_VALUE              ((uint32_t)1000)
@@ -42,15 +43,14 @@ uint32_t PumpFSMBase::currentMlBase = 0;
 int32_t PumpFSMBase::currentMlAdd = 0;
 int32_t PumpFSMBase::currentTicksBase = 0;
 int32_t PumpFSMBase::currentTicksAdd = 0;
-bool PumpFSMBase::hasError = false;
 bool PumpFSMBase::hasStarted = false;
 bool PumpFSMBase::hasStopped = false;
 uint32_t PumpFSMBase::measureCounter = 0;
 uint32_t PumpFSMBase::pumpBuf[PUMP_MEASURE_BUFFER_SIZE] = { 0 };
 uint32_t PumpFSMBase::valveBuf[PUMP_MEASURE_BUFFER_SIZE] = { 0 };
 int32_t PumpFSMBase::md212Buf[PUMP_MEASURE_BUFFER_SIZE] = { 0 };
-util_timer_t PumpFSMBase::waitTimer = { 0 };
-util_timer_t PumpFSMBase::errorTimer = { 0 };
+utl::Timer PumpFSMBase::waitTimer(PUMP_ADC_MEASURE_DELAY_MS);
+utl::Timer PumpFSMBase::errorTimer(PUMP_CHECK_DELAY_MS);
 bool PumpFSMBase::needStart = false;
 bool PumpFSMBase::needStop = false;
 
@@ -123,7 +123,7 @@ constexpr uint32_t Pump::getPumpEncoderMiddle()
 void Pump::setLastMl(uint32_t lastMl)
 {
     if (lastMl > 0) {
-        UI::needToLoad();
+        UI::setLoading();
     }
     Pump::lastUsedMl = lastMl;
 }
@@ -135,7 +135,7 @@ uint32_t Pump::getLastMl()
 
 bool Pump::hasError()
 {
-    return statePtr->foundError();
+    return is_error(PUMP_FAULT);
 }
 
 bool Pump::hasStarted()
@@ -155,7 +155,7 @@ PumpFSMBase::PumpFSMBase()
 
 void PumpFSMBase::measure()
 {
-    if (util_is_timer_wait(&waitTimer)) {
+    if (waitTimer.wait()) {
         return;
     }
 
@@ -163,7 +163,7 @@ void PumpFSMBase::measure()
         return;
     }
 
-    util_timer_start(&waitTimer, PUMP_ADC_MEASURE_DELAY_MS);
+    waitTimer.start();
     pumpBuf[measureCounter]  = this->getADCPump();
     valveBuf[measureCounter] = this->getADCValve();
     md212Buf[measureCounter] = this->getEncoderTicks();
@@ -182,7 +182,7 @@ void PumpFSMBase::stop()
 
 void PumpFSMBase::setTargetMl(uint32_t targetMl)
 {
-    if (hasError) {
+    if (is_error(PUMP_FAULT)) {
         return;
     }
 //    if (targetMl > PUMP_SESSION_ML_MAX) {
@@ -309,13 +309,13 @@ void PumpFSMBase::setValve2Power(GPIO_PinState enable_state)
 void PumpFSMBase::reset()
 {
 //    targetMl = 0;
-    hasError = false;
+    reset_error(PUMP_FAULT);
     measureCounter = false;
     memset(pumpBuf, 0, sizeof(pumpBuf));
     memset(valveBuf, 0, sizeof(valveBuf));
     memset(md212Buf, 0, sizeof(md212Buf));
-    memset(reinterpret_cast<void*>(&waitTimer), 0, sizeof(waitTimer));
-    memset(reinterpret_cast<void*>(&errorTimer), 0, sizeof(errorTimer));
+    waitTimer.reset();
+    errorTimer.reset();
     needStart = false;
     needStop = false;
 }
@@ -335,11 +335,10 @@ void PumpFSMBase::clear()
 
 uint32_t PumpFSMBase::getADCPump()
 {
-    ADC_ChannelConfTypeDef conf = {
-        .Channel      = PUMP_ADC_CHANNEL,
-        .Rank         = 1,
-        .SamplingTime = ADC_SAMPLETIME_28CYCLES,
-    };
+    ADC_ChannelConfTypeDef conf = {};
+    conf.Channel      = PUMP_ADC_CHANNEL;
+    conf.Rank         = 1;
+    conf.SamplingTime = ADC_SAMPLETIME_28CYCLES;
     if (HAL_ADC_ConfigChannel(&PUMP_ADC, &conf) != HAL_OK) {
         return 0;
     }
@@ -354,11 +353,10 @@ uint32_t PumpFSMBase::getADCPump()
 
 uint32_t PumpFSMBase::getADCValve()
 {
-    ADC_ChannelConfTypeDef conf = {
-        .Channel      = VALVE_ADC_CHANNEL,
-        .Rank         = 1,
-        .SamplingTime = ADC_SAMPLETIME_28CYCLES,
-    };
+    ADC_ChannelConfTypeDef conf = {};
+    conf.Channel      = VALVE_ADC_CHANNEL;
+    conf.Rank         = 1;
+    conf.SamplingTime = ADC_SAMPLETIME_28CYCLES;
     if (HAL_ADC_ConfigChannel(&VALVE_ADC, &conf) != HAL_OK) {
         return 0;
     }
@@ -401,15 +399,10 @@ bool PumpFSMBase::pumpHasStopped()
     return hasStopped;
 }
 
-bool PumpFSMBase::foundError()
-{
-    return hasError;
-}
-
 void PumpFSMBase::setError()
 {
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMBase->PumpFSMError");
+    printTagLog(Pump::TAG, "set PumpFSMBase->PumpFSMError");
 #endif
     Pump::statePtr = std::make_shared<PumpFSMError>();
 }
@@ -418,7 +411,7 @@ void PumpFSMInit::proccess()
 {
     (std::make_shared<PumpFSMStop>())->proccess();
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMInit->PumpFSMWaitLIters");
+    printTagLog(Pump::TAG, "set PumpFSMInit->PumpFSMWaitLIters");
 #endif
     Pump::statePtr = std::make_shared<PumpFSMWaitLiters>();
 }
@@ -427,7 +420,7 @@ void PumpFSMWaitLiters::proccess()
 {
     if (targetMl > 0) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWaitLiters->PumpFSMWaitStart");
+        printTagLog(Pump::TAG, "set PumpFSMWaitLiters->PumpFSMWaitStart");
 #endif
         Pump::statePtr = std::make_shared<PumpFSMWaitStart>();
         Pump::statePtr->start();
@@ -438,7 +431,7 @@ void PumpFSMWaitStart::proccess()
 {
     if (needStop) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWaitStart->PumpFSMStop");
+        printTagLog(Pump::TAG, "set PumpFSMWaitStart->PumpFSMStop");
 #endif
         Pump::statePtr = std::make_shared<PumpFSMStop>();
         return;
@@ -446,13 +439,13 @@ void PumpFSMWaitStart::proccess()
 
     if (needStart && targetMl > 0) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWaitStart->PumpFSMStart");
+        printTagLog(Pump::TAG, "set PumpFSMWaitStart->PumpFSMStart");
 #endif
         Pump::statePtr = std::make_shared<PumpFSMStart>();
         return;
     }
 
-    if (util_is_timer_wait(&waitTimer)) {
+    if (waitTimer.wait()) {
         return;
     }
 
@@ -475,7 +468,7 @@ void PumpFSMStart::proccess()
 
     if (needStop) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMStart->PumpFSMStop");
+        printTagLog(Pump::TAG, "set PumpFSMStart->PumpFSMStop");
 #endif
         Pump::reset();
         Pump::statePtr = std::make_shared<PumpFSMStop>();
@@ -492,16 +485,16 @@ void PumpFSMStart::proccess()
     this->setValve2Power(GPIO_PIN_SET);
 
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMStart->PumpFSMCheckStart");
+    printTagLog(Pump::TAG, "set PumpFSMStart->PumpFSMCheckStart");
 #endif
     Pump::statePtr = std::make_shared<PumpFSMCheckStart>();
 
-    util_timer_start(&errorTimer, PUMP_CHECK_START_DELAY_MS);
+    errorTimer.start();
 }
 
 void PumpFSMCheckStart::proccess()
 {
-    if (!util_is_timer_wait(&errorTimer)) {
+    if (!errorTimer.wait()) {
         this->setError();
         return;
     }
@@ -518,7 +511,7 @@ void PumpFSMCheckStart::proccess()
     hasStarted = true;
 
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMCheckStart->PumpFSMWork");
+    printTagLog(Pump::TAG, "set PumpFSMCheckStart->PumpFSMWork");
 #endif
     Pump::statePtr = std::make_shared<PumpFSMWork>();
 }
@@ -527,7 +520,7 @@ void PumpFSMWork::proccess()
 {
     if (needStop) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWork->PumpFSMStop");
+        printTagLog(Pump::TAG, "set PumpFSMWork->PumpFSMStop");
 #endif
         Pump::statePtr = std::make_shared<PumpFSMStop>();
         return;
@@ -546,7 +539,7 @@ void PumpFSMWork::proccess()
 
     if (Pump::isGunOnBase()) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWork->PumpFSMStop");
+        printTagLog(Pump::TAG, "set PumpFSMWork->PumpFSMStop");
 #endif
         Pump::statePtr = std::make_shared<PumpFSMStop>();
     }
@@ -554,7 +547,7 @@ void PumpFSMWork::proccess()
     int32_t currentEncoderMl = getCurrentEncoderMl();
     if (this->getEncoderTicks() < currentTicksAdd) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "pump isn't working: current gas ticks=%ld; target=%lu", currentTicksAdd, targetMl);
+        printTagLog(Pump::TAG, "pump isn't working: current gas ticks=%ld; target=%lu", currentTicksAdd, targetMl);
 #endif
         setEncoderTicks(currentTicksAdd);
     }
@@ -576,7 +569,7 @@ void PumpFSMWork::proccess()
     }
 
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "current gas ml: %lu (%ld ticks, current tim: %lu ticks); target: %lu", Pump::getCurrentMl(), PumpFSMBase::getCurrentTicks(), currentTicksAdd, targetMl);
+    printTagLog(Pump::TAG, "current gas ml: %lu (%ld ticks, current tim: %lu ticks); target: %lu", Pump::getCurrentMl(), PumpFSMBase::getCurrentTicks(), currentTicksAdd, targetMl);
 #endif
 
     currentMlAdd = getCurrentEncoderMl();
@@ -593,7 +586,7 @@ void PumpFSMWork::proccess()
 
     if (Pump::getCurrentMl() >= targetMl) {
 #if PUMP_BEDUG
-        LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMWork->PumpFSMStop (end)");
+        printTagLog(Pump::TAG, "set PumpFSMWork->PumpFSMStop (end)");
 #endif
         Pump::statePtr = std::make_shared<PumpFSMStop>();
     }
@@ -606,18 +599,18 @@ void PumpFSMStop::proccess()
     this->setValve2Power(GPIO_PIN_RESET);
 
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMStop->PumpFSMCheckStop");
+    printTagLog(Pump::TAG, "set PumpFSMStop->PumpFSMCheckStop");
 #endif
     Pump::statePtr = std::make_shared<PumpFSMCheckStop>();
 
     hasStarted = false;
 
-    util_timer_start(&errorTimer, PUMP_CHECK_STOP_DELAY_MS);
+    errorTimer.start();
 }
 
 void PumpFSMCheckStop::proccess()
 {
-    if (!util_is_timer_wait(&errorTimer)) {
+    if (!errorTimer.wait()) {
         this->setError();
         return;
     }
@@ -632,7 +625,7 @@ void PumpFSMCheckStop::proccess()
     }
 
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMCheckStop->PumpFSMRecord");
+    printTagLog(Pump::TAG, "set PumpFSMCheckStop->PumpFSMRecord");
 #endif
     Pump::statePtr = std::make_shared<PumpFSMRecord>();
 
@@ -654,8 +647,8 @@ void PumpFSMRecord::proccess()
 //        Pump::setLastMl(Pump::getCurrentMl());
 //    }
 #if PUMP_BEDUG
-    LOG_TAG_BEDUG(Pump::TAG, "set PumpFSMRecord->PumpFSMWaitLiters");
-    LOG_TAG_BEDUG(Pump::TAG, "Result TIM ticks: %lu", PumpFSMBase::getCurrentTicks());
+    printTagLog(Pump::TAG, "set PumpFSMRecord->PumpFSMWaitLiters");
+    printTagLog(Pump::TAG, "Result TIM ticks: %lu", PumpFSMBase::getCurrentTicks());
 #endif
     Pump::statePtr = std::make_shared<PumpFSMWaitLiters>();
 
@@ -666,7 +659,7 @@ void PumpFSMRecord::proccess()
 
 void PumpFSMError::proccess()
 {
-    hasError = true;
+    set_error(PUMP_FAULT);
 //    Pump::setLastMl(0);
 
     this->setPumpPower(GPIO_PIN_RESET);

@@ -34,7 +34,7 @@ public:
     RecordStatus loadNext();
     RecordStatus save();
 
-    Record record = { 0 };
+    Record record;
 
 private:
     static const char* RECORD_PREFIX;

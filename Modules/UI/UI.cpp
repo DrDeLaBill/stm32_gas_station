@@ -1,374 +1,235 @@
 #include "UI.h"
 
-#include <cmath>
-#include <typeinfo>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include "stm32f4xx_hal.h"
+//#include <typeinfo>
+#include <cstdlib>
+//#include <stdint.h>
+#include <cstring>
+//#include "stm32f4xx_hal.h"
+//
+//#include "log.h"
+//#include "main.h"
+#include "settings.h"
 
-#include "Pump.h"
-#include "Access.h"
-#include "SettingsDB.h"
-
-#include "main.h"
+#include "hal_defs.h"
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
+//
+#include "Pump.h"
+#include "Access.h"
 
 
-extern SettingsDB settings;
+extern settings_t settings;
 
 
-uint32_t UI::lastCard = 0;
-uint8_t UI::result[] = {};
-uint32_t UI::resultMl = 0;
+fsm::FiniteStateMachine<UI::fsm_table> UI::fsm;
+utl::Timer UI::timer(UI::BASE_TIMEOUT_MS);
+uint32_t UI::card = 0;
 bool UI::needLoad = false;
-bool UI::needReboot = false;
-std::shared_ptr<UIFSMBase> UI::ui = std::make_shared<UIFSMInit>();
+bool UI::error = false;
+uint8_t UI::limitBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
+uint8_t UI::currentBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
+uint8_t UI::resultBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
+uint32_t UI::targetMl = 0;
+uint32_t UI::lastMl = 0;
+uint32_t UI::resultMl = 0;
 
-uint32_t UIFSMBase::targetMl = 0;
 
-
-void UI::UIProccess()
+void UI::proccess()
 {
-    if (ui->hasError()) {
-        return;
-    }
-
-    if (UI::checkErrors()){
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIProccess->UIFSMStop");
-#endif
-        ui = std::make_shared<UIFSMError>();
-        return;
-    }
-
-    std::shared_ptr<UIFSMBase> uiPtr;
-    if (UI::needToLoad()) {
-        uiPtr = std::make_shared<UIFSMLoad>();
-    } else {
-        uiPtr = ui;
-    }
-    uiPtr->tick();
+	fsm.proccess();
 }
 
-bool UI::checkErrors()
+void UI::setLoading()
 {
-    return general_check_errors();
+	needLoad = true;
 }
 
-UIFSMBase::UIFSMBase(uint32_t delay)
+void UI::setLoaded()
 {
-    this->hasErrors = false;
-    memset(reinterpret_cast<void*>(&reset_timer), 0, sizeof(reset_timer));
-    util_timer_start(&reset_timer, delay);
+	needLoad = false;
 }
 
-void UIFSMBase::tick()
+void UI::setCard(uint32_t card)
 {
-    if (!this->checkState()) {
-        return;
-    }
-    this->proccess();
+    UI::card = card;
 }
 
-bool UIFSMBase::hasError()
+uint32_t UI::getCard()
 {
-    return this->hasErrors;
+    return card;
 }
 
-bool UIFSMBase::checkState()
+bool UI::isEnter()
 {
-    if (this->hasErrors) {
-        return false;
-    }
-
-    if (UI::needToLoad()) {
-        return false;
-    }
-
-    if (reset_timer.delay && !util_is_timer_wait(&reset_timer)) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMBase->UIFSMStop (check timer)");
-#endif
-        UI::ui = std::make_shared<UIFSMStop>();
-        Pump::stop();
-        return false;
-    }
-
-    if (UI::checkStop()) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMBase->UIFSMStop (check stop)");
-#endif
-        UI::ui = std::make_shared<UIFSMStop>();
-        Pump::stop();
-        return false;
-    }
-
-    return true;
+    return keyboard4x3_is_enter() || !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
 }
 
-UIFSMInit::UIFSMInit(): UIFSMBase(0)
+bool UI::isCancel()
 {
-    indicate_set_wait_page();
-    Access::close();
+    return keyboard4x3_is_cancel() || !HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
 }
 
-void UIFSMInit::proccess()
+void UI::setReboot()
 {
-#if UI_BEDUG
-    LOG_TAG_BEDUG(UI::TAG, "Set UIFSMInit->UIFSMWait");
-#endif
-    UI::ui = std::make_shared<UIFSMWait>();
+	fsm.push_event(reboot_e{});
 }
 
-UIFSMLoad::UIFSMLoad(): UIFSMBase(0)
+void UI::setError()
 {
-    indicate_set_load_page();
-}
-
-void UIFSMLoad::proccess() { }
-
-UIFSMWait::UIFSMWait(): UIFSMBase(0)
-{
-    keyboard4x3_disable_light();
-    keyboard4x3_clear();
-    Pump::clear();
-}
-
-void UIFSMWait::proccess()
-{
-	if (UI::needToReboot()) {
-		indicate_set_reboot_page();
-	} else {
-		indicate_set_wait_page();
+	if (error) {
+		return;
 	}
-
-    if (Access::isGranted()) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMAccess");
-#endif
-        UI::setCard(Access::getCard());
-        Access::close();
-        UI::ui = std::make_shared<UIFSMAccess>();
-    }
-
-    if (Access::isDenied()) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWait->UIFSMDenied");
-#endif
-        UI::setCard(Access::getCard());
-        Access::close();
-        UI::ui = std::make_shared<UIFSMDenied>();
-    }
+	error = true;
+	fsm.push_event(error_e{});
 }
 
-UIFSMAccess::UIFSMAccess(): UIFSMBase(0)
+void UI::resetError()
 {
-	indicate_set_access_page();
-	util_timer_start(&page_timer, UIFSMAccess::PAGE_DELAY);
+	if (!error) {
+		return;
+	}
+	error = false;
+	fsm.push_event(solved_e{});
 }
 
-void UIFSMAccess::proccess()
+void UI::resetResultMl()
 {
-	if (!util_is_timer_wait(&page_timer)) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMAccess->UIFSMLimit");
-#endif
-        UI::ui = std::make_shared<UIFSMLimit>();
+	resultMl = 0;
+}
+
+uint32_t UI::getResultMl()
+{
+	return resultMl;
+}
+
+void UI::_init_s::operator ()()
+{
+	fsm.push_event(success_e{});
+}
+
+void UI::_load_s::operator ()()
+{
+	if (!timer.wait()) {
+		fsm.push_event(error_e{});
 	}
 }
 
-UIFSMDenied::UIFSMDenied(): UIFSMBase(0)
+void UI::_idle_s::operator ()()
 {
-	indicate_set_denied_page();
-	util_timer_start(&page_timer, UIFSMDenied::PAGE_DELAY);
+	if (Access::isDenied()) {
+		fsm.push_event(denied_e{});
+	}
+	if (Access::isGranted()) {
+		fsm.push_event(granted_e{});
+	}
+	if (needLoad) {
+		fsm.push_event(load_e{});
+	}
+	// TODO: Add error event handler
 }
 
-void UIFSMDenied::proccess()
+void UI::_granted_s::operator ()()
 {
-	if (!util_is_timer_wait(&page_timer)) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMDenied->UIFSMWait");
-#endif
-        UI::ui = std::make_shared<UIFSMWait>();
+	if (!timer.wait()) {
+		fsm.push_event(timeout_e{});
 	}
 }
 
-UIFSMLimit::UIFSMLimit(): UIFSMBase(UIFSMLimit::LIMIT_DELAY)
+void UI::_denied_s::operator ()()
 {
-	keyboard4x3_enable_light();
-    keyboard4x3_clear();
-    uint16_t idx;
-    uint32_t residue = 0;
-    SettingsDB::SettingsStatus status = settings.getCardIdx(UI::getCard(), &idx);
-    if (status == SettingsDB::SETTINGS_OK && settings.settings.used_liters[idx] < settings.settings.limits[idx]) {
-    	residue = settings.settings.limits[idx] - settings.settings.used_liters[idx];
-    }
-    uint32_t liters_multiplier = ML_IN_LTR;
-	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-		liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+	if (!timer.wait()) {
+		fsm.push_event(timeout_e{});
 	}
-	residue /= liters_multiplier;
-    if (util_get_number_len(residue) > KEYBOARD4X3_BUFFER_SIZE) {
-    	residue = 999999;
-    }
-
-    memset(number_buffer, 0, sizeof(number_buffer));
-    for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
-    	if (residue || i > KEYBOARD4X3_BUFFER_SIZE - KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT - 1) {
-    		number_buffer[i-1] = residue % 10 + '0';
-        	residue /= 10;
-    	} else {
-    		number_buffer[i-1] = 0;
-    	}
-    }
-
-	this->isLimitPage = true;
-	indicate_set_limit_page();
-	util_timer_start(&page_timer, UIFSMLimit::BLINK_DELAY);
 }
 
-void UIFSMLimit::proccess()
+utl::Timer UI::_limit_s::blinkTimer(UI::BLINK_DELAY_MS);
+bool UI::_limit_s::limitPage = false;
+void UI::_limit_s::operator ()()
 {
-	if (!util_is_timer_wait(&page_timer)) {
-		this->isLimitPage ? indicate_set_buffer_page() : indicate_set_limit_page();
-	    indicate_set_buffer(number_buffer, KEYBOARD4X3_BUFFER_SIZE);
-		this->isLimitPage = !this->isLimitPage;
-		util_timer_start(&page_timer, UIFSMLimit::BLINK_DELAY);
+	if (!blinkTimer.wait()) {
+		limitPage ? indicate_set_buffer_page() : indicate_set_limit_page();
+		limitPage = !limitPage;
+		blinkTimer.start();
 	}
 
 	if (strlen(reinterpret_cast<char*>(keyboard4x3_get_buffer()))) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMLimit->UIFSMInput");
-#endif
-        UI::ui = std::make_shared<UIFSMInput>();
+		fsm.push_event(input_e{});
+	}
+
+	if (!timer.wait()) {
+		fsm.push_event(timeout_e{});
+	}
+
+	if (isCancel()) {
+		fsm.push_event(cancel_e{});
 	}
 }
 
-UIFSMInput::UIFSMInput(): UIFSMBase(UIFSMInput::INPUT_DELAY)
+void UI::_input_s::operator ()()
 {
-    UIFSMBase::targetMl = 0;
-    memset(UI::result, 0, KEYBOARD4X3_BUFFER_SIZE);
-    UI::setResultMl(0);
-    Pump::clear();
-}
+	if (isCancel()) {
+		fsm.push_event(cancel_e{});
+	}
 
-void UIFSMInput::proccess()
-{
-    indicate_set_buffer_page();
+	if (!timer.wait()) {
+		fsm.push_event(timeout_e{});
+	}
+
+	if (isEnter()) {
+		fsm.push_event(start_e{});
+	}
 
     uint8_t number_buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
     uint32_t number = atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
 	for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
 		if (number) {
-			number_buffer[i-1] = number % 10 + '0';
+			number_buffer[i-1] = static_cast<uint8_t>(number % 10) + '0';
 		} else {
 			number_buffer[i-1] = '_';
 		}
 		number /= 10;
 	}
     indicate_set_buffer(number_buffer, KEYBOARD4X3_BUFFER_SIZE);
-
-    if (UI::checkStart()) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMInput->UIFSMStart");
-#endif
-        UI::ui = std::make_shared<UIFSMStart>();
-    }
 }
 
-UIFSMStart::UIFSMStart(): UIFSMBase(0)
+void UI::_check_s::operator ()() { }
+
+void UI::_wait_count_s::operator ()()
 {
-    indicate_set_buffer_page();
-    uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
     uint32_t liters_multiplier = ML_IN_LTR;
     if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-        liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
-    }
-
-    UIFSMBase::targetMl = user_input * liters_multiplier;
-}
-
-void UIFSMStart::proccess()
-{
-    uint32_t used_liters = 0;
-    uint16_t idx;
-    if (settings.getCardIdx(UI::getCard(), &idx) == SettingsDB::SETTINGS_OK) {
-    	used_liters = settings.settings.used_liters[idx];
-    } else {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMRError");
-#endif
-        UI::ui = std::make_shared<UIFSMError>();
-        return;
-    }
-
-	if (UIFSMBase::targetMl + used_liters > settings.settings.limits[idx]) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMLimit");
-#endif
-        UI::ui = std::make_shared<UIFSMLimit>();
-        return;
-	}
-
-    if (UIFSMBase::targetMl >= GENERAL_SESSION_ML_MIN) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWaitCount");
-#endif
-        UI::ui = std::make_shared<UIFSMWaitCount>(0);
-        uint8_t number_buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
-        memset(number_buffer, '0', KEYBOARD4X3_BUFFER_SIZE);
-        indicate_set_buffer(number_buffer, KEYBOARD4X3_BUFFER_SIZE);
-        Pump::clear();
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "pump set target");
-#endif
-        Pump::setTargetMl(UIFSMBase::targetMl);
-        return;
-    }
-
-#if UI_BEDUG
-    LOG_TAG_BEDUG(UI::TAG, "invalid liters value");
-    LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStart->UIFSMWait");
-#endif
-    keyboard4x3_clear();
-    UI::ui = std::make_shared<UIFSMWait>();
-}
-
-UIFSMWaitCount::UIFSMWaitCount(uint32_t lastMl): UIFSMBase(UIFSMCount::COUNT_DELAY), lastMl(lastMl) {}
-
-void UIFSMWaitCount::proccess()
-{
-    indicate_set_buffer_page();
-
-    uint32_t liters_multiplier = ML_IN_LTR;
-    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-        liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+        liters_multiplier /= util_small_pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
     }
     uint32_t curr_count = Pump::getCurrentMl();
-    if (curr_count > UIFSMBase::targetMl) {
-        curr_count = UIFSMBase::targetMl;
+    if (curr_count > targetMl) {
+        curr_count = targetMl;
     }
 
     if (Pump::hasStopped()) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult");
-#endif
-        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
+    	resultMl = lastMl;
+    	fsm.push_event(end_e{});
+    	return;
     }
 
-    if (curr_count != this->lastMl) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMCount");
-#endif
-        UI::ui = std::make_shared<UIFSMCount>(this->lastMl);
-        return;
+	if (!timer.wait()) {
+		fsm.push_event(end_e{});
+		return;
+	}
+
+	if (isCancel()) {
+		fsm.push_event(end_e{});
+		return;
+	}
+
+    if (curr_count != lastMl) {
+    	fsm.push_event(start_e{});
+    	return;
     }
 
     if (curr_count) {
     	return;
     }
+
     uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
 	for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
 		if (i > KEYBOARD4X3_BUFFER_SIZE - KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT - 1) {
@@ -376,233 +237,244 @@ void UIFSMWaitCount::proccess()
 		}
 	}
     indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
-    memcpy(UI::result, buffer, KEYBOARD4X3_BUFFER_SIZE);
-    UI::setResultMl(0);
+    memcpy(resultBuffer, buffer, KEYBOARD4X3_BUFFER_SIZE);
+    resultMl = 0;
 }
 
-bool UIFSMWaitCount::checkState()
+void UI::_count_s::operator ()()
 {
-    if (UI::checkStop()) {
-        keyboard4x3_clear();
-        Pump::stop();
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (check stop)");
-#endif
-        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
-        return false;
-    }
-
-    if (!util_is_timer_wait(&reset_timer)) {
-        Pump::stop();
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMWaitCount->UIFSMResult (timer)");
-#endif
-        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
-        return false;
-    }
-
-    return true;
-}
-
-UIFSMCount::UIFSMCount(uint32_t lastMl): UIFSMWaitCount(lastMl) { }
-
-void UIFSMCount::proccess()
-{
-    indicate_set_buffer_page();
-
     uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = { 0 };
     uint32_t curr_count = Pump::getCurrentMl();
-    if (curr_count > UIFSMBase::targetMl) {
-        curr_count = UIFSMBase::targetMl;
+    if (curr_count > targetMl) {
+        curr_count = targetMl;
     }
 
-    if (curr_count == this->lastMl) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMWaitCount");
-#endif
-        UI::ui = std::make_shared<UIFSMWaitCount>(this->lastMl);
+    if (curr_count == lastMl) {
+    	fsm.push_event(end_e{});
         return;
     }
 
-    this->lastMl = curr_count;
+    lastMl = curr_count;
 
     uint32_t liters_multiplier = ML_IN_LTR;
     if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-        liters_multiplier /= pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+        liters_multiplier /= util_small_pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
     }
     uint32_t tmpCurrCount = curr_count / liters_multiplier;
     for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
     	if (tmpCurrCount || i > KEYBOARD4X3_BUFFER_SIZE - KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT - 1) {
-    		buffer[i-1] = tmpCurrCount % 10 + '0';
+    		buffer[i-1] = static_cast<uint8_t>(tmpCurrCount % 10) + '0';
     		tmpCurrCount /= 10;
     	} else {
     		buffer[i-1] = 0;
     	}
     }
     indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
-    memcpy(UI::result, buffer, KEYBOARD4X3_BUFFER_SIZE);
+    memcpy(resultBuffer, buffer, KEYBOARD4X3_BUFFER_SIZE);
+}
 
-    if (Pump::hasStopped()) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
-#endif
-        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
+void UI::_record_s::operator ()()
+{
+
+}
+
+void UI::_result_s::operator ()()
+{
+	if (!timer.wait()) {
+		fsm.push_event(end_e{});
+	}
+
+	if (isCancel()) {
+		fsm.push_event(end_e{});
+	}
+
+    if (!Pump::hasStopped()) {
+    	fsm.push_event(error_e{});
     }
 }
 
-bool UIFSMCount::checkState()
+void UI::_reboot_s::operator ()()
 {
-    if (UI::checkStop()) {
-        keyboard4x3_clear();
-        Pump::stop();
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMCount->UIFSMResult");
-#endif
-        UI::ui = std::make_shared<UIFSMResult>(this->lastMl);
-        return false;
-    }
-
-    return true;
+	if (!timer.wait()) {
+		fsm.push_event(timeout_e{});
+	}
 }
 
-UIFSMStop::UIFSMStop(): UIFSMBase(0)
+void UI::_error_s::operator ()()
 {
+    Pump::stop();
+}
+
+void UI::load_ui_a::operator ()()
+{
+	timer.changeDelay(BASE_TIMEOUT_MS);
+	timer.start();
+
+	indicate_set_load_page();
+}
+
+void UI::idle_ui_a::operator ()()
+{
+    indicate_set_wait_page();
+
+    keyboard4x3_disable_light();
+    keyboard4x3_clear();
+
+    Access::close();
+    Pump::clear();
+}
+
+void UI::granted_ui_a::operator ()()
+{
+	timer.changeDelay(BLINK_DELAY_MS);
+	timer.start();
+
+	indicate_set_access_page();
+
+    UI::setCard(Access::getCard());
+    Access::close();
+}
+
+void UI::denied_ui_a::operator ()()
+{
+	timer.changeDelay(BLINK_DELAY_MS);
+	timer.start();
+
+	indicate_set_denied_page();
+
+    UI::setCard(Access::getCard());
+    Access::close();
+}
+
+void UI::limit_ui_a::operator ()()
+{
+    uint16_t idx;
+    uint32_t residue = 0;
+    SettingsStatus status = settings_get_card_idx(UI::getCard(), &idx);
+    if (status == SETTINGS_OK && settings.used_liters[idx] < settings.limits[idx]) {
+    	residue = settings.limits[idx] - settings.used_liters[idx];
+    }
+    uint32_t liters_multiplier = ML_IN_LTR;
+	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+		liters_multiplier /= util_small_pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+	}
+	residue /= liters_multiplier;
+    if (util_get_number_len(residue) > KEYBOARD4X3_BUFFER_SIZE) {
+    	residue = 999999;
+    }
+
+    memset(limitBuffer, 0, sizeof(limitBuffer));
+    for (unsigned i = KEYBOARD4X3_BUFFER_SIZE; i > 0; i--) {
+    	if (residue || i > KEYBOARD4X3_BUFFER_SIZE - KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT - 1) {
+    		limitBuffer[i-1] = static_cast<uint8_t>(residue % 10) + '0';
+        	residue /= 10;
+    	} else {
+    		limitBuffer[i-1] = 0;
+    	}
+    }
+
+	_limit_s::limitPage = true;
+
+	keyboard4x3_enable_light();
+    keyboard4x3_clear();
+
+	indicate_set_limit_page();
+
+	timer.changeDelay(BASE_TIMEOUT_MS);
+	timer.start();
+}
+
+void UI::reset_input_ui_a::operator ()()
+{
+	timer.changeDelay(BASE_TIMEOUT_MS);
+	timer.start();
+
+	memset(currentBuffer, 0 ,sizeof(currentBuffer));
+
+	keyboard4x3_clear();
+
+	indicate_set_buffer_page();
+	indicate_clear_buffer();
+
+	targetMl = 0;
+	lastMl = 0;
+	resultMl = 0;
+	Pump::clear();
+
+}
+
+void UI::check_a::operator ()()
+{
+    uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
+    uint32_t liters_multiplier = ML_IN_LTR;
+    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+        liters_multiplier /= util_small_pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+    }
+    targetMl = user_input * liters_multiplier;
+
+    uint32_t used_liters = 0;
+    uint16_t idx;
+    if (settings_get_card_idx(UI::getCard(), &idx) == SETTINGS_OK) {
+    	used_liters = settings.used_liters[idx];
+    } else {
+    	fsm.push_event(limit_max_e{});
+    }
+
+	if (targetMl + used_liters > settings.limits[idx]) {
+		fsm.push_event(limit_max_e{});
+	} else if (targetMl < GENERAL_SESSION_ML_MIN) {
+		fsm.push_event(limit_min_e{});
+	} else {
+		fsm.push_event(success_e{});
+	}
+}
+
+void UI::wait_count_ui_a::operator ()()
+{
+	timer.changeDelay(_wait_count_s::TIMEOUT_MS);
+	timer.start();
+
+    indicate_set_buffer_page();
+
+    Pump::clear();
+    Pump::setTargetMl(targetMl);
+}
+
+void UI::count_a::operator ()()
+{
+
+}
+
+void UI::record_ui_a::operator ()()
+{
+	resultMl = lastMl;
+}
+
+void UI::result_ui_a::operator ()()
+{
+	timer.changeDelay(_result_s::TIMEOUT_MS);
+	timer.start();
+
 	keyboard4x3_disable_light();
     keyboard4x3_clear();
-    Access::close();
-    Pump::stop();
-}
 
-void UIFSMStop::proccess()
-{
-#if UI_BEDUG
-    LOG_TAG_BEDUG(UI::TAG, "Set UIFSMStop->UIFSMWait");
-#endif
-    UI::ui = std::make_shared<UIFSMWait>();
-}
-
-UIFSMResult::UIFSMResult(uint32_t resultMl): UIFSMBase(UIFSMResult::RESULT_DELAY)
-{
-    indicate_set_buffer(UI::result, KEYBOARD4X3_BUFFER_SIZE);
-	UI::setResultMl(resultMl);
-    Access::close();
-    Pump::stop();
-}
-
-void UIFSMResult::proccess()
-{
     indicate_set_buffer_page();
-    if (!Pump::hasStopped()) {
-        return;
-    }
-    if (Access::isGranted()) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
-#endif
-        UI::ui = std::make_shared<UIFSMWait>();
-    }
+    indicate_set_buffer(resultBuffer, KEYBOARD4X3_BUFFER_SIZE);
+
+    Access::close();
+	Pump::stop();
 }
 
-bool UIFSMResult::checkState()
+void UI::reboot_ui_a::operator ()()
 {
-    if (UI::checkStop()) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
-#endif
-        UI::ui = std::make_shared<UIFSMWait>();
-        return false;
-    }
+	timer.changeDelay(_result_s::TIMEOUT_MS);
+	timer.start();
 
-    if (!util_is_timer_wait(&reset_timer)) {
-#if UI_BEDUG
-        LOG_TAG_BEDUG(UI::TAG, "Set UIFSMResult->UIFSMWait");
-#endif
-        UI::ui = std::make_shared<UIFSMWait>();
-        return false;
-    }
-
-    return true;
+	indicate_set_reboot_page();
 }
 
-UIFSMError::UIFSMError(): UIFSMBase(0)
+void UI::error_ui_a::operator ()()
 {
 	keyboard4x3_disable_light();
-    this->hasErrors = true;
     indicate_set_error_page();
-    Pump::stop();
-}
-
-bool UI::checkKeyboardStop()
-{
-    return keyboard4x3_is_cancel();
-}
-
-bool UI::checkKeyboardStart()
-{
-    return keyboard4x3_is_enter();
-}
-
-bool UI::needToLoad()
-{
-    return needLoad && (typeid(*(UI::ui)) == typeid(UIFSMWait));
-}
-
-void UI::setLoad()
-{
-    needLoad = true;
-}
-
-void UI::resetLoad()
-{
-    needLoad = false;
-}
-
-void UI::setReboot()
-{
-	needReboot = true;
-}
-
-void UI::resetReboot()
-{
-	needReboot = false;
-}
-
-bool UI::needToReboot()
-{
-    return needReboot && (typeid(*(UI::ui)) == typeid(UIFSMWait));
-}
-
-void UI::setCard(uint32_t card)
-{
-    UI::lastCard = card;
-}
-
-uint32_t UI::getCard()
-{
-    return UI::lastCard;
-}
-
-uint32_t UI::getResultMl()
-{
-	return UI::resultMl;
-}
-
-void UI::setResultMl(uint32_t resultMl)
-{
-	UI::resultMl = resultMl;
-}
-
-bool UI::checkStart()
-{
-    return UI::checkKeyboardStart() || !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
-}
-
-bool UI::checkStop()
-{
-    return UI::checkKeyboardStop() || !HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
-}
-
-bool UI::checkGunOnBase()
-{
-    return HAL_GPIO_ReadPin(GUN_SWITCH_GPIO_Port, GUN_SWITCH_Pin);
 }

@@ -148,11 +148,12 @@ int _write(int file, uint8_t *ptr, int len);
 #define KBD_COL3_GPIO_Port GPIOB
 #define KBD_BL_Pin GPIO_PIN_9
 #define KBD_BL_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 
 // General settings
 #define GENERAL_RFID_CARDS_COUNT ((uint16_t)20)
-#define GENERAL_BUS_TIMEOUT_MS   ((uint32_t)100)
+#define GENERAL_TIMEOUT_MS       ((uint32_t)100)
 #define GENERAL_SESSION_ML_MIN   ((uint32_t)2000)
 #define GENERAL_MODBUS_SLAVE_ID  ((uint8_t)0x01)
 
@@ -196,9 +197,6 @@ extern IWDG_HandleTypeDef        hiwdg;
 // UI
 extern TIM_HandleTypeDef         htim5;
 #define UI_TIM                   (htim5)
-
-
-bool general_check_errors();
 
 
 /* USER CODE END Private defines */

@@ -18,15 +18,15 @@
 
 
 typedef struct _wiegand_state_t {
-    util_timer_t stop_timer;
-    util_timer_t reset_timer;
-    uint8_t      bit_counter;
-    bool         data[WIEGAND_MAX_BITS_COUNT];
-    uint32_t     value;
+    util_old_timer_t stop_timer;
+    util_old_timer_t reset_timer;
+    uint8_t          bit_counter;
+    bool             data[WIEGAND_MAX_BITS_COUNT];
+    uint32_t         value;
 } wiegand_state_t;
 
 wiegand_state_t wiegand_state = {
-    .reset_timer = { 0 },
+    .stop_timer  = { 0 },
     .reset_timer = { 0 },
     .bit_counter = 0,
     .data        = { 0 },
@@ -60,7 +60,7 @@ void wiegand_reset()
 
 void wiegand_set_value(uint8_t value)
 {
-    if (!util_is_timer_wait(&wiegand_state.reset_timer)) {
+    if (!util_old_timer_wait(&wiegand_state.reset_timer)) {
         _wiegand_clear();
     }
 
@@ -68,14 +68,14 @@ void wiegand_set_value(uint8_t value)
         return;
     }
 
-    if (!util_is_timer_wait(&wiegand_state.stop_timer)) {
+    if (!util_old_timer_wait(&wiegand_state.stop_timer)) {
         _wiegand_clear();
     }
 
     wiegand_state.data[wiegand_state.bit_counter++] = (bool)value;
 
-    util_timer_start(&wiegand_state.reset_timer, WIEGAND_RESET_MS);
-    util_timer_start(&wiegand_state.stop_timer, WIEGAND_STOP_MS);
+    util_old_timer_start(&wiegand_state.reset_timer, WIEGAND_RESET_MS);
+    util_old_timer_start(&wiegand_state.stop_timer, WIEGAND_STOP_MS);
 
     if (wiegand_state.bit_counter == WIEGAND_MAX_BITS_COUNT) {
         _wiegand_parse_data();

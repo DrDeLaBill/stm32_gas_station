@@ -12,12 +12,12 @@
 
 
 const util_port_pin_t indicators_pins[] = {
-    {.port = DIGITS_6_GPIO_Port, .pin = DIGITS_6_Pin},
-    {.port = DIGITS_5_GPIO_Port, .pin = DIGITS_5_Pin},
-    {.port = DIGITS_4_GPIO_Port, .pin = DIGITS_4_Pin},
-    {.port = DIGITS_3_GPIO_Port, .pin = DIGITS_3_Pin},
-    {.port = DIGITS_2_GPIO_Port, .pin = DIGITS_2_Pin},
-    {.port = DIGITS_1_GPIO_Port, .pin = DIGITS_1_Pin},
+    {DIGITS_6_GPIO_Port, DIGITS_6_Pin},
+    {DIGITS_5_GPIO_Port, DIGITS_5_Pin},
+    {DIGITS_4_GPIO_Port, DIGITS_4_Pin},
+    {DIGITS_3_GPIO_Port, DIGITS_3_Pin},
+    {DIGITS_2_GPIO_Port, DIGITS_2_Pin},
+    {DIGITS_1_GPIO_Port, DIGITS_1_Pin}
 };
 
 const util_port_pin_t segments_pins[] = {
@@ -105,10 +105,10 @@ const bool reboot_arr[][__arr_len(segments_pins)] = {
 
 
 typedef struct _indicate_fsm_state_t {
-    void         (*indicate_state) (void);
-    util_timer_t wait_timer;
-    uint8_t      indicate_buffer[INDICATE_INDICATORS_COUNT];
-    uint8_t      load_segment_num;
+    void             (*indicate_state) (void);
+    util_old_timer_t wait_timer;
+    uint8_t          indicate_buffer[INDICATE_INDICATORS_COUNT];
+    uint8_t          load_segment_num;
 } indicate_state_t;
 
 bool display_buffer[][__arr_len(segments_pins)] = {
@@ -261,14 +261,14 @@ void _indicate_clear_buffer()
 
 void _indicate_fsm_wait()
 {
-    if (util_is_timer_wait(&indicate_state.wait_timer)) {
+    if (util_old_timer_wait(&indicate_state.wait_timer)) {
         return;
     }
 
     for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
         display_buffer[i][__arr_len(segments_pins) - 1] = !display_buffer[i][__arr_len(segments_pins) - 1];
     }
-    util_timer_start(&indicate_state.wait_timer, INDICATE_FSM_WAIT_DELAY_MS);
+    util_old_timer_start(&indicate_state.wait_timer, INDICATE_FSM_WAIT_DELAY_MS);
 }
 
 void _indicate_fsm_reboot()
@@ -303,19 +303,19 @@ void _indicate_fsm_blink_buffer()
     	_indicate_fsm_buffer();
     }
 
-    if (util_is_timer_wait(&indicate_state.wait_timer)) {
+    if (util_old_timer_wait(&indicate_state.wait_timer)) {
         return;
     }
 
     empty_page = !empty_page;
 
-    util_timer_start(&indicate_state.wait_timer, INDICATE_FSM_WAIT_DELAY_MS);
+    util_old_timer_start(&indicate_state.wait_timer, INDICATE_FSM_WAIT_DELAY_MS);
 }
 
 
 void _indicate_fsm_load()
 {
-    if (util_is_timer_wait(&indicate_state.wait_timer)) {
+    if (util_old_timer_wait(&indicate_state.wait_timer)) {
         return;
     }
 
@@ -335,7 +335,7 @@ void _indicate_fsm_load()
         indicate_state.load_segment_num = 0;
     }
 
-    util_timer_start(&indicate_state.wait_timer, INDICATE_FSM_LOAD_DELAY_MS);
+    util_old_timer_start(&indicate_state.wait_timer, INDICATE_FSM_LOAD_DELAY_MS);
 }
 
 void _indicate_fsm_limit()

@@ -5,303 +5,101 @@
 
 #include "UI.h"
 #include "StorageAT.h"
+#include "StorageDriver.h"
 
+#include "log.h"
 #include "utils.h"
 #include "clock.h"
+#include "settings.h"
+#include "eeprom_at24cm01_storage.h"
 
 
 #define EXIT_CODE(_code_) { UI::resetLoad(); return _code_; }
 
 
-extern StorageAT storage;
+extern settings_t settings;
 
 
-const char* SettingsDB::SETTINGS_PREFIX = "STG";
-const char* SettingsDB::TAG = "STG";
+SettingsDB::SettingsDB(uint8_t* settings, uint32_t size): size(size), settings(settings) { }
 
-
-SettingsDB::SettingsDB()
+SettingsStatus SettingsDB::load()
 {
-    memset(reinterpret_cast<void*>(&(this->settings)), 0, sizeof(this->settings));
-    memset(reinterpret_cast<void*>(&(this->info)), 0, sizeof(this->info));
-    this->info.settings_loaded = false;
-    this->info.saved_new_data = true;
-}
+	StorageDriver storageDriver;
+	StorageAT storage(
+		eeprom_get_size() / Page::PAGE_SIZE,
+		&storageDriver
+	);
+	uint32_t address = 0;
+	StorageStatus status = STORAGE_OK;
 
-SettingsDB::SettingsStatus SettingsDB::load()
-{
-    UI::setLoad();
-
-    uint32_t address = 0;
-    StorageStatus status = storage.find(FIND_MODE_EQUAL, &address, SETTINGS_PREFIX, 1);
+    status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 1);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings: storage find error=%02X", status);
+        printTagLog(SettingsDB::TAG, "error load settings: storage find error=%02X", status);
 #endif
-        this->info.settings_loaded = false;
-        EXIT_CODE(SETTINGS_ERROR);
+        return SETTINGS__ERROR;
     }
 
-    Settings tmpSettings = { 0 };
-    status = storage.load(address, reinterpret_cast<uint8_t*>(&tmpSettings), sizeof(tmpSettings));
+    uint8_t tmpSettings[this->size] = {}; // TODO: warn
+    status = storage.load(address, tmpSettings, this->size);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error load settings: storage load error=%02X address=%lu", status, address);
+        printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address=%lu", status, address);
 #endif
-        this->info.settings_loaded = false;
-        EXIT_CODE(SETTINGS_ERROR);
+        return SETTINGS__ERROR;
     }
 
-    if (!this->check(&tmpSettings)) {
-    	this->show();
-#if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error settings check");
-#endif
-        this->info.settings_loaded = false;
-        EXIT_CODE(SETTINGS_ERROR);
-    }
-
-    memcpy(reinterpret_cast<void*>(&(this->settings)), reinterpret_cast<void*>(&tmpSettings), sizeof(this->settings));
-
-    this->info.settings_loaded = true;
+    memcpy(settings, tmpSettings, this->size);
 
 #if SETTINGS_BEDUG
-    LOG_TAG_BEDUG(SettingsDB::TAG, "settings loaded");
-    this->show();
+    printTagLog(SettingsDB::TAG, "settings loaded");
 #endif
 
-    EXIT_CODE(SETTINGS_OK);
+    return SETTINGS_OK;
 }
 
-SettingsDB::SettingsStatus SettingsDB::save()
+SettingsStatus SettingsDB::save()
 {
-    uint32_t address = 0;
-    StorageFindMode mode = FIND_MODE_EQUAL;
-    StorageStatus status = storage.find(mode, &address, SETTINGS_PREFIX, 1);
+	StorageDriver storageDriver;
+	StorageAT storage(
+		eeprom_get_size() / Page::PAGE_SIZE,
+		&storageDriver
+	);
+	uint32_t address = 0;
+	StorageStatus status = STORAGE_OK;
+
+    status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 1);
     if (status == STORAGE_NOT_FOUND) {
-    	mode = FIND_MODE_EMPTY;
-        status = storage.find(mode, &address);
+        status = storage.find(FIND_MODE_EMPTY, &address);
     }
-    while (status == STORAGE_NOT_FOUND) {
+
+    if (status == STORAGE_NOT_FOUND) {
         // Search for any address
-        mode = FIND_MODE_NEXT;
-    	status = storage.find(mode, &address, "", 1);
-    	if (status != STORAGE_OK) {
-    		continue;
-    	}
+    	status = storage.find(FIND_MODE_NEXT, &address, "", 1);
     }
+
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error save settings: storage find error=%02X", status);
+        printTagLog(SettingsDB::TAG, "error save settings: storage find error=%02X", status);
 #endif
-        EXIT_CODE(SETTINGS_ERROR);
+        return SETTINGS__ERROR;
     }
 
-	status = storage.rewrite(address, SETTINGS_PREFIX, 1, reinterpret_cast<uint8_t*>(&(this->settings)), sizeof(this->settings));
+	status = storage.rewrite(address, PREFIX, 1, this->settings, this->size);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
-        LOG_TAG_BEDUG(SettingsDB::TAG, "error save settings: storage save error=%02X address=%lu", status, address);
+        printTagLog(SettingsDB::TAG, "error save settings: storage save error=%02X address=%lu", status, address);
 #endif
-        EXIT_CODE(SETTINGS_ERROR);
+        return SETTINGS__ERROR;
     }
 
-    info.saved_new_data = true;
-    info.settings_loaded = false;
-
+    if (this->load() == SETTINGS_OK) {
 #if SETTINGS_BEDUG
-    LOG_TAG_BEDUG(SettingsDB::TAG, "settings saved (address=%lu)", address);
-    this->show();
+    	printTagLog(SettingsDB::TAG, "settings saved (address=%lu)", address);
 #endif
 
-    EXIT_CODE(this->load());
-}
-
-SettingsDB::SettingsStatus SettingsDB::reset()
-{
-#if SETTINGS_BEDUG
-    LOG_TAG_BEDUG(SettingsDB::TAG, "reset settings");
-#endif
-
-    settings.cf_id      = CF_VERSION;
-    settings.sw_id      = SW_VERSION;
-    settings.fw_id      = FW_VERSION;
-    settings.log_id     = 0;
-    settings.device_id  = DEFAULT_ID;
-
-    memset(settings.cards, 0, sizeof(settings.cards));
-    memset(settings.limits, 0, sizeof(settings.limits));
-    memset(settings.limit_type, LIMIT_DAY, sizeof(settings.limit_type));
-    memset(settings.used_liters, 0, sizeof(settings.used_liters));
-
-    settings.last_day   = clock_get_date();
-    settings.last_month = clock_get_month();
-
-    return this->save();
-}
-
-bool SettingsDB::isLoaded()
-{
-    return this->info.settings_loaded;
-}
-
-SettingsDB::SettingsStatus SettingsDB::getCardIdx(uint32_t card, uint16_t* idx)
-{
-	if (!card) {
-		return SETTINGS_ERROR;
-	}
-	for (unsigned i = 0; i < __arr_len(settings.cards); i++) {
-		if (settings.cards[i] == card) {
-			*idx = i;
-			return SETTINGS_OK;
-		}
-	}
-	return SETTINGS_ERROR;
-}
-
-void SettingsDB::checkResidues()
-{
-	bool settingsChanged = false;
-	for (unsigned i = 0; i < __arr_len(settings.limit_type); i++) {
-		if ((settings.limit_type[i] == LIMIT_DAY && settings.last_day != clock_get_date()) ||
-			(settings.limit_type[i] == LIMIT_MONTH && settings.last_month != clock_get_month())
-		) {
-			settings.last_day = clock_get_date();
-			settings.last_month = clock_get_month();
-			settings.used_liters[i] = 0;
-			settingsChanged = true;
-		}
-	}
-	if (settingsChanged) {
-		this->save();
-	}
-}
-
-bool SettingsDB::check(Settings* settings)
-{
-	return settings->sw_id == SW_VERSION && settings->fw_id == FW_VERSION;
-}
-
-void SettingsDB::show()
-{
-#if SETTINGS_BEDUG
-	PRINT_MESSAGE(SettingsDB::TAG, "------------------------------------------------------------------\n");
-	PRINT_MESSAGE(SettingsDB::TAG, "cf_id = %lu\n", settings.cf_id);
-	PRINT_MESSAGE(SettingsDB::TAG, "device_id = %lu\n", settings.device_id);
-	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
-		PRINT_MESSAGE(SettingsDB::TAG, "CARD %u: card=%lu, limit=%lu, used_liters=%lu, limit_type=%s\n", i, settings.cards[i], settings.limits[i], settings.used_liters[i], (settings.limit_type[i] == LIMIT_DAY ? "DAY" : (settings.limit_type[i] == LIMIT_MONTH ? "MONTH" : "UNKNOWN")));
-	}
-	PRINT_MESSAGE(SettingsDB::TAG, "log_id = %lu\n", settings.log_id);
-	PRINT_MESSAGE(SettingsDB::TAG, "last_day = %u (current=%u)\n", settings.last_day, clock_get_date());
-	PRINT_MESSAGE(SettingsDB::TAG, "last_month = %u (current=%u)\n", settings.last_month, clock_get_month());
-    RTC_DateTypeDef date;
-    RTC_TimeTypeDef time;
-    if (!clock_get_rtc_date(&date)) {
-        memset(reinterpret_cast<void*>(&date), 0, sizeof(date));
+    	return SETTINGS_OK;
     }
-    if (!clock_get_rtc_time(&time)) {
-        memset(reinterpret_cast<void*>(&time), 0, sizeof(time));
-    }
-	PRINT_MESSAGE(SettingsDB::TAG, "Current time: 20%02u-%02u-%02uT%02u:%02u:%02u\n", date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
-	PRINT_MESSAGE(SettingsDB::TAG, "------------------------------------------------------------------\n");
-#endif
-}
 
-void SettingsDB::set_cf_id(uint32_t cf_id)
-{
-    if (cf_id) {
-        settings.cf_id = cf_id;
-    }
-}
-
-void SettingsDB::set_device_id(uint32_t device_id)
-{
-    if (device_id) {
-        settings.device_id = device_id;
-    }
-}
-
-void SettingsDB::set_cards(void* cards, uint16_t len)
-{
-    if (len > __arr_len(settings.cards)) {
-        return;
-    }
-    if (memcmp(settings.cards, cards, std::min(static_cast<unsigned>(len), sizeof(settings.cards)))) {
-        return;
-    }
-    if (cards) {
-        memcpy(settings.cards, cards, std::min(static_cast<unsigned>(len), sizeof(settings.cards)));
-    }
-}
-
-void SettingsDB::set_limits(void* limits, uint16_t len)
-{
-    if (len > __arr_len(settings.limits)) {
-        return;
-    }
-    if (memcmp(settings.limits, limits, std::min(static_cast<unsigned>(len), sizeof(settings.limits)))) {
-        return;
-    }
-    if (limits) {
-        memcpy(settings.limits, limits, std::min(static_cast<unsigned>(len), sizeof(settings.limits)));
-    }
-}
-
-void SettingsDB::set_log_id(uint32_t log_id)
-{
-	if (settings.log_id == log_id) {
-		return;
-	}
-    settings.log_id = log_id;
-}
-
-void SettingsDB::set_card(uint32_t card, uint16_t idx)
-{
-    if (idx >= __arr_len(settings.cards)) {
-        return;
-    }
-    if (settings.cards[idx] == card) {
-        return;
-    }
-    settings.cards[idx] = card;
-}
-
-void SettingsDB::set_limit(uint32_t limit, uint16_t idx)
-{
-    if (idx >= __arr_len(settings.limits)) {
-        return;
-    }
-    if (settings.limits[idx] == limit) {
-        return;
-    }
-    settings.limits[idx] = limit;
-}
-
-void SettingsDB::set_limit_type(LimitType type, uint16_t idx)
-{
-	if (idx >= __arr_len(settings.limit_type)) {
-		return;
-	}
-	if (settings.limit_type[idx] == type) {
-		return;
-	}
-	if (type == LIMIT_DAY || type == LIMIT_MONTH) {
-		settings.limit_type[idx] = type;
-	}
-}
-
-void SettingsDB::add_used_liters(uint32_t used_litters, uint32_t card)
-{
-    uint16_t idx = 0;
-    if (this->getCardIdx(card, &idx) != SETTINGS_OK) {
-    	return;
-    }
-    settings.used_liters[idx] += used_litters;
-}
-
-void SettingsDB::clear_limit(uint32_t idx)
-{
-	if (idx >= __arr_len(settings.used_liters)) {
-		return;
-	}
-	settings.used_liters[idx] = 0;
+    return SETTINGS__ERROR;
 }

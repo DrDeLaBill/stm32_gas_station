@@ -7,6 +7,9 @@
 #include <stdint.h>
 
 #include "utils.h"
+#include "hal_defs.h"
+
+#include "Timer.h"
 
 
 #define PUMP_BEDUG                      (true)
@@ -30,7 +33,6 @@ public:
 
     bool pumpHasStarted();
     bool pumpHasStopped();
-    bool foundError();
 
     static void reset();
     static void clear();
@@ -39,7 +41,6 @@ public:
 
 protected:
     static uint32_t     targetMl;
-    static bool         hasError;
 
     static uint32_t     measureCounter;
     static uint32_t     valveBuf[PUMP_MEASURE_BUFFER_SIZE];
@@ -51,8 +52,8 @@ protected:
     static int32_t      currentTicksBase;
     static int32_t      currentTicksAdd;
 
-    static util_timer_t waitTimer;
-    static util_timer_t errorTimer;
+    static utl::Timer   waitTimer;
+    static utl::Timer   errorTimer;
 
     static bool         needStart;
     static bool         needStop;

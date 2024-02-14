@@ -19,7 +19,7 @@
 #define MB_REGISTER_BEDUG (false)
 
 
-template <typename T>
+template <class T>
 class ModbusRegister
 {
 private:
@@ -65,7 +65,7 @@ public:
 #endif
         for (unsigned i = 0; i < ModbusRegister::getRegSize(); i++) {
             uint16_t regValue = this->serializedData[i];
-            T tmpValue = (((regValue >> 8) & 0x00FF) | ((regValue << 8) & 0xFF00));
+            T tmpValue = static_cast<T>((((regValue >> 8) & 0x00FF) | ((regValue << 8) & 0xFF00)));
             value |= (tmpValue << (16 * i));
 #if MB_REGISTER_BEDUG
             LOG_BEDUG("0x%04X(value=%d) ", this->serializedData[i], static_cast<int>(this->serializedData[i]));
@@ -115,7 +115,7 @@ public:
     std::shared_ptr<ModbusRegister<T>> save()
     {
         this->serialize();
-        ModbusTableService::setRegisters(register_type, id, serializedData, ModbusRegister<T>::getRegSize());
+        ModbusTableService::setRegisters(register_type, id, serializedData, static_cast<uint8_t>(ModbusRegister<T>::getRegSize()));
         this->set(this->deserialize());
 #if MB_REGISTER_BEDUG
         LOG_TAG_BEDUG(ModbusRegister::TAG, "modbus set id=%lu reg_type=0x%02X regs_count=%lu: %d", id, register_type, ModbusRegister<T>::getRegSize(), static_cast<int>(this->get()));
@@ -143,9 +143,9 @@ public:
         return this->id;
     }
 
-    uint8_t  getBytesSize()
+    uint8_t getBytesSize()
     {
-        return this->bytesSize;
+        return static_cast<uint8_t>(this->bytesSize);
     }
 
     uint32_t getNextAddress()
@@ -155,6 +155,12 @@ public:
 
     static uint32_t getRegSize() { return ((sizeof(T) / sizeof(uint16_t)) + (sizeof(T) % sizeof(uint16_t))); }
 };
+
+template<>
+class ModbusRegister<void*> { };
+
+template<class T>
+class ModbusRegister<T*>: public ModbusRegister<void*> {};
 
 
 #endif

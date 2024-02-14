@@ -5,20 +5,20 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "SettingsDB.h"
-
+#include "log.h"
 #include "utils.h"
 #include "wiegand.h"
+#include "settings.h"
 
 
 #define ACCESS_TIMEOUT_MS ((uint32_t)30000)
 
 
-extern SettingsDB settings;
+extern settings_t settings;
 
 const char Access::TAG[] = "ACS";
 
-util_timer_t Access::timer = { 0 };
+utl::Timer Access::timer(ACCESS_TIMEOUT_MS);
 uint32_t Access::card = 0;
 bool Access::granted = false;
 bool Access::denied = false;
@@ -32,8 +32,8 @@ void Access::check()
         user_card = wiegant_get_value();
     }
 
-    if (Access::granted && !util_is_timer_wait(&Access::timer)) {
-        LOG_TAG_BEDUG(Access::TAG, "Access closed");
+    if (Access::granted && !timer.wait()) {
+    	printTagLog(Access::TAG, "Access closed");
         Access::granted = false;
     }
 
@@ -45,20 +45,20 @@ void Access::check()
     	return;
     }
 
-    LOG_TAG_BEDUG(Access::TAG, "Card: %lu", user_card);
-    for (uint16_t i = 0; i < __arr_len(settings.settings.cards); i++) {
-        if (settings.settings.cards[i] == user_card) {
+    printTagLog(Access::TAG, "Card: %lu", user_card);
+    for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
+        if (settings.cards[i] == user_card) {
             Access::denied  = false;
             Access::granted = true;
             Access::card    = user_card;
-            util_timer_start(&Access::timer, ACCESS_TIMEOUT_MS);
-            LOG_TAG_BEDUG(Access::TAG, "Access granted");
+            timer.start();
+            printTagLog(Access::TAG, "Access granted");
             return;
         }
     }
     Access::denied  = true;
     Access::granted = false;
-    LOG_TAG_BEDUG(Access::TAG, "Access denied");
+    printTagLog(Access::TAG, "Access denied");
 }
 
 uint32_t Access::getCard()
@@ -81,7 +81,7 @@ bool Access::isDenied()
 
 void Access::close()
 {
-    LOG_TAG_BEDUG(Access::TAG, "Access closed");
+	printTagLog(Access::TAG, "Access closed");
     Access::granted = false;
     Access::denied = false;
     Access::card = 0;
