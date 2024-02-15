@@ -255,6 +255,7 @@ void set_settings_save_status(bool state)
 	if (state) {
 		stngs_info.settings_updated = false;
 	}
+    set_new_data_saved(state);
 	stngs_info.settings_saved = state;
 }
 
@@ -262,7 +263,6 @@ void set_settings_update_status(bool state)
 {
 	if (state) {
 		stngs_info.settings_saved = false;
-	    set_new_data_saved(true);
 	}
 	stngs_info.settings_updated = state;
 }

@@ -409,11 +409,10 @@ void PumpFSMBase::setError()
 
 void PumpFSMInit::proccess()
 {
-    (std::make_shared<PumpFSMStop>())->proccess();
 #if PUMP_BEDUG
-    printTagLog(Pump::TAG, "set PumpFSMInit->PumpFSMWaitLIters");
+    printTagLog(Pump::TAG, "set PumpFSMInit->PumpFSMStop");
 #endif
-    Pump::statePtr = std::make_shared<PumpFSMWaitLiters>();
+    Pump::statePtr = std::make_shared<PumpFSMStop>();
 }
 
 void PumpFSMWaitLiters::proccess()

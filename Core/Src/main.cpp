@@ -44,9 +44,10 @@
 #include "UI.h"
 #include "Pump.h"
 #include "Access.h"
-#include "RecordDB.h"
+#include "Record.h"
 #include "SoulGuard.h"
 #include "StorageAT.h"
+#include "StorageDriver.h"
 #include "ModbusManager.h"
 
 /* USER CODE END Includes */
@@ -76,6 +77,12 @@ uint8_t umka200_uart_byte = 0;
 uint8_t modbus_uart_byte = 0;
 
 extern settings_t settings;
+
+StorageDriver storageDriver;
+StorageAT storage(
+	eeprom_get_size() / Page::PAGE_SIZE,
+	&storageDriver
+);
 
 /* USER CODE END PV */
 
@@ -114,6 +121,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+//  RestartWatchdog::reset_i2c_errata(); // TODO: move reset_i2c to memory watchdog
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -129,7 +137,6 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 //  while (1);
-//  RestartWatchdog::reset_i2c_errata(); // TODO: move reset_i2c to memory watchdog
   UI::setLoading();
 
   HAL_Delay(100);
@@ -260,7 +267,7 @@ void save_new_log(uint32_t mlCount)
 
     UI::setLoading();
 
-    RecordDB record(0);
+    Record record(0);
 
     record.record.time = datetimeSeconds;
     record.record.used_liters = mlCount;
@@ -269,8 +276,8 @@ void save_new_log(uint32_t mlCount)
     printTagLog(MAIN_TAG, "save new log: begin");
     printTagLog(MAIN_TAG, "save new log: real mls=%lu", Pump::getCurrentMl());
 
-    RecordDB::RecordStatus status = record.save();
-    if (status != RecordDB::RECORD_OK) {
+    RecordStatus status = record.save();
+    if (status != RECORD_OK) {
         printTagLog(MAIN_TAG, "save new log: error=%02x", status);
     } else {
     	printTagLog(MAIN_TAG, "save new log: success");

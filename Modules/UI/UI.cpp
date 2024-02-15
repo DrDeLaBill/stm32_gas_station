@@ -112,6 +112,9 @@ void UI::_load_s::operator ()()
 	if (!timer.wait()) {
 		fsm.push_event(error_e{});
 	}
+	if (!needLoad) {
+		fsm.push_event(success_e{});
+	}
 }
 
 void UI::_idle_s::operator ()()
@@ -125,6 +128,16 @@ void UI::_idle_s::operator ()()
 	if (needLoad) {
 		fsm.push_event(load_e{});
 	}
+
+	if (timer.wait()) {
+		return;
+	}
+
+	// TODO: !!!
+//    if (!Pump::hasStopped()) {
+//    	fsm.push_event(error_e{});
+//		return;
+//    }
 	// TODO: Add error event handler
 }
 
@@ -273,23 +286,28 @@ void UI::_count_s::operator ()()
     memcpy(resultBuffer, buffer, KEYBOARD4X3_BUFFER_SIZE);
 }
 
-void UI::_record_s::operator ()()
-{
-
-}
+void UI::_record_s::operator ()() { }
 
 void UI::_result_s::operator ()()
 {
 	if (!timer.wait()) {
 		fsm.push_event(end_e{});
+		return;
 	}
 
 	if (isCancel()) {
 		fsm.push_event(end_e{});
+		return;
 	}
 
-    if (!Pump::hasStopped()) {
-    	fsm.push_event(error_e{});
+    if (Access::isGranted()) {
+    	fsm.push_event(granted_e{});
+		return;
+    }
+
+    if (Access::isDenied()) {
+    	fsm.push_event(denied_e{});
+		return;
     }
 }
 
@@ -315,6 +333,9 @@ void UI::load_ui_a::operator ()()
 
 void UI::idle_ui_a::operator ()()
 {
+	timer.changeDelay(_idle_s::TIMEOUT_MS);
+	timer.start();
+
     indicate_set_wait_page();
 
     keyboard4x3_disable_light();
@@ -326,6 +347,8 @@ void UI::idle_ui_a::operator ()()
 
 void UI::granted_ui_a::operator ()()
 {
+	fsm.clear_events();
+
 	timer.changeDelay(BLINK_DELAY_MS);
 	timer.start();
 
@@ -337,6 +360,8 @@ void UI::granted_ui_a::operator ()()
 
 void UI::denied_ui_a::operator ()()
 {
+	fsm.clear_events();
+
 	timer.changeDelay(BLINK_DELAY_MS);
 	timer.start();
 
@@ -348,6 +373,8 @@ void UI::denied_ui_a::operator ()()
 
 void UI::limit_ui_a::operator ()()
 {
+	fsm.clear_events();
+
     uint16_t idx;
     uint32_t residue = 0;
     SettingsStatus status = settings_get_card_idx(UI::getCard(), &idx);
@@ -379,6 +406,7 @@ void UI::limit_ui_a::operator ()()
     keyboard4x3_clear();
 
 	indicate_set_limit_page();
+	indicate_set_buffer(limitBuffer, KEYBOARD4X3_BUFFER_SIZE);
 
 	timer.changeDelay(BASE_TIMEOUT_MS);
 	timer.start();
@@ -386,6 +414,8 @@ void UI::limit_ui_a::operator ()()
 
 void UI::reset_input_ui_a::operator ()()
 {
+	fsm.clear_events();
+
 	timer.changeDelay(BASE_TIMEOUT_MS);
 	timer.start();
 
@@ -405,6 +435,8 @@ void UI::reset_input_ui_a::operator ()()
 
 void UI::check_a::operator ()()
 {
+	fsm.clear_events();
+
     uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
     uint32_t liters_multiplier = ML_IN_LTR;
     if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
@@ -426,32 +458,39 @@ void UI::check_a::operator ()()
 		fsm.push_event(limit_min_e{});
 	} else {
 		fsm.push_event(success_e{});
+
+	    indicate_set_buffer_page();
+
+	    Pump::clear();
+	    Pump::setTargetMl(targetMl);
 	}
 }
 
 void UI::wait_count_ui_a::operator ()()
 {
+	fsm.clear_events();
+
 	timer.changeDelay(_wait_count_s::TIMEOUT_MS);
 	timer.start();
-
-    indicate_set_buffer_page();
-
-    Pump::clear();
-    Pump::setTargetMl(targetMl);
 }
 
 void UI::count_a::operator ()()
 {
-
+	fsm.clear_events();
 }
 
 void UI::record_ui_a::operator ()()
 {
+	fsm.clear_events();
+
 	resultMl = lastMl;
+	fsm.push_event(success_e{});
 }
 
 void UI::result_ui_a::operator ()()
 {
+	fsm.clear_events();
+
 	timer.changeDelay(_result_s::TIMEOUT_MS);
 	timer.start();
 
@@ -467,6 +506,8 @@ void UI::result_ui_a::operator ()()
 
 void UI::reboot_ui_a::operator ()()
 {
+	fsm.clear_events();
+
 	timer.changeDelay(_result_s::TIMEOUT_MS);
 	timer.start();
 
@@ -475,6 +516,7 @@ void UI::reboot_ui_a::operator ()()
 
 void UI::error_ui_a::operator ()()
 {
+	fsm.clear_events();
 	keyboard4x3_disable_light();
     indicate_set_error_page();
 }

@@ -9,6 +9,7 @@
 #include "main.h"
 #include "settings.h"
 
+#include "UI.h"
 #include "SettingsDB.h"
 #include "CodeStopwatch.h"
 
@@ -36,6 +37,9 @@ void SettingsWatchdog::state_init::operator ()() const
 		reset_error(SETTINGS_ERROR);
 	    set_settings_initialized();
 		settings_show();
+
+	    UI::setLoaded();
+
 		return;
 	}
 
@@ -49,6 +53,9 @@ void SettingsWatchdog::state_init::operator ()() const
 		reset_error(SETTINGS_ERROR);
 	    set_settings_initialized();
 		settings_show();
+
+	    UI::setLoaded();
+
 		return;
 	}
 
@@ -81,6 +88,8 @@ void SettingsWatchdog::state_save::operator ()() const
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
 		set_settings_update_status(false);
 		settings_show();
+
+	    UI::setLoaded();
 	}
 }
 
@@ -95,6 +104,8 @@ void SettingsWatchdog::state_load::operator ()() const
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_loaded{});
 		set_settings_save_status(false);
 		settings_show();
+
+	    UI::setLoaded();
 	}
 }
 

@@ -1,5 +1,6 @@
 /* Copyright © 2023 Georgy E. All rights reserved. */
 
+#include <Record.h>
 #include "ModbusManager.h"
 
 
@@ -14,7 +15,6 @@
 #include "modbus_rtu_slave.h"
 
 #include "UI.h"
-#include "RecordDB.h"
 #include "ModbusRegister.h"
 
 
@@ -31,9 +31,6 @@ utl::Timer ModbusManager::timer(GENERAL_TIMEOUT_MS);
 uint16_t ModbusManager::counter = 0;
 uint8_t ModbusManager::request[20] = {};
 #endif
-
-
-extern settings_t settings;
 
 
 ModbusManager::ModbusManager(UART_HandleTypeDef* huart)
@@ -101,7 +98,7 @@ void ModbusManager::loadData()
         0,
         tmpSettings.cf_id
     )->load();
-    settings_set_cf_id(reg32->get());
+    tmpSettings.cf_id = reg32->get();
 
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    printTagLog(TAG, "Load device_id");
@@ -111,7 +108,7 @@ void ModbusManager::loadData()
         reg32->getNextAddress(),
         tmpSettings.device_id
     )->load();
-    settings_set_device_id(reg32->get());
+    tmpSettings.device_id = reg32->get();
 
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    printTagLog(TAG, "Load cards");
@@ -122,7 +119,7 @@ void ModbusManager::loadData()
             reg32->getNextAddress(),
             tmpSettings.cards[i]
         )->load();
-        settings_set_card(reg32->get(), static_cast<uint16_t>(i));
+        tmpSettings.cards[i] = reg32->get();
     }
 
 #if MB_MANAGER_BEDUG
@@ -134,7 +131,7 @@ void ModbusManager::loadData()
             reg32->getNextAddress(),
             tmpSettings.limits[i]
         )->load();
-        settings_set_limit(reg32->get(), static_cast<uint16_t>(i));
+        tmpSettings.limits[i] = reg32->get();
     }
 
 #if MB_MANAGER_BEDUG
@@ -149,7 +146,7 @@ void ModbusManager::loadData()
 			tmpAddress,
             tmpSettings.limit_type[i]
         )->load();
-        settings_set_limit_type(static_cast<LimitType>(reg8->get()), static_cast<uint16_t>(i));
+        tmpSettings.limit_type[i] = reg8->get();
         tmpAddress = reg8->getNextAddress();
     }
 
@@ -161,7 +158,7 @@ void ModbusManager::loadData()
         reg8->getNextAddress(),
         tmpSettings.log_id
     )->load();
-    settings_set_log_id(reg32->get());
+    tmpSettings.log_id = reg32->get();
 
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();
@@ -187,12 +184,12 @@ void ModbusManager::loadData()
 	)->load();
     clearLimitIdx = reg32->get();
 
-    if (enableClearLimit) {
-    	settings_clear_limit(clearLimitIdx);
+    if (enableClearLimit && clearLimitIdx < __arr_len(tmpSettings.used_liters)) {
+    	tmpSettings.used_liters[clearLimitIdx] = 0;
     }
 
-    if (memcmp(&tmpSettings, &settings, sizeof(tmpSettings))) {
-        memcpy(&settings, &tmpSettings, sizeof(settings));
+    if (memcmp(&tmpSettings, settings_get(), sizeof(tmpSettings))) {
+    	settings_set(&tmpSettings);
         set_settings_update_status(true);
     }
 
@@ -407,9 +404,9 @@ void ModbusManager::updateData()
         GENERAL_RFID_CARDS_COUNT
     )->save();
 
-    RecordDB record(settings.log_id);
-    RecordDB::RecordStatus status = record.loadNext();
-    if (status != RecordDB::RECORD_OK) {
+    Record record(settings.log_id);
+    RecordStatus status = record.loadNext();
+    if (status != RECORD_OK) {
         memset(&record.record, 0, sizeof(record.record));
     }
 

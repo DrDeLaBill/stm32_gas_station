@@ -5,7 +5,6 @@
 
 #include "UI.h"
 #include "StorageAT.h"
-#include "StorageDriver.h"
 
 #include "log.h"
 #include "utils.h"
@@ -18,21 +17,25 @@
 
 
 extern settings_t settings;
+extern StorageAT storage;
 
 
 SettingsDB::SettingsDB(uint8_t* settings, uint32_t size): size(size), settings(settings) { }
 
 SettingsStatus SettingsDB::load()
 {
-	StorageDriver storageDriver;
-	StorageAT storage(
-		eeprom_get_size() / Page::PAGE_SIZE,
-		&storageDriver
-	);
 	uint32_t address = 0;
 	StorageStatus status = STORAGE_OK;
 
+	bool needResave = false;
     status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 1);
+    if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+        printTagLog(SettingsDB::TAG, "error load settings: try to find duplicate (error=%02X)", status);
+#endif
+        status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 2);
+        needResave = true;
+    }
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: storage find error=%02X", status);
@@ -55,27 +58,40 @@ SettingsStatus SettingsDB::load()
     printTagLog(SettingsDB::TAG, "settings loaded");
 #endif
 
+    if (needResave) {
+    	set_settings_update_status(true);
+    }
+
     return SETTINGS_OK;
 }
 
 SettingsStatus SettingsDB::save()
 {
-	StorageDriver storageDriver;
-	StorageAT storage(
-		eeprom_get_size() / Page::PAGE_SIZE,
-		&storageDriver
-	);
 	uint32_t address = 0;
 	StorageStatus status = STORAGE_OK;
 
     status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 1);
+
+    if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+        printTagLog(SettingsDB::TAG, "error save settings: storage find error, try to find duplicate (error=%02X)", status);
+#endif
+    	status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 2);
+    }
+
     if (status == STORAGE_NOT_FOUND) {
+#if SETTINGS_BEDUG
+        printTagLog(SettingsDB::TAG, "error save settings: storage find duplicate error, try to find empty (error=%02X)", status);
+#endif
         status = storage.find(FIND_MODE_EMPTY, &address);
     }
 
     if (status == STORAGE_NOT_FOUND) {
         // Search for any address
-    	status = storage.find(FIND_MODE_NEXT, &address, "", 1);
+#if SETTINGS_BEDUG
+        printTagLog(SettingsDB::TAG, "error save settings: storage find empty error, try to find any address (error=%02X)", status);
+#endif
+    	status = storage.find(FIND_MODE_NEXT, &address, "", 0);
     }
 
     if (status != STORAGE_OK) {
@@ -85,6 +101,7 @@ SettingsStatus SettingsDB::save()
         return SETTINGS__ERROR;
     }
 
+    // Save original settings
 	status = storage.rewrite(address, PREFIX, 1, this->settings, this->size);
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
@@ -93,9 +110,27 @@ SettingsStatus SettingsDB::save()
         return SETTINGS__ERROR;
     }
 
+    // Save duplicate settings
+	status = storage.find(FIND_MODE_EQUAL, &address, PREFIX, 2);
+
+    if (status == STORAGE_NOT_FOUND) {
+#if SETTINGS_BEDUG
+        printTagLog(SettingsDB::TAG, "error save settings duplicate: storage find error, try to find empty (error=%02X)", status);
+#endif
+        status = storage.find(FIND_MODE_EMPTY, &address);
+    }
+
+	status = storage.rewrite(address, PREFIX, 2, this->settings, this->size);
+    if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+        printTagLog(SettingsDB::TAG, "error save settings duplicate: storage save error=%02X address=%lu", status, address);
+#endif
+        return SETTINGS__ERROR;
+    }
+
     if (this->load() == SETTINGS_OK) {
 #if SETTINGS_BEDUG
-    	printTagLog(SettingsDB::TAG, "settings saved (address=%lu)", address);
+    	printTagLog(SettingsDB::TAG, "settings saved successfully", address);
 #endif
 
     	return SETTINGS_OK;

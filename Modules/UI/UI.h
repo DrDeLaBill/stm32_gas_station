@@ -35,7 +35,7 @@ private:
 	// States:
 	struct _init_s       { void operator()(); };
 	struct _load_s       { void operator()(); };
-	struct _idle_s       { void operator()(); };
+	struct _idle_s       { void operator()(); static constexpr uint32_t TIMEOUT_MS = 10000 ;};
 	struct _denied_s     { void operator()(); };
 	struct _granted_s    { void operator()(); };
 	struct _limit_s      { void operator()(); static utl::Timer blinkTimer; static bool limitPage; };
@@ -82,6 +82,7 @@ private:
 		fsm::Transition<init_s,       success_e,   load_s,       load_ui_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<load_s,       error_e,     error_s,      error_ui_a,       fsm::Guard::NO_GUARD>,
 		fsm::Transition<load_s,       success_e,   idle_s,       idle_ui_a,        fsm::Guard::NO_GUARD>,
+		fsm::Transition<idle_s,       error_e,     error_s,      error_ui_a,       fsm::Guard::NO_GUARD>,
 		fsm::Transition<idle_s,       reboot_e,    reboot_s,     reboot_ui_a,      fsm::Guard::NO_GUARD>,
 		fsm::Transition<idle_s,       load_e,      load_s,       load_ui_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<idle_s,       granted_e,   granted_s,    granted_ui_a,     fsm::Guard::NO_GUARD>,
@@ -103,12 +104,14 @@ private:
 		fsm::Transition<record_s,     error_e,     error_s,      error_ui_a,       fsm::Guard::NO_GUARD>,
 		fsm::Transition<record_s,     success_e,   result_s,     result_ui_a,      fsm::Guard::NO_GUARD>,
 		fsm::Transition<result_s,     end_e,       load_s,       load_ui_a,        fsm::Guard::NO_GUARD>,
+		fsm::Transition<result_s,     granted_e,   granted_s,    granted_ui_a,     fsm::Guard::NO_GUARD>,
+		fsm::Transition<result_s,     denied_e,    denied_s,     denied_ui_a,      fsm::Guard::NO_GUARD>,
 		fsm::Transition<reboot_s,     timeout_e,   idle_s,       idle_ui_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<error_s,      solved_e,    load_s,       load_ui_a,        fsm::Guard::NO_GUARD>
 	>;
 
 protected:
-	static constexpr uint32_t BASE_TIMEOUT_MS = 10000;
+	static constexpr uint32_t BASE_TIMEOUT_MS = 30000;
 	static constexpr uint32_t BLINK_DELAY_MS = 1000;
 
 	static fsm::FiniteStateMachine<fsm_table> fsm;
