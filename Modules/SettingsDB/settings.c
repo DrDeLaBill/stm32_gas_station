@@ -72,15 +72,7 @@ bool settings_check(settings_t* other)
 
 void settings_show()
 {
-	printPretty("------------------------------------------------------------------\n");
-	printPretty("cf_id = %lu\n", settings.cf_id);
-	printPretty("device_id = %lu\n", settings.device_id);
-	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
-		printPretty("CARD %u: card=%lu, limit=%lu, used_liters=%lu, limit_type=%s\n", i, settings.cards[i], settings.limits[i], settings.used_liters[i], (settings.limit_type[i] == LIMIT_DAY ? "DAY" : (settings.limit_type[i] == LIMIT_MONTH ? "MONTH" : "UNKNOWN")));
-	}
-	printPretty("log_id = %lu\n", settings.log_id);
-	printPretty("last_day = %u (current=%u)\n", settings.last_day, clock_get_date());
-	printPretty("last_month = %u (current=%u)\n", settings.last_month, clock_get_month());
+	printPretty("################SETTINGS################\n");
     RTC_DateTypeDef date;
     RTC_TimeTypeDef time;
     if (!clock_get_rtc_date(&date)) {
@@ -90,7 +82,24 @@ void settings_show()
         memset((void*)(&time), 0, sizeof(time));
     }
 	printPretty("Current time: 20%02u-%02u-%02uT%02u:%02u:%02u\n", date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
-	printPretty("------------------------------------------------------------------\n");
+	printPretty("Software v%u\n", settings.sw_id);
+	printPretty("Firmware v%u\n", settings.fw_id);
+	printPretty("Configuration ID: %lu\n", settings.cf_id);
+	printPretty("Device ID: %lu\n", settings.device_id);
+	printPretty("Last log ID: %lu\n", settings.log_id);
+	printPretty("Last day: %u (current=%u)\n", settings.last_day, date.Date);
+	printPretty("Last month: %u (current=%u)\n", settings.last_month, date.Month);
+	printPretty("CARD       LIMIT      USEDLTR    TYPE\n");
+	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
+		printPretty(
+			"%010lu %010lu %010lu %s\n",
+			settings.cards[i],
+			settings.limits[i],
+			settings.used_liters[i],
+			(settings.limit_type[i] == LIMIT_DAY ? "DAY" : (settings.limit_type[i] == LIMIT_MONTH ? "MONTH" : "UNKNOWN"))
+		);
+	}
+	printPretty("################SETTINGS################\n");
 }
 
 SettingsStatus settings_get_card_idx(uint32_t card, uint16_t* idx)

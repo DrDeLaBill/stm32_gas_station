@@ -11,6 +11,7 @@
 
 #include "Record.h"
 #include "StorageAT.h"
+#include "CodeStopwatch.h"
 
 
 extern StorageAT storage;
@@ -304,6 +305,8 @@ bool RecordClust::createNew()
 
 RecordStatus RecordClust::getMaxId(uint32_t* maxId)
 {
+	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
+
     uint32_t address = 0;
     StorageStatus storageStatus = STORAGE_OK;
 

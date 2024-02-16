@@ -70,9 +70,7 @@
 
 /* USER CODE BEGIN PV */
 
-const char* MAIN_TAG = "MAIN";
-
-uint8_t umka200_uart_byte = 0;
+static constexpr char MAIN_TAG[] = "MAIN";
 
 uint8_t modbus_uart_byte = 0;
 
@@ -97,6 +95,26 @@ void save_new_log(uint32_t mlCount);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 ModbusManager mbManager(&MODBUS_UART);
+
+#define POWER_ADC_CHANNEL ((uint32_t)1)
+uint32_t getPower()
+{
+    ADC_ChannelConfTypeDef conf = {};
+    conf.Channel      = POWER_ADC_CHANNEL;
+    conf.Rank         = 1;
+    conf.SamplingTime = ADC_SAMPLETIME_28CYCLES;
+    if (HAL_ADC_ConfigChannel(&POWER_ADC, &conf) != HAL_OK) {
+        return 0;
+    }
+
+    HAL_ADC_Start(&POWER_ADC);
+    HAL_ADC_PollForConversion(&POWER_ADC, GENERAL_TIMEOUT_MS);
+    uint32_t value = HAL_ADC_GetValue(&POWER_ADC);
+    HAL_ADC_Stop(&POWER_ADC);
+
+    return value;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -121,7 +139,6 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-//  RestartWatchdog::reset_i2c_errata(); // TODO: move reset_i2c to memory watchdog
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -133,10 +150,10 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
-//  MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
-//  while (1);
+
   UI::setLoading();
 
   HAL_Delay(100);
@@ -170,6 +187,9 @@ int main(void)
 	> soulGuard;
 	while (1)
 	{
+		printTagLog(MAIN_TAG, "POWER = %lu", getPower());
+//		printTagLog(MAIN_TAG, "POWER = %u", HAL_GPIO_ReadPin(POWER_GPIO_Port, POWER_Pin));
+
 		soulGuard.defend();
 
 		Pump::measure();
@@ -181,10 +201,10 @@ int main(void)
 
 		UI::resetError();
 
-//		HAL_IWDG_Refresh(&DEVICE_IWDG);
-	/* USER CODE END WHILE */
+		HAL_IWDG_Refresh(&DEVICE_IWDG);
+    /* USER CODE END WHILE */
 
-	/* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 
 		settings_check_residues();
 

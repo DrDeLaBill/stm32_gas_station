@@ -7,6 +7,7 @@
 
 #include "StorageAT.h"
 #include "RecordClust.h"
+#include "CodeStopwatch.h"
 
 #include "log.h"
 #include "utils.h"
@@ -55,6 +56,8 @@ RecordStatus Record::load()
 
 RecordStatus Record::loadNext()
 {
+	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
+
     RecordClust clust(m_recordId + 1, this->size());
 
     RecordStatus recordStatus = clust.load(false);
@@ -97,6 +100,8 @@ RecordStatus Record::loadNext()
 
 RecordStatus Record::save()
 {
+	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
+
 	if (!this->size()) {
 		return RECORD_ERROR;
 	}

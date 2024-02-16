@@ -11,16 +11,16 @@
 #include "utils.h"
 
 
-const util_port_pin_t indicators_pins[] = {
-    {DIGITS_6_GPIO_Port, DIGITS_6_Pin},
-    {DIGITS_5_GPIO_Port, DIGITS_5_Pin},
-    {DIGITS_4_GPIO_Port, DIGITS_4_Pin},
-    {DIGITS_3_GPIO_Port, DIGITS_3_Pin},
-    {DIGITS_2_GPIO_Port, DIGITS_2_Pin},
-    {DIGITS_1_GPIO_Port, DIGITS_1_Pin}
+static const util_port_pin_t indicators_pins[] = { // TODO: static (check memory)
+    {.port = DIGITS_6_GPIO_Port, .pin = DIGITS_6_Pin},
+    {.port = DIGITS_5_GPIO_Port, .pin = DIGITS_5_Pin},
+    {.port = DIGITS_4_GPIO_Port, .pin = DIGITS_4_Pin},
+    {.port = DIGITS_3_GPIO_Port, .pin = DIGITS_3_Pin},
+    {.port = DIGITS_2_GPIO_Port, .pin = DIGITS_2_Pin},
+    {.port = DIGITS_1_GPIO_Port, .pin = DIGITS_1_Pin}
 };
 
-const util_port_pin_t segments_pins[] = {
+static const util_port_pin_t segments_pins[] = {
     {.port = DIGITS_A_GPIO_Port, .pin = DIGITS_A_Pin},
     {.port = DIGITS_B_GPIO_Port, .pin = DIGITS_B_Pin},
     {.port = DIGITS_C_GPIO_Port, .pin = DIGITS_C_Pin},
@@ -30,7 +30,7 @@ const util_port_pin_t segments_pins[] = {
     {.port = DIGITS_G_GPIO_Port, .pin = DIGITS_G_Pin},
 };
 
-const bool digits_pins[][__arr_len(segments_pins)] = {
+static const bool digits_pins[][__arr_len(segments_pins)] = {
 /*   A  B  C  D  E  F  G    */
     {1, 1, 1, 1, 1, 1, 0},  // 0
     {0, 1, 1, 0, 0, 0, 0},  // 1
@@ -44,11 +44,11 @@ const bool digits_pins[][__arr_len(segments_pins)] = {
     {1, 1, 1, 1, 0, 1, 1}   // 9
 };
 
-const bool symbol_underline[__arr_len(segments_pins)] =
+static const bool symbol_underline[__arr_len(segments_pins)] =
 /*   A  B  C  D  E  F  G    */
 	{0, 0, 0, 1, 0, 0, 0};
 
-const bool error_arr[][__arr_len(segments_pins)] = {
+static const bool error_arr[][__arr_len(segments_pins)] = {
 /*   A  B  C  D  E  F  G    */
     {1, 0, 0, 1, 1, 1, 1},  // E
     {0, 0, 0, 0, 1, 0, 1},  // r
@@ -58,7 +58,7 @@ const bool error_arr[][__arr_len(segments_pins)] = {
     {0, 0, 0, 0, 0, 0, 0}   // empty
 };
 
-const bool limit_arr[][__arr_len(segments_pins)] = {
+static const bool limit_arr[][__arr_len(segments_pins)] = {
 /*   A  B  C  D  E  F  G    */
     {0, 0, 0, 1, 1, 1, 0},  // L
     {0, 0, 0, 0, 1, 0, 0},  // i_
@@ -68,7 +68,7 @@ const bool limit_arr[][__arr_len(segments_pins)] = {
     {0, 0, 0, 1, 1, 1, 1}   // t
 };
 
-const bool access_arr[][__arr_len(segments_pins)] = {
+static const bool access_arr[][__arr_len(segments_pins)] = {
 /*   A  B  C  D  E  F  G    */
 	{1, 1, 1, 0, 1, 1, 1},  // A
     {0, 0, 0, 1, 1, 0, 1},  // c
@@ -78,7 +78,7 @@ const bool access_arr[][__arr_len(segments_pins)] = {
     {1, 0, 1, 1, 0, 1, 1}   // S
 };
 
-const bool denied_arr[][__arr_len(segments_pins)] = {
+static const bool denied_arr[][__arr_len(segments_pins)] = {
 /*   A  B  C  D  E  F  G    */
 	{0, 1, 1, 1, 1, 0, 1},  // d
     {1, 0, 0, 1, 1, 1, 1},  // E
@@ -88,7 +88,7 @@ const bool denied_arr[][__arr_len(segments_pins)] = {
 	{0, 1, 1, 1, 1, 0, 1}   // d
 };
 
-const bool reboot_arr[][__arr_len(segments_pins)] = {
+static const bool reboot_arr[][__arr_len(segments_pins)] = {
 /*   A  B  C  D  E  F  G    */
 	{0, 0, 0, 0, 1, 0, 1},  // r
 	{1, 0, 0, 1, 1, 1, 1},  // E

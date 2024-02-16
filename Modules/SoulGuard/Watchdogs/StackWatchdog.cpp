@@ -14,7 +14,7 @@
 #include "CodeStopwatch.h"
 
 
-#define STACK_CANARY_WORD (0xBEDAC0DE)
+#define STACK_CANARY_WORD ((uint32_t)0xBEDAC0DE)
 
 
 unsigned StackWatchdog::lastFree = 0;
@@ -58,23 +58,24 @@ void StackWatchdog::check()
 		}
 	}
 
-	if (!last_counter) {
-		// TODO: an error is possible
-	} else if (__abs_dif(lastFree, last_counter)) {
+	uint32_t freeRamBytes = last_counter * sizeof(STACK_CANARY_WORD);
+	if (!freeRamBytes) {
+		set_error(STACK_ERROR);
+	} else if (__abs_dif(lastFree, freeRamBytes)) {
 		extern unsigned _sdata;
 		extern unsigned _estack;
 		printTagLog(TAG, "-----ATTENTION! INDIRECT DATA BEGIN:-----");
-		printTagLog(TAG, "RAM occupied MAX: %u bytes", __abs_dif((unsigned)&_sdata, (unsigned)&_estack) - last_counter);
-		printTagLog(TAG, "RAM free  MIN:    %u bytes", last_counter);
+		printTagLog(TAG, "RAM occupied MAX: %u bytes", __abs_dif((unsigned)&_sdata, (unsigned)&_estack) - freeRamBytes);
+		printTagLog(TAG, "RAM free  MIN:    %u bytes [0x%08X->0x%08X]", freeRamBytes, stack_end - freeRamBytes, stack_end);
 		printTagLog(TAG, "------ATTENTION! INDIRECT DATA END-------");
 	}
 
-	if (last_counter) {
-		lastFree = last_counter;
+	if (freeRamBytes) {
+		lastFree = freeRamBytes;
 	}
 
 	BEDUG_ASSERT(
-		last_counter && lastFree && heap_end < stack_end,
+		freeRamBytes && lastFree && heap_end < stack_end,
 		"STACK OVERFLOW IS POSSIBLE or you didn't use the function STACK_WATCHDOG_FILL_RAM on startup"
 	);
 }

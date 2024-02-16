@@ -72,8 +72,8 @@ int _write(int file, uint8_t *ptr, int len);
 #define VALVE2_GPIO_Port GPIOC
 #define PUMP_Pin GPIO_PIN_0
 #define PUMP_GPIO_Port GPIOA
-#define LED_Pin GPIO_PIN_1
-#define LED_GPIO_Port GPIOA
+#define POWER_Pin GPIO_PIN_1
+#define POWER_GPIO_Port GPIOA
 #define BEDUG_TX_Pin GPIO_PIN_2
 #define BEDUG_TX_GPIO_Port GPIOA
 #define BEDUG_RX_Pin GPIO_PIN_3
@@ -168,7 +168,7 @@ extern UART_HandleTypeDef        huart1;
 extern I2C_HandleTypeDef         hi2c1;
 #define EEPROM_I2C               (hi2c1)
 
-// PUPMP
+// PUMP
 extern TIM_HandleTypeDef         htim3;
 #define MD212_TIM                (htim3)
 extern ADC_HandleTypeDef         hadc1;
@@ -177,6 +177,9 @@ extern ADC_HandleTypeDef         hadc1;
 extern ADC_HandleTypeDef         hadc1;
 #define VALVE_ADC                (hadc1)
 #define VALVE_ADC_CHANNEL        ((uint32_t)10)
+
+// Power
+#define POWER_ADC                (hadc1)
 
 // Clock
 extern RTC_HandleTypeDef         hrtc;

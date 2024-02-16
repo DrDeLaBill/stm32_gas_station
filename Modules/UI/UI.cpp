@@ -508,7 +508,7 @@ void UI::reboot_ui_a::operator ()()
 {
 	fsm.clear_events();
 
-	timer.changeDelay(_result_s::TIMEOUT_MS);
+	timer.changeDelay(_reboot_s::TIMEOUT_MS);
 	timer.start();
 
 	indicate_set_reboot_page();

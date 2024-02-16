@@ -34,15 +34,16 @@ void RestartWatchdog::check()
 		flag = true;
 	}
 
-//	if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
-//		printTagLog(TAG, "SOFT RESET");
-//		flag = true; // TODO
-//	}
+	if (__HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)) {
+		printTagLog(TAG, "SOFT RESET");
+		flag = true;
+	}
 
 	if (flag) {
 		__HAL_RCC_CLEAR_RESET_FLAGS();
 		printTagLog(TAG, "DEVICE HAS BEEN REBOOTED");
 		UI::setReboot();
+		RestartWatchdog::reset_i2c_errata(); // TODO: move reset_i2c to memory watchdog
 		HAL_Delay(2500);
 	}
 	// TODO: IWDG, NVIC_SysReset and other restarts detect and reset
@@ -51,9 +52,18 @@ void RestartWatchdog::check()
 
 void RestartWatchdog::reset_i2c_errata()
 {
+	HAL_I2C_DeInit(&EEPROM_I2C);
+
 	GPIO_TypeDef* I2C_PORT = GPIOB;
 	uint16_t I2C_SDA_Pin = GPIO_PIN_7;
 	uint16_t I2C_SCL_Pin = GPIO_PIN_6;
+
+	GPIO_InitTypeDef GPIO_InitStruct = { };
+	GPIO_InitStruct.Pin   = I2C_SCL_Pin | I2C_SCL_Pin;
+	GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
+	GPIO_InitStruct.Pull  = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(I2C_PORT, &GPIO_InitStruct);
 
 	hi2c1.Instance->CR1 &= ~(0x0001);
 
