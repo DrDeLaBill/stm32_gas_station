@@ -111,6 +111,7 @@ void SettingsWatchdog::state_load::operator ()() const
 
 void SettingsWatchdog::action_check::operator ()() const
 {
+	reset_error(SETTINGS_ERROR);
 	if (!settings_check(&settings)) {
 		set_error(SETTINGS_ERROR);
 #if SETTINGS_WATCHDOG_BEDUG

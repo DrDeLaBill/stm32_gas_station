@@ -15,10 +15,10 @@ extern "C" {
 #include "main.h"
 
 
-#define SW_VERSION  ((uint8_t)0x02)
-#define FW_VERSION  ((uint8_t)0x01)
-#define CF_VERSION  ((uint8_t)0x02)
-#define DEFAULT_ID  ((uint8_t)0x01)
+#define SW_VERSION         ((uint8_t)0x03)
+#define FW_VERSION         ((uint8_t)0x01)
+#define DEFAULT_CF_VERSION ((uint8_t)0x01)
+#define DEFAULT_ID         ((uint8_t)0x01)
 
 
 typedef enum _SettingsStatus {

@@ -187,7 +187,7 @@ int main(void)
 	> soulGuard;
 	while (1)
 	{
-		printTagLog(MAIN_TAG, "POWER = %lu", getPower());
+//		printTagLog(MAIN_TAG, "POWER = %lu", getPower());
 //		printTagLog(MAIN_TAG, "POWER = %u", HAL_GPIO_ReadPin(POWER_GPIO_Port, POWER_Pin));
 
 		soulGuard.defend();

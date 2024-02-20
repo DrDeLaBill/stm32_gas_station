@@ -321,6 +321,9 @@ void UI::_reboot_s::operator ()()
 void UI::_error_s::operator ()()
 {
     Pump::stop();
+	if (!error) {
+		fsm.push_event(solved_e{});
+	}
 }
 
 void UI::load_ui_a::operator ()()

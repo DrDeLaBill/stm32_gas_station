@@ -38,19 +38,23 @@ void settings_reset(settings_t* other)
 {
 	printTagLog(SETTINGS_TAG, "Reset settings");
 
-    other->cf_id      = CF_VERSION;
+    other->cf_id      = DEFAULT_CF_VERSION;
     other->sw_id      = SW_VERSION;
     other->fw_id      = FW_VERSION;
     other->log_id     = 0;
     other->device_id  = DEFAULT_ID;
 
-    memset(other->cards, 0, sizeof(other->cards));
-    memset(other->limits, 0, sizeof(other->limits));
-    memset(other->limit_type, LIMIT_DAY, sizeof(other->limit_type));
-    memset(other->used_liters, 0, sizeof(other->used_liters));
+    for (unsigned i = 0; i < __arr_len(other->cards); i++) {
+    	other->cards[i] = 0;
+    	other->limits[i] = 0;
+    	other->used_liters[i] = 0;
+    	other->limit_type[i] = LIMIT_DAY;
+    }
 
     other->last_day   = (uint8_t)clock_get_date();
     other->last_month = (uint8_t)clock_get_month();
+
+    set_new_data_saved(true);
 }
 
 uint32_t settings_size()

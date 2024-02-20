@@ -75,12 +75,16 @@ uint8_t clock_get_second()
 
 void clock_save_time(RTC_TimeTypeDef* time)
 {
-    HAL_StatusTypeDef status = HAL_ERROR;
-    if (time->Seconds > 59 || time->Hours > 23 || time->Minutes > 59) {
+	if (time->Seconds > 59) {
+		return;
+	}
+	if (time->Minutes > 59) {
+		return;
+	}
+    if (time->Hours > 23) {
         return;
-    } else {
-        status = HAL_RTC_SetTime(&hrtc, time, RTC_FORMAT_BIN);
     }
+    HAL_StatusTypeDef status = HAL_RTC_SetTime(&hrtc, time, RTC_FORMAT_BIN);
     if (status != HAL_OK)
     {
 		BEDUG_ASSERT(false, "Unable to set current time");
@@ -89,12 +93,14 @@ void clock_save_time(RTC_TimeTypeDef* time)
 
 void clock_save_date(RTC_DateTypeDef* date)
 {
-    HAL_StatusTypeDef status = HAL_ERROR;
-    if (date->Date > 31 || date->Month > 12) {
-        return;
-    } else {
-        status = HAL_RTC_SetDate(&hrtc, date, RTC_FORMAT_BIN);
+    if (date->Date == 0 || date->Date > 31) {
+    	return;
     }
+    if (date->Month == 0 || date->Month > 12) {
+        return;
+    }
+
+    HAL_StatusTypeDef status = HAL_RTC_SetDate(&hrtc, date, RTC_FORMAT_BIN);
     if (status != HAL_OK)
     {
 		BEDUG_ASSERT(false, "Unable to set current date");

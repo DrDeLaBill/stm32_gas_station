@@ -479,16 +479,16 @@ void ModbusManager::send_data()
         return;
     }
 #if MB_PROTOCOL_BEDUG
-    LOG_BEDUG("%s:\trequest  - ", ModbusManager::TAG);
+    gprint("%s:\trequest  - ", ModbusManager::TAG);
     for (unsigned i = 0; i < ModbusManager::counter; i++) {
-        LOG_BEDUG("%02X ", ModbusManager::request[i]);
+        gprint("%02X ", ModbusManager::request[i]);
     }
-    LOG_BEDUG("\n");
-    LOG_BEDUG("%s:\tresponse - ", ModbusManager::TAG);
+    gprint("\n");
+    gprint("%s:\tresponse - ", ModbusManager::TAG);
     for (unsigned i = 0; i < ModbusManager::data_length; i++) {
-        LOG_BEDUG("%02X ", ModbusManager::data[i]);
+    	gprint("%02X ", ModbusManager::data[i]);
     }
-    LOG_BEDUG("\n");
+    gprint("\n");
 #endif
     HAL_UART_Transmit(ModbusManager::huart, ModbusManager::data.get(), ModbusManager::data_length, GENERAL_TIMEOUT_MS);
 }
