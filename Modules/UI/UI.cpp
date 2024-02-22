@@ -1,21 +1,17 @@
 #include "UI.h"
 
-//#include <typeinfo>
 #include <cstdlib>
-//#include <stdint.h>
 #include <cstring>
-//#include "stm32f4xx_hal.h"
-//
-//#include "log.h"
-//#include "main.h"
-#include "settings.h"
 
+#include "soul.h"
 #include "hal_defs.h"
+#include "settings.h"
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
-//
+
 #include "Pump.h"
 #include "Access.h"
+#include "defines.h"
 
 
 extern settings_t settings;
@@ -24,8 +20,6 @@ extern settings_t settings;
 fsm::FiniteStateMachine<UI::fsm_table> UI::fsm;
 utl::Timer UI::timer(UI::BASE_TIMEOUT_MS);
 uint32_t UI::card = 0;
-bool UI::needLoad = false;
-bool UI::error = false;
 uint8_t UI::limitBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
 uint8_t UI::currentBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
 uint8_t UI::resultBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
@@ -39,16 +33,6 @@ void UI::proccess()
 	fsm.proccess();
 }
 
-void UI::setLoading()
-{
-	needLoad = true;
-}
-
-void UI::setLoaded()
-{
-	needLoad = false;
-}
-
 void UI::setCard(uint32_t card)
 {
     UI::card = card;
@@ -57,6 +41,11 @@ void UI::setCard(uint32_t card)
 uint32_t UI::getCard()
 {
     return card;
+}
+
+bool UI::isPumpWorking()
+{
+	return fsm.is_state(wait_count_s{}) || fsm.is_state(count_s{});
 }
 
 bool UI::isEnter()
@@ -72,24 +61,6 @@ bool UI::isCancel()
 void UI::setReboot()
 {
 	fsm.push_event(reboot_e{});
-}
-
-void UI::setError()
-{
-	if (error) {
-		return;
-	}
-	error = true;
-	fsm.push_event(error_e{});
-}
-
-void UI::resetError()
-{
-	if (!error) {
-		return;
-	}
-	error = false;
-	fsm.push_event(solved_e{});
 }
 
 void UI::resetResultMl()
@@ -112,8 +83,11 @@ void UI::_load_s::operator ()()
 	if (!timer.wait()) {
 		fsm.push_event(error_e{});
 	}
-	if (!needLoad) {
+	if (!is_status(WAIT_LOAD)) {
 		fsm.push_event(success_e{});
+	}
+	if (soulGuard.hasErrors()) {
+		fsm.push_event(error_e{});
 	}
 }
 
@@ -125,8 +99,11 @@ void UI::_idle_s::operator ()()
 	if (Access::isGranted()) {
 		fsm.push_event(granted_e{});
 	}
-	if (needLoad) {
+	if (is_status(WAIT_LOAD)) {
 		fsm.push_event(load_e{});
+	}
+	if (soulGuard.hasErrors()) {
+		fsm.push_event(error_e{});
 	}
 
 	if (timer.wait()) {
@@ -290,6 +267,10 @@ void UI::_record_s::operator ()() { }
 
 void UI::_result_s::operator ()()
 {
+	if (soulGuard.hasErrors()) {
+		fsm.push_event(error_e{});
+	}
+
 	if (!timer.wait()) {
 		fsm.push_event(end_e{});
 		return;
@@ -321,7 +302,7 @@ void UI::_reboot_s::operator ()()
 void UI::_error_s::operator ()()
 {
     Pump::stop();
-	if (!error) {
+	if (!soulGuard.hasErrors()) {
 		fsm.push_event(solved_e{});
 	}
 }
@@ -424,7 +405,7 @@ void UI::reset_input_ui_a::operator ()()
 
 	memset(currentBuffer, 0 ,sizeof(currentBuffer));
 
-	keyboard4x3_clear();
+	keyboard4x3_clear_enter();
 
 	indicate_set_buffer_page();
 	indicate_clear_buffer();
@@ -466,6 +447,8 @@ void UI::check_a::operator ()()
 
 	    Pump::clear();
 	    Pump::setTargetMl(targetMl);
+
+	    set_status(NEED_RECORD_TMP);
 	}
 }
 

@@ -20,6 +20,7 @@ extern "C" {
 
 void     keyboard4x3_proccess();
 uint8_t* keyboard4x3_get_buffer();
+void     keyboard4x3_clear_enter();
 void     keyboard4x3_clear();
 
 bool     keyboard4x3_is_cancel();

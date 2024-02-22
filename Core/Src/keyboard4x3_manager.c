@@ -95,6 +95,12 @@ uint8_t* keyboard4x3_get_buffer()
     return keyboard4x3_state.buffer;
 }
 
+void keyboard4x3_clear_enter()
+{
+	keyboard4x3_state.enterPressed = false;
+	keyboard4x3_state.cancelPressed = false;
+}
+
 void keyboard4x3_clear()
 {
     _keyboard4x3_reset_buffer();

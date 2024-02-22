@@ -57,6 +57,8 @@ void MX_RTC_Init(void)
 
   /* USER CODE BEGIN Check_RTC_BKUP */
 
+  return;
+
   RTC_TimeTypeDef tmp_time = {0};
   RTC_DateTypeDef tmp_date = {0};
 

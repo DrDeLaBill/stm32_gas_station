@@ -117,8 +117,6 @@ protected:
 	static fsm::FiniteStateMachine<fsm_table> fsm;
 	static utl::Timer timer;
 	static uint32_t card;
-	static bool needLoad;
-	static bool error;
 	static uint8_t limitBuffer[KEYBOARD4X3_BUFFER_SIZE];
 	static uint8_t currentBuffer[KEYBOARD4X3_BUFFER_SIZE];
 	static uint8_t resultBuffer[KEYBOARD4X3_BUFFER_SIZE];
@@ -134,18 +132,14 @@ protected:
 public:
 	static void proccess();
 
-	static void setLoading();
-	static void setLoaded();
-
 	static void setReboot();
-
-	static void setError();
-	static void resetError();
 
 	static void resetResultMl();
 	static uint32_t getResultMl();
 
 	static uint32_t getCard();
+
+	static bool isPumpWorking();
 
 };
 

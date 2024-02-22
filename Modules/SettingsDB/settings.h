@@ -12,18 +12,17 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "main.h"
-
 
 #define SW_VERSION         ((uint8_t)0x03)
 #define FW_VERSION         ((uint8_t)0x01)
 #define DEFAULT_CF_VERSION ((uint8_t)0x01)
 #define DEFAULT_ID         ((uint8_t)0x01)
+#define RFID_CARDS_COUNT   ((uint16_t)40)
 
 
 typedef enum _SettingsStatus {
     SETTINGS_OK = 0,
-    SETTINGS__ERROR
+    SETTINGS_ERROR
 } SettingsStatus;
 
 
@@ -41,10 +40,10 @@ typedef struct __attribute__((packed)) _settings_t  {
     // Firmware version
     uint8_t  fw_id;
     uint32_t device_id;
-    uint32_t cards      [GENERAL_RFID_CARDS_COUNT];
-    uint32_t limits     [GENERAL_RFID_CARDS_COUNT];
-    uint8_t  limit_type [GENERAL_RFID_CARDS_COUNT];
-    uint32_t used_liters[GENERAL_RFID_CARDS_COUNT];
+    uint32_t cards      [RFID_CARDS_COUNT];
+    uint32_t limits     [RFID_CARDS_COUNT];
+    uint8_t  limit_type [RFID_CARDS_COUNT];
+    uint32_t used_liters[RFID_CARDS_COUNT];
     uint32_t log_id;
     uint8_t  last_day;
     uint8_t  last_month;

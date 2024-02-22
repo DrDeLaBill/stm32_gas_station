@@ -47,6 +47,7 @@
 #include "Record.h"
 #include "SoulGuard.h"
 #include "StorageAT.h"
+#include "RecordTmp.h"
 #include "StorageDriver.h"
 #include "ModbusManager.h"
 
@@ -90,30 +91,23 @@ void SystemClock_Config(void);
 
 void save_new_log(uint32_t mlCount);
 
+void record_check();
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
 ModbusManager mbManager(&MODBUS_UART);
 
-#define POWER_ADC_CHANNEL ((uint32_t)1)
-uint32_t getPower()
-{
-    ADC_ChannelConfTypeDef conf = {};
-    conf.Channel      = POWER_ADC_CHANNEL;
-    conf.Rank         = 1;
-    conf.SamplingTime = ADC_SAMPLETIME_28CYCLES;
-    if (HAL_ADC_ConfigChannel(&POWER_ADC, &conf) != HAL_OK) {
-        return 0;
-    }
-
-    HAL_ADC_Start(&POWER_ADC);
-    HAL_ADC_PollForConversion(&POWER_ADC, GENERAL_TIMEOUT_MS);
-    uint32_t value = HAL_ADC_GetValue(&POWER_ADC);
-    HAL_ADC_Stop(&POWER_ADC);
-
-    return value;
-}
+SoulGuard<
+	RestartWatchdog,
+	MemoryWatchdog,
+	StackWatchdog,
+	SettingsWatchdog,
+	PowerWatchdog,
+	RTCWatchdog
+> soulGuard;
 
 /* USER CODE END 0 */
 
@@ -154,7 +148,7 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
-  UI::setLoading();
+  set_status(WAIT_LOAD);
 
   HAL_Delay(100);
 
@@ -178,28 +172,28 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	SoulGuard<
-		RestartWatchdog,
-		MemoryWatchdog,
-		StackWatchdog,
-		SettingsWatchdog,
-		RTCWatchdog
-	> soulGuard;
+
+	while (is_status(WAIT_LOAD)) soulGuard.defend();
+
+	Record::showMax();
+
+	if (RecordTmp::exists()) {
+		RecordTmp::restore();
+	}
+
 	while (1)
 	{
-//		printTagLog(MAIN_TAG, "POWER = %lu", getPower());
-//		printTagLog(MAIN_TAG, "POWER = %u", HAL_GPIO_ReadPin(POWER_GPIO_Port, POWER_Pin));
 
 		soulGuard.defend();
 
 		Pump::measure();
 
 		if (soulGuard.hasErrors()) {
-			UI::setError();
+			set_error(INTERNAL_ERROR);
 			continue;
 		}
 
-		UI::resetError();
+		reset_error(INTERNAL_ERROR);
 
 		HAL_IWDG_Refresh(&DEVICE_IWDG);
     /* USER CODE END WHILE */
@@ -208,10 +202,7 @@ int main(void)
 
 		settings_check_residues();
 
-		if (UI::getResultMl() > 0) {
-			save_new_log(UI::getResultMl());
-			UI::resetResultMl();
-		}
+		record_check();
 
 		mbManager.tick();
 	}
@@ -268,28 +259,31 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+void record_check()
+{
+	if (UI::getResultMl() > 0) {
+		save_new_log(UI::getResultMl());
+		RecordTmp::remove();
+		UI::resetResultMl();
+	}
+
+	if (is_status(NEED_RECORD_TMP)) {
+    	reset_status(NEED_RECORD_TMP);
+    	RecordTmp::init();
+	}
+}
+
 void save_new_log(uint32_t mlCount)
 {
     if (mlCount == 0) {
         return;
     }
 
-    RTC_DateTypeDef date;
-    RTC_TimeTypeDef time;
-    if (!clock_get_rtc_date(&date)) {
-        memset(reinterpret_cast<void*>(&date), 0, sizeof(date));
-    }
-    if (!clock_get_rtc_time(&time)) {
-        memset(reinterpret_cast<void*>(&time), 0, sizeof(time));
-    }
-    uint32_t datetimeSeconds = clock_datetime_to_seconds(&date, &time);
-
-
-    UI::setLoading();
+    set_status(WAIT_LOAD);
 
     Record record(0);
 
-    record.record.time = datetimeSeconds;
+    record.record.time = clock_get_timestamp();
     record.record.used_liters = mlCount;
     record.record.card = UI::getCard();
 
@@ -307,7 +301,7 @@ void save_new_log(uint32_t mlCount)
     settings_add_used_liters(record.record.used_liters, record.record.card);
     set_settings_update_status(true);
 
-    UI::setLoaded();
+    reset_status(WAIT_LOAD);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -346,13 +340,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 int _write(int file, uint8_t *ptr, int len) {
 	(void)file;
-    HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, static_cast<uint16_t>(len), GENERAL_TIMEOUT_MS);
+	(void)ptr;
+	(void)len;
 #ifdef DEBUG
+	if (is_error(POWER_ERROR)) {
+		return 0;
+	}
+    HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, static_cast<uint16_t>(len), GENERAL_TIMEOUT_MS);
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);
     }
-#endif
     return len;
+#else
+    return 0;
+#endif
 }
 
 

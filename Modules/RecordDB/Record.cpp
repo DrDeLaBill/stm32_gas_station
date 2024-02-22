@@ -2,8 +2,8 @@
 
 #include "Record.h"
 
-#include <stdint.h>
-#include <string.h>
+#include <cstdint>
+#include <cstring>
 
 #include "StorageAT.h"
 #include "RecordClust.h"
@@ -98,7 +98,7 @@ RecordStatus Record::loadNext()
     return RECORD_OK;
 }
 
-RecordStatus Record::save()
+RecordStatus Record::save(uint32_t time)
 {
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
@@ -109,7 +109,7 @@ RecordStatus Record::save()
     RecordClust clust(0, this->size());
     RecordStatus recordStatus = RECORD_OK;
 
-    record.time = clock_get_timestamp();
+    record.time = time > 0 ? time : clock_get_timestamp();
     recordStatus = clust.save(&record, this->size());
 
 #ifdef RECORD_BEDUG
@@ -134,6 +134,12 @@ void Record::show()
 	printPretty("Used litrers: %lu.%03lu l\n", record.used_liters / ML_IN_LTR, record.used_liters % ML_IN_LTR);
     printPretty("##########RECORD##########\n");
 #endif
+}
+
+void Record::showMax()
+{
+	RecordClust clust(0, 0);
+	clust.showMax();
 }
 
 uint16_t Record::size()

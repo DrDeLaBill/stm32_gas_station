@@ -20,9 +20,11 @@ typedef enum _SOUK_STATUS {
 	/* Device statuses start */
 	STATUSES_START,
 
+	WAIT_LOAD,
 	MODBUS_FAULT,
 	PUMP_FAULT,
 	RTC_FAULT,
+	NEED_RECORD_TMP,
 
 	/* Device statuses end */
 	STATUSES_END,
@@ -30,9 +32,10 @@ typedef enum _SOUK_STATUS {
 	/* Device errors start */
 	ERRORS_START,
 
+	SETTINGS_LOAD_ERROR,
 	INTERNAL_ERROR,
-	SETTINGS_ERROR,
 	MEMORY_ERROR,
+	POWER_ERROR,
 	STACK_ERROR,
 	RAM_ERROR,
 

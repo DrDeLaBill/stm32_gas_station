@@ -4,7 +4,9 @@
 
 
 #include <variant>
+#include <unordered_map>
 
+#include "log.h"
 #include "main.h"
 #include "soul.h"
 #include "settings.h"
@@ -25,6 +27,10 @@ private:
 		>,
 		"Soul guard repeated units"
 	);
+	static_assert(!utl::empty(typename utl::typelist_t<Watchdogs...>::RESULT{}), "Watchdogs list must not be empty");
+
+
+	static constexpr char TAG[] = "SGRD";
 
 	using watchdog_v = std::variant<Watchdogs...>;
 
@@ -37,10 +43,43 @@ private:
 		std::visit(lambda, watchdog);
 	}
 
+	using watchdogs_pack = utl::simple_list_t<Watchdogs...>;
+
+	std::unordered_map<unsigned, watchdog_v> watchdogs;
+	unsigned index;
+
+	template<class... WList>
+	void set_watchdogs(utl::simple_list_t<WList...>)
+	{
+		(set_watchdog(utl::getType<WList>{}), ...);
+	}
+
+	template<class Watchdog>
+	void set_watchdog(utl::getType<Watchdog>)
+	{
+		watchdogs.insert({index++, Watchdog{}});
+	}
+
 public:
+	SoulGuard()
+	{
+		index = 0;
+		set_watchdogs(watchdogs_pack{});
+	}
+
 	void defend()
 	{
-		(this->check(Watchdogs{}), ...);
+		auto it = watchdogs.find(index++);
+		if (it == watchdogs.end()) {
+			index = 0;
+			return;
+		}
+
+		auto lambda = [] (auto& watchdog) {
+			watchdog.check();
+		};
+
+		std::visit(lambda, it->second);
 	}
 
 	bool hasErrors()

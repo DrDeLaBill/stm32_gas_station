@@ -401,7 +401,7 @@ void ModbusManager::updateData()
     std::shared_ptr<ModbusRegister<uint16_t>> reg16 = ModbusRegister<uint16_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
         0,
-        GENERAL_RFID_CARDS_COUNT
+        RFID_CARDS_COUNT
     )->save();
 
     Record record(settings.log_id);

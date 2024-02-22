@@ -71,6 +71,15 @@ bool settings_check(settings_t* other)
 		return false;
 	}
 
+	for (unsigned i = 0; i < __arr_len(other->limit_type); i++) {
+		LimitType *type = &(other->limit_type[i]);
+		if (*type == LIMIT_DAY || *type == LIMIT_MONTH) {
+			continue;
+		}
+		*type = LIMIT_DAY;
+		set_settings_update_status(true);
+	}
+
 	return true;
 }
 
@@ -109,7 +118,7 @@ void settings_show()
 SettingsStatus settings_get_card_idx(uint32_t card, uint16_t* idx)
 {
 	if (!card) {
-		return SETTINGS__ERROR;
+		return SETTINGS_ERROR;
 	}
 	for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
 		if (settings.cards[i] == card) {
@@ -117,7 +126,7 @@ SettingsStatus settings_get_card_idx(uint32_t card, uint16_t* idx)
 			return SETTINGS_OK;
 		}
 	}
-	return SETTINGS__ERROR;
+	return SETTINGS_ERROR;
 }
 
 void settings_check_residues()

@@ -15,6 +15,8 @@
 class RecordClust
 {
 public:
+    static constexpr char PREFIX[] = "RDC";
+
     static constexpr unsigned META_SIZE    = sizeof(uint8_t) + sizeof(uint16_t);
     static constexpr unsigned RECORDS_SIZE = Page::PAYLOAD_SIZE - META_SIZE;
     typedef struct __attribute__((packed)) _record_clust_t {
@@ -33,7 +35,6 @@ public:
 
 protected:
     static constexpr char TAG[] = "RDC";
-    static constexpr char PREFIX[] = "RDC";
 
     uint32_t m_recordId;
     uint16_t m_recordSize;
@@ -58,6 +59,7 @@ public:
     uint32_t records_count();
     uint32_t structure_size();
     void show();
+    void showMax();
 
 private:
     RecordStatus deleteClust(uint32_t address);

@@ -1,6 +1,6 @@
 /* Copyright © 2024 Georgy E. All rights reserved. */
 
-#include "RTCWatchdog.h"
+#include "Watchdogs.h"
 
 #include "log.h"
 #include "main.h"
@@ -36,12 +36,12 @@ void RTCWatchdog::check()
 	if (date.Date == 0 || date.Date > 31) {
 		printTagLog(TAG, "WARNING! The date of the clock has been reset to 1");
 		updateFlag = true;
-		date.Date = is_error(SETTINGS_ERROR) ? settings.last_day : 1;
+		date.Date = is_error(SETTINGS_LOAD_ERROR) ? settings.last_day : 1;
 	}
 	if (date.Month == 0 || date.Month > 12) {
 		printTagLog(TAG, "WARNING! The month of the clock has been reset to 1");
 		updateFlag = true;
-		date.Month = is_error(SETTINGS_ERROR) ? settings.last_month : 1;
+		date.Month = is_error(SETTINGS_LOAD_ERROR) ? settings.last_month : 1;
 	}
 
 	if (updateFlag) {

@@ -52,7 +52,7 @@ SettingsStatus SettingsDB::load()
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address1=%lu, adderss2=%lu", status, address1, address2);
 #endif
-        return SETTINGS__ERROR;
+        return SETTINGS_ERROR;
     }
 
     memcpy(this->settings, &tmpSettings, this->size);
@@ -103,7 +103,7 @@ SettingsStatus SettingsDB::save()
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings: storage find error=%02X", status);
 #endif
-        return SETTINGS__ERROR;
+        return SETTINGS_ERROR;
     }
 
     // Save original settings
@@ -112,7 +112,7 @@ SettingsStatus SettingsDB::save()
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings: storage save error=%02X address=%lu", status, address);
 #endif
-        return SETTINGS__ERROR;
+        return SETTINGS_ERROR;
     }
 
     // Save duplicate settings
@@ -130,7 +130,7 @@ SettingsStatus SettingsDB::save()
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error save settings duplicate: storage save error=%02X address=%lu", status, address);
 #endif
-        return SETTINGS__ERROR;
+        return SETTINGS_ERROR;
     }
 
     if (this->load() == SETTINGS_OK) {
@@ -141,5 +141,5 @@ SettingsStatus SettingsDB::save()
     	return SETTINGS_OK;
     }
 
-    return SETTINGS__ERROR;
+    return SETTINGS_ERROR;
 }

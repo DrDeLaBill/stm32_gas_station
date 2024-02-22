@@ -20,12 +20,14 @@ public:
 
     Record(uint32_t recordId);
 
-    RecordStatus save();
+    RecordStatus save(uint32_t time = 0);
     RecordStatus load();
     RecordStatus loadNext();
 
     void show();
     uint16_t size();
+
+    static void showMax();
 
 private:
     static constexpr char TAG[] = "RCR";

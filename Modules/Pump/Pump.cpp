@@ -123,7 +123,7 @@ constexpr uint32_t Pump::getPumpEncoderMiddle()
 void Pump::setLastMl(uint32_t lastMl)
 {
     if (lastMl > 0) {
-        UI::setLoading();
+    	set_status(WAIT_LOAD);
     }
     Pump::lastUsedMl = lastMl;
 }

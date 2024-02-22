@@ -2,8 +2,9 @@
 
 #include "RecordClust.h"
 
+#include <limits>
 #include <cstring>
-#include <stdint.h>
+#include <cstdint>
 
 #include "log.h"
 #include "bmacro.h"
@@ -194,6 +195,18 @@ void RecordClust::show()
 	}
 	printPretty("################RECORD CLUST#################\n");
 #endif
+}
+
+void RecordClust::showMax()
+{
+	this->m_recordId = std::numeric_limits<uint32_t>::max();
+	if (!this->loadExist(false)) {
+#if RECORD_BEDUG
+		printTagLog(TAG, "Last cluster is not loaded");
+#endif
+		return;
+	}
+	this->show();
 }
 
 bool RecordClust::loadExist(bool validateSize)

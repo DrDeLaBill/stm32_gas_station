@@ -1,6 +1,6 @@
 /* Copyright © 2024 Georgy E. All rights reserved. */
 
-#include "SettingsWatchdog.h"
+#include "Watchdogs.h"
 
 #include <cstring>
 
@@ -17,7 +17,10 @@
 fsm::FiniteStateMachine<SettingsWatchdog::fsm_table> SettingsWatchdog::fsm;
 
 
-SettingsWatchdog::SettingsWatchdog() { }
+SettingsWatchdog::SettingsWatchdog()
+{
+	set_status(WAIT_LOAD);
+}
 
 void SettingsWatchdog::check()
 {
@@ -34,11 +37,12 @@ void SettingsWatchdog::state_init::operator ()() const
 		printTagLog(TAG, "state_init: event_loaded");
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_loaded{});
-		reset_error(SETTINGS_ERROR);
+		reset_error(SETTINGS_LOAD_ERROR);
 	    set_settings_initialized();
 		settings_show();
 
-	    UI::setLoaded();
+		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(WAIT_LOAD);
 
 		return;
 	}
@@ -50,16 +54,17 @@ void SettingsWatchdog::state_init::operator ()() const
 		printTagLog(TAG, "state_init: event_saved");
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
-		reset_error(SETTINGS_ERROR);
+		reset_error(SETTINGS_LOAD_ERROR);
 	    set_settings_initialized();
 		settings_show();
 
-	    UI::setLoaded();
+		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(WAIT_LOAD);
 
 		return;
 	}
 
-	set_error(SETTINGS_ERROR);
+	set_error(SETTINGS_LOAD_ERROR);
 }
 
 void SettingsWatchdog::state_idle::operator ()() const
@@ -89,7 +94,8 @@ void SettingsWatchdog::state_save::operator ()() const
 		set_settings_update_status(false);
 		settings_show();
 
-	    UI::setLoaded();
+		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(WAIT_LOAD);
 	}
 }
 
@@ -105,15 +111,16 @@ void SettingsWatchdog::state_load::operator ()() const
 		set_settings_save_status(false);
 		settings_show();
 
-	    UI::setLoaded();
+		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(WAIT_LOAD);
 	}
 }
 
 void SettingsWatchdog::action_check::operator ()() const
 {
-	reset_error(SETTINGS_ERROR);
+	reset_error(SETTINGS_LOAD_ERROR);
 	if (!settings_check(&settings)) {
-		set_error(SETTINGS_ERROR);
+		set_error(SETTINGS_LOAD_ERROR);
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "action_check: event_not_valid");
 #endif
