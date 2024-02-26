@@ -1,0 +1,9 @@
+[submodule "Modules/StorageAT"]
+	path = Modules/StorageAT
+	url = https://github.com/DrDeLaBill/StorageAT.git
+[submodule "Modules/ModbusManager/modbus_rtu_puk"]
+	path = Modules/ModbusManager/modbus_rtu_puk
+	url = https://github.com/DrDeLaBill/modbus_rtu_puk.git
+[submodule "Modules/Utils"]
+	path = Modules/Utils
+	url = https://github.com/DrDeLaBill/Utils.git

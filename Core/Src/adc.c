@@ -43,7 +43,7 @@ void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -61,7 +61,7 @@ void MX_ADC1_Init(void)
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Channel = ADC_CHANNEL_10;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -86,15 +86,15 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     /* ADC1 clock enable */
     __HAL_RCC_ADC1_CLK_ENABLE();
 
-    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
     /**ADC1 GPIO Configuration
-    PB0     ------> ADC1_IN8
-    PB1     ------> ADC1_IN9
+    PC0     ------> ADC1_IN10
+    PC1     ------> ADC1_IN11
     */
-    GPIO_InitStruct.Pin = PUMP_CURRENT_Pin|VALVE_CURRENT_Pin;
+    GPIO_InitStruct.Pin = VALVE_SENS_Pin|PUMP_SENS_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /* USER CODE BEGIN ADC1_MspInit 1 */
 
@@ -114,10 +114,10 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     __HAL_RCC_ADC1_CLK_DISABLE();
 
     /**ADC1 GPIO Configuration
-    PB0     ------> ADC1_IN8
-    PB1     ------> ADC1_IN9
+    PC0     ------> ADC1_IN10
+    PC1     ------> ADC1_IN11
     */
-    HAL_GPIO_DeInit(GPIOB, PUMP_CURRENT_Pin|VALVE_CURRENT_Pin);
+    HAL_GPIO_DeInit(GPIOC, VALVE_SENS_Pin|PUMP_SENS_Pin);
 
   /* USER CODE BEGIN ADC1_MspDeInit 1 */
 
