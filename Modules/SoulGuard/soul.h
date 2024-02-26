@@ -24,7 +24,8 @@ typedef enum _SOUK_STATUS {
 	MODBUS_FAULT,
 	PUMP_FAULT,
 	RTC_FAULT,
-	NEED_RECORD_TMP,
+	NEED_INIT_RECORD_TMP,
+	NEED_SAVE_RECORD,
 
 	/* Device statuses end */
 	STATUSES_END,
@@ -37,6 +38,7 @@ typedef enum _SOUK_STATUS {
 	MEMORY_ERROR,
 	POWER_ERROR,
 	STACK_ERROR,
+	LOAD_ERROR,
 	RAM_ERROR,
 
 	/* Device errors end */
@@ -51,6 +53,8 @@ typedef struct _soul_t {
 	uint8_t errors[__div_up(SOUL_STATUSES_END - 1, BITS_IN_BYTE)];
 } soul_t;
 
+
+bool has_errors();
 
 bool is_error(SOUL_STATUS error);
 void set_error(SOUL_STATUS error);

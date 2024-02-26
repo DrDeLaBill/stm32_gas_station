@@ -127,12 +127,12 @@ RecordStatus Record::save(uint32_t time)
 void Record::show()
 {
 #if RECORD_BEDUG
-    printPretty("##########RECORD##########\n");
-	printPretty("ID:           %lu\n", record.id);
-	printPretty("Time:         %lu\n", record.time);
-	printPretty("Card:         %lu\n", record.card);
-	printPretty("Used litrers: %lu.%03lu l\n", record.used_liters / ML_IN_LTR, record.used_liters % ML_IN_LTR);
-    printPretty("##########RECORD##########\n");
+    printPretty("#########RECORD#########\n");
+	printPretty("ID:       %lu\n", record.id);
+	printPretty("Time:     %lu\n", record.time);
+	printPretty("Card:     %lu\n", record.card);
+	printPretty("Used mls: %lu.%03lu l\n", record.used_mls / ML_IN_LTR, record.used_mls % ML_IN_LTR);
+    printPretty("#########RECORD#########\n");
 #endif
 }
 

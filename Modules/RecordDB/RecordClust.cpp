@@ -188,7 +188,7 @@ void RecordClust::show()
 		if (!(*this)[i].id) {
 			break;
 		}
-	    printPretty("%03u     %09lu %08lu %08lu %08lu\n", i, (*this)[i].id, (*this)[i].time, (*this)[i].card, (*this)[i].used_liters);
+	    printPretty("%03u     %09lu %08lu %08lu %08lu\n", i, (*this)[i].id, (*this)[i].time, (*this)[i].card, (*this)[i].used_mls);
 	}
 	if (!getCountByRecordSize(m_clust.rcrd_size)) {
         printPretty("--------------------EMPTY--------------------\n");

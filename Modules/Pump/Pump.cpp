@@ -45,10 +45,15 @@ int32_t PumpFSMBase::currentTicksBase = 0;
 int32_t PumpFSMBase::currentTicksAdd = 0;
 bool PumpFSMBase::hasStarted = false;
 bool PumpFSMBase::hasStopped = false;
+
 uint32_t PumpFSMBase::measureCounter = 0;
 uint32_t PumpFSMBase::pumpBuf[PUMP_MEASURE_BUFFER_SIZE] = { 0 };
 uint32_t PumpFSMBase::valveBuf[PUMP_MEASURE_BUFFER_SIZE] = { 0 };
+
+uint32_t PumpFSMBase::md212Counter = 0;
 int32_t PumpFSMBase::md212Buf[PUMP_MEASURE_BUFFER_SIZE] = { 0 };
+utl::Timer PumpFSMBase::md212Timer(PUMP_ADC_MEASURE_DELAY_MS);
+
 utl::Timer PumpFSMBase::waitTimer(PUMP_ADC_MEASURE_DELAY_MS);
 utl::Timer PumpFSMBase::errorTimer(PUMP_CHECK_DELAY_MS);
 bool PumpFSMBase::needStart = false;
@@ -63,6 +68,7 @@ void Pump::tick()
         statePtr = std::make_shared<PumpFSMInit>();
     }
     statePtr->proccess();
+    statePtr->updateTicks();
 }
 
 void Pump::measure()
@@ -166,7 +172,6 @@ void PumpFSMBase::measure()
     waitTimer.start();
     pumpBuf[measureCounter]  = this->getADCPump();
     valveBuf[measureCounter] = this->getADCValve();
-    md212Buf[measureCounter] = this->getEncoderTicks();
     measureCounter++;
 }
 
@@ -310,12 +315,14 @@ void PumpFSMBase::reset()
 {
 //    targetMl = 0;
     reset_error(PUMP_FAULT);
-    measureCounter = false;
+    measureCounter = 0;
     memset(pumpBuf, 0, sizeof(pumpBuf));
     memset(valveBuf, 0, sizeof(valveBuf));
+    md212Counter = 0;
     memset(md212Buf, 0, sizeof(md212Buf));
     waitTimer.reset();
     errorTimer.reset();
+    md212Timer.reset();
     needStart = false;
     needStop = false;
 }
@@ -399,6 +406,20 @@ bool PumpFSMBase::pumpHasStopped()
     return hasStopped;
 }
 
+void PumpFSMBase::updateTicks()
+{
+    if (md212Timer.wait()) {
+        return;
+    }
+
+    if (md212Counter >= __arr_len(md212Buf)) {
+        return;
+    }
+
+    md212Timer.start();
+    md212Buf[md212Counter++] = this->getEncoderTicks();
+}
+
 void PumpFSMBase::setError()
 {
 #if PUMP_BEDUG
@@ -450,9 +471,15 @@ void PumpFSMWaitStart::proccess()
 
     if (measureCounter < __arr_len(pumpBuf)) {
         return;
+    } else {
+        measureCounter = 0;
     }
 
-    measureCounter = 0;
+    if (md212Counter < __arr_len(md212Buf)) {
+        return;
+    } else {
+    	md212Counter = 0;
+    }
 
     if (this->isEnabled() || !this->isOperable()) {
         this->setError();
@@ -502,6 +529,10 @@ void PumpFSMCheckStart::proccess()
         return;
     }
 
+    if (md212Counter < __arr_len(md212Buf)) {
+    	return;
+    }
+
     if (!this->isEnabled() || !this->isOperable()) {
         this->setError();
         return;
@@ -525,11 +556,10 @@ void PumpFSMWork::proccess()
         return;
     }
 
-    if (measureCounter < __arr_len(pumpBuf)) {
+    if (md212Counter < __arr_len(md212Buf)) {
         return;
     }
-
-    measureCounter = 0;
+	md212Counter = 0;
 
     if (!this->isEnabled() || !this->isOperable()) {
         this->setError();
@@ -616,6 +646,10 @@ void PumpFSMCheckStop::proccess()
 
     if (measureCounter < __arr_len(pumpBuf)) {
         return;
+    }
+
+    if (md212Counter < __arr_len(md212Buf)) {
+    	return;
     }
 
     if (this->isEnabled() || !this->isOperable()) {

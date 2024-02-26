@@ -188,12 +188,9 @@ int main(void)
 
 		Pump::measure();
 
-		if (soulGuard.hasErrors()) {
-			set_error(INTERNAL_ERROR);
+		if (has_errors()) {
 			continue;
 		}
-
-		reset_error(INTERNAL_ERROR);
 
 		HAL_IWDG_Refresh(&DEVICE_IWDG);
     /* USER CODE END WHILE */
@@ -261,15 +258,25 @@ void SystemClock_Config(void)
 
 void record_check()
 {
-	if (UI::getResultMl() > 0) {
+	static uint32_t resultMlBuf = 0;
+
+	uint32_t resultMl = UI::getResultMl();
+
+	if (is_status(NEED_SAVE_RECORD)) {
 		save_new_log(UI::getResultMl());
 		RecordTmp::remove();
 		UI::resetResultMl();
+		resultMlBuf = 0;
 	}
 
-	if (is_status(NEED_RECORD_TMP)) {
-    	reset_status(NEED_RECORD_TMP);
-    	RecordTmp::init();
+	if (is_status(NEED_INIT_RECORD_TMP)) {
+		reset_status(NEED_INIT_RECORD_TMP);
+		RecordTmp::init();
+	}
+
+	if (__abs_dif(resultMl, resultMlBuf) > RecordTmp::TRIG_LEVEL_ML) {
+    	RecordTmp::save(UI::getCard(), resultMl);
+    	resultMlBuf = resultMl;
 	}
 }
 
@@ -283,9 +290,9 @@ void save_new_log(uint32_t mlCount)
 
     Record record(0);
 
-    record.record.time = clock_get_timestamp();
-    record.record.used_liters = mlCount;
-    record.record.card = UI::getCard();
+    record.record.time     = clock_get_timestamp();
+    record.record.used_mls = mlCount;
+    record.record.card     = UI::getCard();
 
     printTagLog(MAIN_TAG, "save new log: begin");
     printTagLog(MAIN_TAG, "save new log: real mls=%lu", Pump::getCurrentMl());
@@ -297,8 +304,8 @@ void save_new_log(uint32_t mlCount)
     	printTagLog(MAIN_TAG, "save new log: success");
     }
 
-	printTagLog(MAIN_TAG, "adding %lu used milliliters for %lu card", record.record.used_liters, record.record.card);
-    settings_add_used_liters(record.record.used_liters, record.record.card);
+	printTagLog(MAIN_TAG, "adding %lu used milliliters for %lu card", record.record.used_mls, record.record.card);
+    settings_add_used_liters(record.record.used_mls, record.record.card);
     set_settings_update_status(true);
 
     reset_status(WAIT_LOAD);
@@ -325,9 +332,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if(htim->Instance == INDICATORS_TIM.Instance)
     {
-        indicate_proccess();
 
-        indicate_display();
+        indicate_proccess();
 
     } else if (htim->Instance == UI_TIM.Instance) {
         keyboard4x3_proccess();

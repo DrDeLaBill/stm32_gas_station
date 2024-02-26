@@ -27,9 +27,9 @@ bool RecordTmp::exists()
 	return storage.find(FIND_MODE_EQUAL, &address, PREFIX, 1) == STORAGE_OK;
 }
 
-void RecordTmp::init()
+RecordStatus RecordTmp::init()
 {
-	findAddress();
+	return findAddress();
 }
 
 RecordStatus RecordTmp::save(const uint32_t card, const uint32_t lastMl)
@@ -40,10 +40,10 @@ RecordStatus RecordTmp::save(const uint32_t card, const uint32_t lastMl)
 		return RECORD_ERROR;
 	}
 
-	record_t record    = {};
-	record.card        = card;
-	record.used_liters = lastMl;
-	record.time        = clock_get_timestamp();
+	record_t record = {};
+	record.card     = card;
+	record.used_mls = lastMl;
+	record.time     = clock_get_timestamp();
 
 	StorageStatus storageStatus = storage.rewrite(lastAddress, PREFIX, 1, reinterpret_cast<uint8_t*>(&record), sizeof(record));
     if (storageStatus != STORAGE_OK) {
@@ -120,12 +120,15 @@ RecordStatus RecordTmp::restore()
 
     Record record(0);
     memcpy(reinterpret_cast<uint8_t*>(&record.record), reinterpret_cast<uint8_t*>(&recordTmp), sizeof(recordTmp));
-
-#if RECORD_TMP_BEDUG
-	printTagLog(TAG, "Adding %lu used milliliters for %lu card", record.record.used_liters, record.record.card);
+#ifndef POWER_Pin
+    record.record.used_mls += TRIG_LEVEL_ML;
 #endif
 
-    settings_add_used_liters(record.record.used_liters, record.record.card);
+#if RECORD_TMP_BEDUG
+	printTagLog(TAG, "Adding %lu used milliliters for %lu card", record.record.used_mls, record.record.card);
+#endif
+
+    settings_add_used_liters(record.record.used_mls, record.record.card);
     set_settings_update_status(true);
 
 #if RECORD_TMP_BEDUG
@@ -144,17 +147,9 @@ RecordStatus RecordTmp::restore()
 	printTagLog(TAG, "Record has been saved");
 #endif
 
-	storageStatus = storage.clearAddress(address);
-	if (storageStatus != STORAGE_OK) {
-#if RECORD_TMP_BEDUG
-        printTagLog(TAG, "Unable to clear temporary record, error=%u", storageStatus);
-        return RECORD_ERROR;
-#endif
-	}
-
 	lastAddress = 0;
 
-    return RECORD_OK;
+    return RecordTmp::remove();
 }
 
 RecordStatus RecordTmp::remove()

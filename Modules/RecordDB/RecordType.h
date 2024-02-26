@@ -20,7 +20,7 @@ typedef struct __attribute__((packed)) _reocrd_t {
     uint32_t time;        // Record time
 //        uint32_t cf_id;     // Configuration version
     uint32_t card;        // User card ID
-    uint32_t used_liters; // Session used liters
+    uint32_t used_mls; // Session used liters
 } record_t;
 
 static const unsigned RECORD_SIZE = sizeof(record_t);

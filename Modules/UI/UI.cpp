@@ -24,7 +24,6 @@ uint8_t UI::limitBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
 uint8_t UI::currentBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
 uint8_t UI::resultBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
 uint32_t UI::targetMl = 0;
-uint32_t UI::lastMl = 0;
 uint32_t UI::resultMl = 0;
 
 
@@ -82,11 +81,12 @@ void UI::_load_s::operator ()()
 {
 	if (!timer.wait()) {
 		fsm.push_event(error_e{});
+		set_error(LOAD_ERROR);
 	}
 	if (!is_status(WAIT_LOAD)) {
 		fsm.push_event(success_e{});
 	}
-	if (soulGuard.hasErrors()) {
+	if (has_errors()) {
 		fsm.push_event(error_e{});
 	}
 }
@@ -102,7 +102,7 @@ void UI::_idle_s::operator ()()
 	if (is_status(WAIT_LOAD)) {
 		fsm.push_event(load_e{});
 	}
-	if (soulGuard.hasErrors()) {
+	if (has_errors()) {
 		fsm.push_event(error_e{});
 	}
 
@@ -113,6 +113,7 @@ void UI::_idle_s::operator ()()
 	// TODO: !!!
 //    if (!Pump::hasStopped()) {
 //    	fsm.push_event(error_e{});
+//	    set_error(PUMP_ERROR);
 //		return;
 //    }
 	// TODO: Add error event handler
@@ -196,7 +197,6 @@ void UI::_wait_count_s::operator ()()
     }
 
     if (Pump::hasStopped()) {
-    	resultMl = lastMl;
     	fsm.push_event(end_e{});
     	return;
     }
@@ -211,7 +211,7 @@ void UI::_wait_count_s::operator ()()
 		return;
 	}
 
-    if (curr_count != lastMl) {
+    if (curr_count != resultMl) {
     	fsm.push_event(start_e{});
     	return;
     }
@@ -228,7 +228,6 @@ void UI::_wait_count_s::operator ()()
 	}
     indicate_set_buffer(buffer, KEYBOARD4X3_BUFFER_SIZE);
     memcpy(resultBuffer, buffer, KEYBOARD4X3_BUFFER_SIZE);
-    resultMl = 0;
 }
 
 void UI::_count_s::operator ()()
@@ -239,12 +238,12 @@ void UI::_count_s::operator ()()
         curr_count = targetMl;
     }
 
-    if (curr_count == lastMl) {
+    if (curr_count == resultMl) {
     	fsm.push_event(end_e{});
         return;
     }
 
-    lastMl = curr_count;
+    resultMl = curr_count;
 
     uint32_t liters_multiplier = ML_IN_LTR;
     if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
@@ -267,7 +266,7 @@ void UI::_record_s::operator ()() { }
 
 void UI::_result_s::operator ()()
 {
-	if (soulGuard.hasErrors()) {
+	if (has_errors()) {
 		fsm.push_event(error_e{});
 	}
 
@@ -302,7 +301,7 @@ void UI::_reboot_s::operator ()()
 void UI::_error_s::operator ()()
 {
     Pump::stop();
-	if (!soulGuard.hasErrors()) {
+	if (!has_errors()) {
 		fsm.push_event(solved_e{});
 	}
 }
@@ -411,7 +410,6 @@ void UI::reset_input_ui_a::operator ()()
 	indicate_clear_buffer();
 
 	targetMl = 0;
-	lastMl = 0;
 	resultMl = 0;
 	Pump::clear();
 
@@ -448,7 +446,7 @@ void UI::check_a::operator ()()
 	    Pump::clear();
 	    Pump::setTargetMl(targetMl);
 
-	    set_status(NEED_RECORD_TMP);
+	    set_status(NEED_INIT_RECORD_TMP);
 	}
 }
 
@@ -468,9 +466,8 @@ void UI::count_a::operator ()()
 void UI::record_ui_a::operator ()()
 {
 	fsm.clear_events();
-
-	resultMl = lastMl;
 	fsm.push_event(success_e{});
+	set_status(NEED_SAVE_RECORD);
 }
 
 void UI::result_ui_a::operator ()()

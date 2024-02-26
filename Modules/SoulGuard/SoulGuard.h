@@ -81,15 +81,4 @@ public:
 
 		std::visit(lambda, it->second);
 	}
-
-	bool hasErrors()
-	{
-		utl::CodeStopwatch stopwatch("GRD", GENERAL_TIMEOUT_MS);
-		for (unsigned i = ERRORS_START + 1; i < ERRORS_END; i++) {
-			if (is_error(static_cast<SOUL_STATUS>(i + 1))) {
-				return true;
-			}
-		}
-		return false;
-	}
 };

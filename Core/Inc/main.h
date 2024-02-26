@@ -72,8 +72,6 @@ int _write(int file, uint8_t *ptr, int len);
 #define VALVE2_GPIO_Port GPIOC
 #define PUMP_Pin GPIO_PIN_0
 #define PUMP_GPIO_Port GPIOA
-#define POWER_Pin GPIO_PIN_1
-#define POWER_GPIO_Port GPIOA
 #define BEDUG_TX_Pin GPIO_PIN_2
 #define BEDUG_TX_GPIO_Port GPIOA
 #define BEDUG_RX_Pin GPIO_PIN_3

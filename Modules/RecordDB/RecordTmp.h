@@ -23,8 +23,10 @@ private:
 	static RecordStatus findAddress();
 
 public:
+	static constexpr uint32_t TRIG_LEVEL_ML = 10000;
+
 	static bool exists();
-	static void init();
+	static RecordStatus init();
 	static RecordStatus save(const uint32_t card, const uint32_t lastMl);
 	static RecordStatus restore();
 	static RecordStatus remove();

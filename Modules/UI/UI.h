@@ -121,7 +121,6 @@ protected:
 	static uint8_t currentBuffer[KEYBOARD4X3_BUFFER_SIZE];
 	static uint8_t resultBuffer[KEYBOARD4X3_BUFFER_SIZE];
 	static uint32_t targetMl;
-	static uint32_t lastMl;
 	static uint32_t resultMl;
 
 	static bool isEnter();

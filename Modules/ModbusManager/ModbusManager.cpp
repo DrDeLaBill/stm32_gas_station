@@ -442,7 +442,7 @@ void ModbusManager::updateData()
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
         reg32->getNextAddress(),
-        record.record.used_liters
+        record.record.used_mls
     )->save();
 }
 

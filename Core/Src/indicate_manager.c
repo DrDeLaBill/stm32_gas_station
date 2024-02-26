@@ -136,6 +136,8 @@ void _indicate_fsm_error();
 
 void _indicate_set_page(void (*new_page) (void));
 
+void _indicate_display();
+
 
 indicate_state_t indicate_state = {
     .indicate_state  = _indicate_fsm_wait,
@@ -162,9 +164,11 @@ void indicate_clear_buffer()
 void indicate_proccess()
 {
     indicate_state.indicate_state();
+
+    _indicate_display();
 }
 
-void indicate_display()
+void _indicate_display()
 {
     for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
         HAL_GPIO_WritePin(indicators_pins[i].port, indicators_pins[i].pin, GPIO_PIN_RESET);

@@ -34,6 +34,8 @@ public:
     bool pumpHasStarted();
     bool pumpHasStopped();
 
+    void updateTicks();
+
     static void reset();
     static void clear();
 
@@ -45,7 +47,10 @@ protected:
     static uint32_t     measureCounter;
     static uint32_t     valveBuf[PUMP_MEASURE_BUFFER_SIZE];
     static uint32_t     pumpBuf [PUMP_MEASURE_BUFFER_SIZE];
+
+    static uint32_t     md212Counter;
     static int32_t      md212Buf[PUMP_MEASURE_BUFFER_SIZE];
+    static utl::Timer   md212Timer;
 
     static uint32_t     currentMlBase;
     static int32_t      currentMlAdd;
