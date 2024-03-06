@@ -262,11 +262,12 @@ void record_check()
 
 	uint32_t resultMl = UI::getResultMl();
 
-	if (is_status(NEED_SAVE_RECORD)) {
+	if (is_status(NEED_SAVE_FINAL_RECORD)) {
 		save_new_log(UI::getResultMl());
 		RecordTmp::remove();
 		UI::resetResultMl();
 		resultMlBuf = 0;
+		reset_status(NEED_SAVE_FINAL_RECORD);
 	}
 
 	if (is_status(NEED_INIT_RECORD_TMP)) {
@@ -276,6 +277,7 @@ void record_check()
 
 	if (__abs_dif(resultMl, resultMlBuf) > RecordTmp::TRIG_LEVEL_ML) {
     	RecordTmp::save(UI::getCard(), resultMl);
+		set_status(NEED_SAVE_RECORD_TMP);
     	resultMlBuf = resultMl;
 	}
 }
@@ -365,12 +367,9 @@ int _write(int, uint8_t *ptr, int len) {
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  NVIC_SystemReset();
-  while (1)
-  {
-  }
+    b_assert(__FILE__, __LINE__, "The error handler has been called");
+	set_error(INTERNAL_ERROR);
+	while (1);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -385,8 +384,9 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	b_assert((char*)file, line, "Wrong parameters value");
+	set_error(INTERNAL_ERROR);
+	while (1);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

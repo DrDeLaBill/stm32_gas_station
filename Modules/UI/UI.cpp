@@ -293,6 +293,7 @@ void UI::_result_s::operator ()()
 {
 	if (has_errors()) {
 		fsm.push_event(error_e{});
+		return;
 	}
 
 	if (!timer.wait()) {
@@ -437,7 +438,6 @@ void UI::reset_input_ui_a::operator ()()
 	targetMl = 0;
 	resultMl = 0;
 	Pump::clear();
-
 }
 
 void UI::check_a::operator ()()
@@ -492,7 +492,6 @@ void UI::record_ui_a::operator ()()
 {
 	fsm.clear_events();
 	fsm.push_event(success_e{});
-	set_status(NEED_SAVE_RECORD);
 }
 
 void UI::start_save_a::operator ()()
@@ -506,7 +505,6 @@ void UI::start_save_a::operator ()()
 	Pump::stop();
 
 	set_status(NEED_SAVE_FINAL_RECORD);
-	set_status(NEED_SAVE_SETTINGS);
 	_save_s::loading = false;
 }
 

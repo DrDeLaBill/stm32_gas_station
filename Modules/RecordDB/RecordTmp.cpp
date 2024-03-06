@@ -50,8 +50,11 @@ RecordStatus RecordTmp::save(const uint32_t card, const uint32_t lastMl)
 #if RECORD_TMP_BEDUG
         printTagLog(TAG, "Unable to save temporary record, error=%u", storageStatus);
 #endif
+        reset_status(NEED_SAVE_RECORD_TMP);
         return RECORD_ERROR;
     }
+
+    reset_status(NEED_SAVE_RECORD_TMP);
 
     return RECORD_OK;
 }

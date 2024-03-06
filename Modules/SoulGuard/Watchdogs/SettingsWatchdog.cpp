@@ -38,9 +38,9 @@ void SettingsWatchdog::state_init::operator ()() const
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_loaded{});
 		reset_error(SETTINGS_LOAD_ERROR);
-	    set_settings_initialized();
 		settings_show();
 
+		set_status(SETTINGS_INITIALIZED);
 		reset_error(SETTINGS_LOAD_ERROR);
 		reset_status(WAIT_LOAD);
 
@@ -55,9 +55,9 @@ void SettingsWatchdog::state_init::operator ()() const
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
 		reset_error(SETTINGS_LOAD_ERROR);
-	    set_settings_initialized();
 		settings_show();
 
+		set_status(SETTINGS_INITIALIZED);
 		reset_error(SETTINGS_LOAD_ERROR);
 		reset_status(NEED_SAVE_SETTINGS);
 		reset_status(WAIT_LOAD);
@@ -70,12 +70,12 @@ void SettingsWatchdog::state_init::operator ()() const
 
 void SettingsWatchdog::state_idle::operator ()() const
 {
-	if (is_settings_updated()) {
+	if (is_status(NEED_SAVE_SETTINGS)) {
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "state_idle: event_updated");
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_updated{});
-	} else if (is_settings_saved()) {
+	} else if (is_status(NEED_LOAD_SETTINGS)) {
 #if SETTINGS_WATCHDOG_BEDUG
 		printTagLog(TAG, "state_idle: event_saved");
 #endif
@@ -93,10 +93,11 @@ void SettingsWatchdog::state_save::operator ()() const
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
 		set_settings_update_status(false);
-	    set_new_data_saved(true);
 		settings_show();
 
 		reset_error(SETTINGS_LOAD_ERROR);
+
+		set_status(NEED_UPDATE_MODBUS_REGS);
 		reset_status(NEED_SAVE_SETTINGS);
 		reset_status(WAIT_LOAD);
 	}
