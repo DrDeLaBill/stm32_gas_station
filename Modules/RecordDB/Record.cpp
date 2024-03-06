@@ -10,6 +10,7 @@
 #include "CodeStopwatch.h"
 
 #include "log.h"
+#include "soul.h"
 #include "utils.h"
 #include "clock.h"
 #include "settings.h"
@@ -102,7 +103,12 @@ RecordStatus Record::save(uint32_t time)
 {
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
+	set_status(NEED_SAVE_FINAL_RECORD);
+	set_status(WAIT_LOAD);
+
 	if (!this->size()) {
+		reset_status(NEED_SAVE_FINAL_RECORD);
+		reset_status(WAIT_LOAD);
 		return RECORD_ERROR;
 	}
 
@@ -121,6 +127,8 @@ RecordStatus Record::save(uint32_t time)
     }
 #endif
 
+	reset_status(NEED_SAVE_FINAL_RECORD);
+	reset_status(WAIT_LOAD);
     return recordStatus;
 }
 

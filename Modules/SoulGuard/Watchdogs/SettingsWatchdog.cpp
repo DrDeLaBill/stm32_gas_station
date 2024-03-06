@@ -59,6 +59,7 @@ void SettingsWatchdog::state_init::operator ()() const
 		settings_show();
 
 		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(NEED_SAVE_SETTINGS);
 		reset_status(WAIT_LOAD);
 
 		return;
@@ -92,9 +93,11 @@ void SettingsWatchdog::state_save::operator ()() const
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
 		set_settings_update_status(false);
+	    set_new_data_saved(true);
 		settings_show();
 
 		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(NEED_SAVE_SETTINGS);
 		reset_status(WAIT_LOAD);
 	}
 }

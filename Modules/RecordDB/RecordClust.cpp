@@ -89,6 +89,9 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
         return RECORD_ERROR;
     }
     newId = maxId + 1;
+    if (newId < settings.log_id) {
+    	newId = settings.log_id + 1;
+    }
 
     // 2. nope -----------create record_clust_t variable (tmp)
 //    record_clust_t tmpClust = {};

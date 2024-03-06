@@ -7,6 +7,7 @@
 
 #include "log.h"
 #include "main.h"
+#include "soul.h"
 #include "utils.h"
 #include "clock.h"
 #include "hal_defs.h"
@@ -55,6 +56,7 @@ void settings_reset(settings_t* other)
     other->last_month = (uint8_t)clock_get_month();
 
     set_new_data_saved(true);
+	set_status(NEED_SAVE_SETTINGS);
 }
 
 uint32_t settings_size()
@@ -132,17 +134,19 @@ SettingsStatus settings_get_card_idx(uint32_t card, uint16_t* idx)
 void settings_check_residues()
 {
 	bool settingsChanged = false;
+	uint8_t date  = clock_get_date();
+	uint8_t month = clock_get_month();
 	for (unsigned i = 0; i < __arr_len(settings.limit_type); i++) {
-		if ((settings.limit_type[i] == LIMIT_DAY && settings.last_day != clock_get_date()) ||
-			(settings.limit_type[i] == LIMIT_MONTH && settings.last_month != clock_get_month())
+		if ((settings.limit_type[i] == LIMIT_DAY && settings.last_day != date) ||
+			(settings.limit_type[i] == LIMIT_MONTH && settings.last_month != month)
 		) {
-			settings.last_day   = (uint8_t)clock_get_date();
-			settings.last_month = (uint8_t)clock_get_month();
 			settings.used_liters[i] = 0;
 			settingsChanged = true;
 		}
 	}
 	if (settingsChanged) {
+		settings.last_day   = date;
+		settings.last_month = month;
 		set_settings_update_status(true);
 	}
 }
@@ -277,7 +281,6 @@ void set_settings_save_status(bool state)
 	if (state) {
 		stngs_info.settings_updated = false;
 	}
-    set_new_data_saved(state);
 	stngs_info.settings_saved = state;
 }
 

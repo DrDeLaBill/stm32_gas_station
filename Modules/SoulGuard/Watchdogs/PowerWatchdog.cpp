@@ -34,13 +34,14 @@ uint32_t PowerWatchdog::getPower()
 
     return value;
 #endif
+    return 0;
 }
 
 void PowerWatchdog::check()
 {
-#ifdef POWER_Pin
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
+#ifdef POWER_Pin
 	if (getPower() < TRIG_LEVEL) {
 		reset_error(POWER_ERROR);
 		return;

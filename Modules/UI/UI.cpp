@@ -264,6 +264,31 @@ void UI::_count_s::operator ()()
 
 void UI::_record_s::operator ()() { }
 
+bool UI::_save_s::loading = false;
+void UI::_save_s::operator ()()
+{
+	if (!timer.wait()) {
+		fsm.push_event(timeout_e{});
+		return;
+	}
+	if (!is_status(NEED_SAVE_FINAL_RECORD) && !is_status(NEED_SAVE_SETTINGS)) {
+		fsm.push_event(success_e{});
+		return;
+	}
+	if (loading) {
+		return;
+	}
+	if (Access::isGranted()) {
+		UI::setCard(Access::getCard());
+		fsm.push_event(granted_e{});
+		return;
+	}
+	if (Access::isDenied()) {
+		fsm.push_event(denied_e{});
+		return;
+	}
+}
+
 void UI::_result_s::operator ()()
 {
 	if (has_errors()) {
@@ -470,6 +495,32 @@ void UI::record_ui_a::operator ()()
 	set_status(NEED_SAVE_RECORD);
 }
 
+void UI::start_save_a::operator ()()
+{
+	fsm.clear_events();
+
+	timer.changeDelay(_save_s::TIMEOUT_MS);
+	timer.start();
+
+    Access::close();
+	Pump::stop();
+
+	set_status(NEED_SAVE_FINAL_RECORD);
+	set_status(NEED_SAVE_SETTINGS);
+	_save_s::loading = false;
+}
+
+void UI::show_load_a::operator ()()
+{
+	fsm.clear_events();
+
+	timer.changeDelay(_save_s::TIMEOUT_MS);
+	timer.start();
+
+	indicate_set_load_page();
+	_save_s::loading = true;
+}
+
 void UI::result_ui_a::operator ()()
 {
 	fsm.clear_events();
@@ -483,7 +534,14 @@ void UI::result_ui_a::operator ()()
     indicate_set_buffer_page();
     indicate_set_buffer(resultBuffer, KEYBOARD4X3_BUFFER_SIZE);
 
-    Access::close();
+	if (Access::isGranted()) {
+		fsm.push_event(granted_e{});
+	    UI::setCard(Access::getCard());
+	}
+	if (Access::isDenied()) {
+		fsm.push_event(denied_e{});
+	}
+
 	Pump::stop();
 }
 
@@ -502,4 +560,5 @@ void UI::error_ui_a::operator ()()
 	fsm.clear_events();
 	keyboard4x3_disable_light();
     indicate_set_error_page();
+    set_status(INTERNAL_ERROR);
 }

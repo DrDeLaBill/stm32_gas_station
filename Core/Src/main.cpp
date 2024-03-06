@@ -332,9 +332,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if(htim->Instance == INDICATORS_TIM.Instance)
     {
-
         indicate_proccess();
-
     } else if (htim->Instance == UI_TIM.Instance) {
         keyboard4x3_proccess();
 
@@ -344,22 +342,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 }
 
-int _write(int file, uint8_t *ptr, int len) {
-	(void)file;
+int _write(int, uint8_t *ptr, int len) {
 	(void)ptr;
 	(void)len;
 #ifdef DEBUG
-	if (is_error(POWER_ERROR)) {
-		return 0;
-	}
     HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, static_cast<uint16_t>(len), GENERAL_TIMEOUT_MS);
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);
     }
     return len;
-#else
-    return 0;
 #endif
+    return 0;
 }
 
 
