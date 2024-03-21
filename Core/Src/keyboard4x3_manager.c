@@ -191,6 +191,11 @@ void _keyboard4x3_fsm_register_button()
         goto do_next_button;
     }
 
+    if (keyboard4x3_state.buffer_idx == 0 && ch == '0') {
+    	keyboard4x3_clear();
+        goto do_exit;
+    }
+
     if (ch >= '0' && ch <= '9') {
         keyboard4x3_state.buffer[keyboard4x3_state.buffer_idx++] = ch;
     }
@@ -198,6 +203,7 @@ void _keyboard4x3_fsm_register_button()
 do_next_button:
     keyboard4x3_state.fsm_measure_proccess = _keyboard4x3_fsm_next_button;
 
+do_exit:
     util_old_timer_start(&keyboard4x3_state.reset_timer, KEYBOARD4X3_RESET_DELAY_MS);
 
     _keyboard4x3_show_buf();

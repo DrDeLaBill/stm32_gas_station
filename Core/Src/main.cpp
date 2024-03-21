@@ -35,6 +35,7 @@
 #include "log.h"
 #include "utils.h"
 #include "clock.h"
+#include "TM1637.h"
 #include "wiegand.h"
 #include "settings.h"
 #include "indicate_manager.h"
@@ -155,6 +156,10 @@ int main(void)
   gprint("\n\n\n");
   printTagLog(MAIN_TAG, "The device is loading");
 
+  GPIO_PAIR clk{TM1637_CLK_GPIO_Port, TM1637_CLK_Pin};
+  GPIO_PAIR data{TM1637_DATA_GPIO_Port, TM1637_DATA_Pin};
+  tm1637_init(&clk, &data);
+
   // Indicators timer start
   HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
 
@@ -166,8 +171,6 @@ int main(void)
 
   // MODBUS slave initialization
   HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
-
-  printTagLog(MAIN_TAG, "The device is loaded successfully");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -181,9 +184,10 @@ int main(void)
 		RecordTmp::restore();
 	}
 
+	printTagLog(MAIN_TAG, "The device is loaded successfully");
+
 	while (1)
 	{
-
 		soulGuard.defend();
 
 		Pump::measure();
@@ -332,15 +336,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    if(htim->Instance == INDICATORS_TIM.Instance)
-    {
-        indicate_proccess();
+    if(htim->Instance == INDICATORS_TIM.Instance) {
+    	tm1637_proccess();
     } else if (htim->Instance == UI_TIM.Instance) {
         keyboard4x3_proccess();
 
         Pump::tick();
 
         UI::proccess();
+
+        indicate_proccess();
     }
 }
 

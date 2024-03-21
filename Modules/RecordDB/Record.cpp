@@ -146,8 +146,10 @@ void Record::show()
 
 void Record::showMax()
 {
+#if RECORD_BEDUG
 	RecordClust clust(0, 0);
 	clust.showMax();
+#endif
 }
 
 uint16_t Record::size()
