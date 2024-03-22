@@ -60,18 +60,18 @@ static const bool access_arr[][NUM_OF_SEGMENTS] = {
     {0, 1, 1, 0, 0, 0, 0, 1},  // c
     {0, 1, 1, 0, 0, 0, 0, 1},  // c
     {0, 1, 1, 0, 1, 0, 1, 1},  // E
-    {1, 1, 0, 1, 0, 0, 1, 1},  // S
-    {1, 1, 0, 1, 0, 0, 1, 1}   // S
+    {1, 1, 0, 0, 1, 0, 1, 1},  // S
+    {1, 1, 0, 0, 1, 0, 1, 1},  // S
 };
 
 static const bool denied_arr[][NUM_OF_SEGMENTS] = {
 /*   C  D  E  B  A  P  F  G    */
-	{1, 1, 1, 0, 1, 0, 0, 1},  // d
+	{1, 1, 1, 1, 0, 0, 0, 1},  // d
     {0, 1, 1, 0, 1, 0, 1, 1},  // E
     {1, 0, 1, 0, 0, 0, 0, 1},  // n
     {0, 0, 1, 0, 0, 0, 0, 0},  // _i
     {0, 1, 1, 0, 1, 0, 1, 1},  // E
-	{1, 1, 1, 0, 1, 0, 0, 1},  // d
+	{1, 1, 1, 1, 0, 0, 0, 1},  // d
 };
 
 static const bool reboot_arr[][NUM_OF_SEGMENTS] = {
@@ -179,9 +179,9 @@ void _indicate_display()
     if (indicate_state.indicate_state == _indicate_fsm_buffer ||
 		indicate_state.indicate_state == _indicate_fsm_blink_buffer
 	) {
-    	tm1637_set_dot(NUM_OF_DIGITS - 3, true);
+    	tm1637_set_dot(NUM_OF_DIGITS - 1, true);
     } else {
-    	tm1637_set_dot(NUM_OF_DIGITS - 3, false);
+    	tm1637_set_dot(NUM_OF_DIGITS - 1, false);
     }
 }
 
