@@ -174,6 +174,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
 	while (is_status(WAIT_LOAD)) soulGuard.defend();
+	set_status(NEED_UPDATE_MODBUS_REGS);
 
 	Record::showMax();
 
