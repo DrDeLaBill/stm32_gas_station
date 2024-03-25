@@ -7,6 +7,7 @@
 
 #include "log.h"
 #include "main.h"
+#include "soul.h"
 #include "utils.h"
 #include "clock.h"
 #include "hal_defs.h"
@@ -15,13 +16,6 @@
 static const char SETTINGS_TAG[] = "STNG";
 
 settings_t settings = { 0 };
-
-settings_info_t stngs_info = {
-	.settings_initialized = false,
-	.settings_saved       = false,
-	.settings_updated     = false,
-	.saved_new_data       = true
-};
 
 
 settings_t* settings_get()
@@ -54,7 +48,8 @@ void settings_reset(settings_t* other)
     other->last_day   = (uint8_t)clock_get_date();
     other->last_month = (uint8_t)clock_get_month();
 
-    set_new_data_saved(true);
+	set_status(NEED_UPDATE_MODBUS_REGS);
+	set_status(NEED_SAVE_SETTINGS);
 }
 
 uint32_t settings_size()
@@ -132,17 +127,19 @@ SettingsStatus settings_get_card_idx(uint32_t card, uint16_t* idx)
 void settings_check_residues()
 {
 	bool settingsChanged = false;
+	uint8_t date  = clock_get_date();
+	uint8_t month = clock_get_month();
 	for (unsigned i = 0; i < __arr_len(settings.limit_type); i++) {
-		if ((settings.limit_type[i] == LIMIT_DAY && settings.last_day != clock_get_date()) ||
-			(settings.limit_type[i] == LIMIT_MONTH && settings.last_month != clock_get_month())
+		if ((settings.limit_type[i] == LIMIT_DAY && settings.last_day != date) ||
+			(settings.limit_type[i] == LIMIT_MONTH && settings.last_month != month)
 		) {
-			settings.last_day   = (uint8_t)clock_get_date();
-			settings.last_month = (uint8_t)clock_get_month();
 			settings.used_liters[i] = 0;
 			settingsChanged = true;
 		}
 	}
 	if (settingsChanged) {
+		settings.last_day   = date;
+		settings.last_month = month;
 		set_settings_update_status(true);
 	}
 }
@@ -247,49 +244,18 @@ void settings_clear_limit(uint32_t idx)
 	settings.used_liters[idx] = 0;
 }
 
-bool is_settings_saved()
-{
-	return stngs_info.settings_saved;
-}
-
-bool is_settings_updated()
-{
-	return stngs_info.settings_updated;
-}
-
-bool is_settings_initialized()
-{
-	return stngs_info.settings_initialized;
-}
-
-bool is_new_data_saved()
-{
-	return stngs_info.saved_new_data;
-}
-
-void set_settings_initialized()
-{
-	stngs_info.settings_initialized = true;
-}
-
 void set_settings_save_status(bool state)
 {
 	if (state) {
-		stngs_info.settings_updated = false;
+		reset_status(NEED_SAVE_SETTINGS);
 	}
-    set_new_data_saved(state);
-	stngs_info.settings_saved = state;
+	set_status(NEED_LOAD_SETTINGS);
 }
 
 void set_settings_update_status(bool state)
 {
 	if (state) {
-		stngs_info.settings_saved = false;
+		reset_status(NEED_LOAD_SETTINGS);
 	}
-	stngs_info.settings_updated = state;
-}
-
-void set_new_data_saved(bool state)
-{
-	stngs_info.saved_new_data = state;
+	set_status(NEED_SAVE_SETTINGS);
 }

@@ -9,96 +9,91 @@
 
 #include "main.h"
 #include "utils.h"
+#include "TM1637.h"
 
 
-static const util_port_pin_t indicators_pins[] = { // TODO: static (check memory)
-    {.port = DIGITS_6_GPIO_Port, .pin = DIGITS_6_Pin},
-    {.port = DIGITS_5_GPIO_Port, .pin = DIGITS_5_Pin},
-    {.port = DIGITS_4_GPIO_Port, .pin = DIGITS_4_Pin},
-    {.port = DIGITS_3_GPIO_Port, .pin = DIGITS_3_Pin},
-    {.port = DIGITS_2_GPIO_Port, .pin = DIGITS_2_Pin},
-    {.port = DIGITS_1_GPIO_Port, .pin = DIGITS_1_Pin}
+static const bool digits_pins[][NUM_OF_SEGMENTS] = {
+/*   C  D  E  B  A  P  F  G    */
+    {1, 1, 1, 1, 1, 0, 1, 0},  // 0
+    {1, 0, 0, 1, 0, 0, 0, 0},  // 1
+    {0, 1, 1, 1, 1, 0, 0, 1},  // 2
+    {1, 1, 0, 1, 1, 0, 0, 1},  // 3
+    {1, 0, 0, 1, 0, 0, 1, 1},  // 4
+    {1, 1, 0, 0, 1, 0, 1, 1},  // 5
+    {1, 1, 1, 0, 1, 0, 1, 1},  // 6
+    {1, 0, 0, 1, 1, 0, 0, 0},  // 7
+    {1, 1, 1, 1, 1, 0, 1, 1},  // 8
+    {1, 1, 0, 1, 1, 0, 1, 1}   // 9
 };
 
-static const util_port_pin_t segments_pins[] = {
-    {.port = DIGITS_A_GPIO_Port, .pin = DIGITS_A_Pin},
-    {.port = DIGITS_B_GPIO_Port, .pin = DIGITS_B_Pin},
-    {.port = DIGITS_C_GPIO_Port, .pin = DIGITS_C_Pin},
-    {.port = DIGITS_D_GPIO_Port, .pin = DIGITS_D_Pin},
-    {.port = DIGITS_E_GPIO_Port, .pin = DIGITS_E_Pin},
-    {.port = DIGITS_F_GPIO_Port, .pin = DIGITS_F_Pin},
-    {.port = DIGITS_G_GPIO_Port, .pin = DIGITS_G_Pin},
+static const bool symbol_underline[NUM_OF_SEGMENTS] =
+/*   C  D  E  B  A  P  F  G    */
+	{0, 1, 0, 0, 0, 0, 0, 0};
+
+static const bool symbol_dash[NUM_OF_SEGMENTS] =
+/*   C  D  E  B  A  P  F  G    */
+	{0, 0, 0, 0, 0, 0, 0, 1};
+
+static const bool error_arr[][NUM_OF_SEGMENTS] = {
+/*   C  D  E  B  A  P  F  G    */
+    {0, 1, 1, 0, 1, 0, 1, 1},  // E
+    {0, 0, 1, 0, 0, 0, 0, 1},  // r
+    {0, 0, 1, 0, 0, 0, 0, 1},  // r
+    {1, 1, 1, 1, 1, 0, 1, 0},  // O
+    {0, 0, 1, 0, 0, 0, 0, 1},  // r
+    {0, 0, 0, 0, 0, 0, 0, 0}   // empty
 };
 
-static const bool digits_pins[][__arr_len(segments_pins)] = {
-/*   A  B  C  D  E  F  G    */
-    {1, 1, 1, 1, 1, 1, 0},  // 0
-    {0, 1, 1, 0, 0, 0, 0},  // 1
-    {1, 1, 0, 1, 1, 0, 1},  // 2
-    {1, 1, 1, 1, 0, 0, 1},  // 3
-    {0, 1, 1, 0, 0, 1, 1},  // 4
-    {1, 0, 1, 1, 0, 1, 1},  // 5
-    {1, 0, 1, 1, 1, 1, 1},  // 6
-    {1, 1, 1, 0, 0, 0, 0},  // 7
-    {1, 1, 1, 1, 1, 1, 1},  // 8
-    {1, 1, 1, 1, 0, 1, 1}   // 9
+static const bool limit_arr[][NUM_OF_SEGMENTS] = {
+/*   C  D  E  B  A  P  F  G    */
+    {0, 1, 1, 0, 0, 0, 1, 0},  // L
+    {0, 0, 1, 0, 0, 0, 0, 0},  // i_
+    {0, 0, 1, 1, 1, 0, 1, 0},  // M_
+    {1, 0, 0, 1, 1, 0, 1, 0},  // _M
+    {0, 0, 1, 0, 0, 0, 0, 0},  // _i
+    {0, 1, 1, 0, 0, 0, 1, 1}   // t
 };
 
-static const bool symbol_underline[__arr_len(segments_pins)] =
-/*   A  B  C  D  E  F  G    */
-	{0, 0, 0, 1, 0, 0, 0};
-
-static const bool error_arr[][__arr_len(segments_pins)] = {
-/*   A  B  C  D  E  F  G    */
-    {1, 0, 0, 1, 1, 1, 1},  // E
-    {0, 0, 0, 0, 1, 0, 1},  // r
-    {0, 0, 0, 0, 1, 0, 1},  // r
-    {1, 1, 1, 1, 1, 1, 0},  // O
-    {0, 0, 0, 0, 1, 0, 1},  // r
-    {0, 0, 0, 0, 0, 0, 0}   // empty
+static const bool access_arr[][NUM_OF_SEGMENTS] = {
+/*   C  D  E  B  A  P  F  G    */
+	{1, 0, 1, 1, 1, 0, 1, 1},  // A
+    {0, 1, 1, 0, 0, 0, 0, 1},  // c
+    {0, 1, 1, 0, 0, 0, 0, 1},  // c
+    {0, 1, 1, 0, 1, 0, 1, 1},  // E
+    {1, 1, 0, 0, 1, 0, 1, 1},  // S
+    {1, 1, 0, 0, 1, 0, 1, 1},  // S
 };
 
-static const bool limit_arr[][__arr_len(segments_pins)] = {
-/*   A  B  C  D  E  F  G    */
-    {0, 0, 0, 1, 1, 1, 0},  // L
-    {0, 0, 0, 0, 1, 0, 0},  // i_
-    {1, 1, 0, 0, 1, 1, 0},  // M_
-    {1, 1, 1, 0, 0, 1, 0},  // _M
-    {0, 0, 1, 0, 0, 0, 0},  // _i
-    {0, 0, 0, 1, 1, 1, 1}   // t
+static const bool denied_arr[][NUM_OF_SEGMENTS] = {
+/*   C  D  E  B  A  P  F  G    */
+	{1, 1, 1, 1, 0, 0, 0, 1},  // d
+    {0, 1, 1, 0, 1, 0, 1, 1},  // E
+    {1, 0, 1, 0, 0, 0, 0, 1},  // n
+    {0, 0, 1, 0, 0, 0, 0, 0},  // _i
+    {0, 1, 1, 0, 1, 0, 1, 1},  // E
+	{1, 1, 1, 1, 0, 0, 0, 1},  // d
 };
 
-static const bool access_arr[][__arr_len(segments_pins)] = {
-/*   A  B  C  D  E  F  G    */
-	{1, 1, 1, 0, 1, 1, 1},  // A
-    {0, 0, 0, 1, 1, 0, 1},  // c
-    {0, 0, 0, 1, 1, 0, 1},  // c
-    {1, 0, 0, 1, 1, 1, 1},  // E
-    {1, 0, 1, 1, 0, 1, 1},  // S
-    {1, 0, 1, 1, 0, 1, 1}   // S
+static const bool reboot_arr[][NUM_OF_SEGMENTS] = {
+/*   C  D  E  B  A  P  F  G    */
+	{0, 0, 1, 0, 0, 0, 0, 1},  // r
+    {0, 1, 1, 0, 1, 0, 1, 1},  // E
+	{1, 1, 1, 0, 0, 0, 1, 1},  // b
+	{1, 1, 1, 1, 1, 0, 1, 0},  // O
+	{1, 1, 1, 1, 1, 0, 1, 0},  // O
+    {0, 1, 1, 0, 0, 0, 1, 1}   // t
 };
 
-static const bool denied_arr[][__arr_len(segments_pins)] = {
-/*   A  B  C  D  E  F  G    */
-	{0, 1, 1, 1, 1, 0, 1},  // d
-    {1, 0, 0, 1, 1, 1, 1},  // E
-    {0, 0, 1, 0, 1, 0, 1},  // n
-    {0, 0, 1, 0, 0, 0, 0},  // _i
-    {1, 0, 0, 1, 1, 1, 1},  // E
-	{0, 1, 1, 1, 1, 0, 1}   // d
+static const bool load_arr[][NUM_OF_SEGMENTS] = {
+/*   C  D  E  B  A  P  F  G    */
+	{0, 0, 0, 0, 1, 0, 0, 0},
+	{0, 0, 0, 1, 0, 0, 0, 0},
+	{1, 0, 0, 0, 0, 0, 0, 0},
+	{0, 1, 0, 0, 0, 0, 0, 0},
+	{0, 0, 1, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 1, 0}
 };
 
-static const bool reboot_arr[][__arr_len(segments_pins)] = {
-/*   A  B  C  D  E  F  G    */
-	{0, 0, 0, 0, 1, 0, 1},  // r
-	{1, 0, 0, 1, 1, 1, 1},  // E
-	{0, 0, 1, 1, 1, 1, 1},  // b
-	{1, 1, 1, 1, 1, 1, 0},  // O
-	{1, 1, 1, 1, 1, 1, 0},  // O
-    {0, 0, 0, 1, 1, 1, 1}   // t
-};
-
-#define INDICATE_INDICATORS_COUNT  ((uint32_t)__arr_len(indicators_pins))
 #define INDICATE_SHOW_DELAY_MS     ((uint32_t)50)
 #define INDICATE_FSM_WAIT_DELAY_MS ((uint32_t)1000)
 #define INDICATE_FSM_LOAD_DELAY_MS ((uint32_t)120)
@@ -107,11 +102,11 @@ static const bool reboot_arr[][__arr_len(segments_pins)] = {
 typedef struct _indicate_fsm_state_t {
     void             (*indicate_state) (void);
     util_old_timer_t wait_timer;
-    uint8_t          indicate_buffer[INDICATE_INDICATORS_COUNT];
+    uint8_t          indicate_buffer[NUM_OF_DIGITS];
     uint8_t          load_segment_num;
 } indicate_state_t;
 
-bool display_buffer[][__arr_len(segments_pins)] = {
+bool display_buffer[][NUM_OF_SEGMENTS] = {
 /*   A  B  C  D  E  F  G    */
     {0, 0, 0, 0, 0, 0, 0},  // DIGIT_1
     {0, 0, 0, 0, 0, 0, 0},  // DIGIT_2
@@ -170,34 +165,23 @@ void indicate_proccess()
 
 void _indicate_display()
 {
-    for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
-        HAL_GPIO_WritePin(indicators_pins[i].port, indicators_pins[i].pin, GPIO_PIN_RESET);
-    }
+	uint8_t buffer[NUM_OF_DIGITS] = {0};
 
-    static uint8_t curr_indicator_idx = 0;
+	for (unsigned i = 0; i < NUM_OF_DIGITS; i++) {
+		for (unsigned j = 0; j < NUM_OF_SEGMENTS; j++) {
+			buffer[i] <<= 1;
+			buffer[i] |=  (display_buffer[i][j] & 0x01);
+		}
+	}
 
-    HAL_GPIO_WritePin(indicators_pins[curr_indicator_idx].port, indicators_pins[curr_indicator_idx].pin, GPIO_PIN_SET);
+	tm1637_set_buffer(buffer);
 
-    HAL_GPIO_WritePin(DIGITS_DP_GPIO_Port, DIGITS_DP_Pin, GPIO_PIN_RESET);
-
-    for (uint8_t i = 0; i < __arr_len(segments_pins); i++) {
-        HAL_GPIO_WritePin(
-            segments_pins[i].port,
-            segments_pins[i].pin,
-            display_buffer[curr_indicator_idx][i]
-        );
-    }
-
-    if ((indicate_state.indicate_state == _indicate_fsm_buffer ||
-		indicate_state.indicate_state == _indicate_fsm_blink_buffer) &&
-		curr_indicator_idx == __arr_len(indicators_pins) - 3
+    if (indicate_state.indicate_state == _indicate_fsm_buffer ||
+		indicate_state.indicate_state == _indicate_fsm_blink_buffer
 	) {
-        HAL_GPIO_WritePin(DIGITS_DP_GPIO_Port, DIGITS_DP_Pin, GPIO_PIN_SET);
-    }
-
-    curr_indicator_idx++;
-    if (curr_indicator_idx >= __arr_len(indicators_pins)) {
-        curr_indicator_idx = 0;
+    	tm1637_set_dot(NUM_OF_DIGITS - 1, true);
+    } else {
+    	tm1637_set_dot(NUM_OF_DIGITS - 1, false);
     }
 }
 
@@ -269,9 +253,16 @@ void _indicate_fsm_wait()
         return;
     }
 
-    for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
-        display_buffer[i][__arr_len(segments_pins) - 1] = !display_buffer[i][__arr_len(segments_pins) - 1];
+    static bool flag = false;
+    for (uint8_t i = 0; i < NUM_OF_DIGITS; i++) {
+    	if (flag) {
+    		memset(display_buffer[i], 0, sizeof(display_buffer[i]));
+    	} else {
+    		memcpy(display_buffer[i], symbol_dash, sizeof(display_buffer[i]));
+    	}
     }
+    flag = !flag;
+
     util_old_timer_start(&indicate_state.wait_timer, INDICATE_FSM_WAIT_DELAY_MS);
 }
 
@@ -282,7 +273,7 @@ void _indicate_fsm_reboot()
 
 void _indicate_fsm_buffer()
 {
-    for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
+    for (uint8_t i = 0; i < NUM_OF_DIGITS; i++) {
         uint8_t number = indicate_state.indicate_buffer[i];
         if (number >= '0' && number <= '9') {
             memcpy(display_buffer[i], digits_pins[number - '0'], sizeof(display_buffer[i]));
@@ -292,7 +283,7 @@ void _indicate_fsm_buffer()
             memset(display_buffer[i], 0, sizeof(display_buffer[i]));
         } else {
             memset(display_buffer[i], 0, sizeof(display_buffer[i]));
-            display_buffer[i][__arr_len(segments_pins) - 1] = true;
+            display_buffer[i][NUM_OF_SEGMENTS - 1] = true;
         }
     }
 }
@@ -323,19 +314,14 @@ void _indicate_fsm_load()
         return;
     }
 
-    for (uint8_t i = 0; i < __arr_len(indicators_pins); i++) {
-        for (uint8_t j = 0; j < __arr_len(segments_pins); j++) {
-            bool state = false;
-            if (j == indicate_state.load_segment_num) {
-                state = true;
-            }
-
-            display_buffer[i][j] = state;
+    for (uint8_t i = 0; i < NUM_OF_DIGITS; i++) {
+        for (uint8_t j = 0; j < NUM_OF_SEGMENTS; j++) {
+            memcpy(display_buffer[i], load_arr[indicate_state.load_segment_num], NUM_OF_SEGMENTS);
         }
     }
 
     indicate_state.load_segment_num++;
-    if (indicate_state.load_segment_num >= __arr_len(segments_pins) - 1) {
+    if (indicate_state.load_segment_num >= NUM_OF_SEGMENTS - 2) {
         indicate_state.load_segment_num = 0;
     }
 

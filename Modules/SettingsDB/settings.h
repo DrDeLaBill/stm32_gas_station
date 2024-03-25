@@ -53,14 +53,6 @@ typedef struct __attribute__((packed)) _settings_t  {
 extern settings_t settings;
 
 
-typedef struct _settings_info_t {
-	bool settings_initialized;
-	bool settings_saved;
-	bool settings_updated;
-	bool saved_new_data;
-} settings_info_t;
-
-
 /* copy settings to the target */
 settings_t* settings_get();
 /* copy settings from the target */
@@ -74,15 +66,8 @@ bool settings_check(settings_t* other);
 
 void settings_show();
 
-bool is_settings_saved();
-bool is_settings_updated();
-bool is_settings_initialized();
-bool is_new_data_saved();
-
-void set_settings_initialized();
 void set_settings_save_status(bool state);
 void set_settings_update_status(bool state);
-void set_new_data_saved(bool state);
 
 void settings_set_cf_id(uint32_t cf_id);
 void settings_set_device_id(uint32_t device_id);

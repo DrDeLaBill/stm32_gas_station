@@ -137,7 +137,6 @@ SettingsStatus SettingsDB::save()
 #if SETTINGS_BEDUG
     	printTagLog(SettingsDB::TAG, "settings saved successfully", address);
 #endif
-
     	return SETTINGS_OK;
     }
 

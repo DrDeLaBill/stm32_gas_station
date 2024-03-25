@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "soul.h"
 #include "main.h"
 #include "clock.h"
 #include "settings.h"
@@ -63,7 +64,7 @@ void ModbusManager::tick()
         return;
     }
 
-    if (is_new_data_saved()) {
+    if (is_status(NEED_UPDATE_MODBUS_REGS)) {
         this->updateData();
     } else if (ModbusManager::recievedNewData) {
         this->loadData();
@@ -259,7 +260,8 @@ void ModbusManager::loadData()
 
 void ModbusManager::updateData()
 {
-	set_new_data_saved(false);
+	reset_status(NEED_UPDATE_MODBUS_REGS);
+
     ModbusManager::showLogLine();    printTagLog(TAG, "UPDATE TO MODBUS TABLE");
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    printTagLog(TAG, "Save cf_id");

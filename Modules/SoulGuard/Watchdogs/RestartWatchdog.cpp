@@ -46,7 +46,7 @@ void RestartWatchdog::check()
 		RestartWatchdog::reset_i2c_errata(); // TODO: move reset_i2c to memory watchdog
 		HAL_Delay(2500);
 	}
-	// TODO: IWDG, NVIC_SysReset and other restarts detect and reset
+	// TODO: other restarts detect and reset
 //	BEDUG_ASSERT(false, "INTERNAL ERROR HAS BEEN OCCURRED (HARD FAULT)");
 }
 

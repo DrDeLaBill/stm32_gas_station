@@ -35,6 +35,7 @@
 #include "log.h"
 #include "utils.h"
 #include "clock.h"
+#include "TM1637.h"
 #include "wiegand.h"
 #include "settings.h"
 #include "indicate_manager.h"
@@ -155,6 +156,10 @@ int main(void)
   gprint("\n\n\n");
   printTagLog(MAIN_TAG, "The device is loading");
 
+  GPIO_PAIR clk{TM1637_CLK_GPIO_Port, TM1637_CLK_Pin};
+  GPIO_PAIR data{TM1637_DATA_GPIO_Port, TM1637_DATA_Pin};
+  tm1637_init(&clk, &data);
+
   // Indicators timer start
   HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
 
@@ -166,14 +171,13 @@ int main(void)
 
   // MODBUS slave initialization
   HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
-
-  printTagLog(MAIN_TAG, "The device is loaded successfully");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
 	while (is_status(WAIT_LOAD)) soulGuard.defend();
+	set_status(NEED_UPDATE_MODBUS_REGS);
 
 	Record::showMax();
 
@@ -181,9 +185,10 @@ int main(void)
 		RecordTmp::restore();
 	}
 
+	printTagLog(MAIN_TAG, "The device is loaded successfully");
+
 	while (1)
 	{
-
 		soulGuard.defend();
 
 		Pump::measure();
@@ -262,11 +267,12 @@ void record_check()
 
 	uint32_t resultMl = UI::getResultMl();
 
-	if (is_status(NEED_SAVE_RECORD)) {
+	if (is_status(NEED_SAVE_FINAL_RECORD)) {
 		save_new_log(UI::getResultMl());
 		RecordTmp::remove();
 		UI::resetResultMl();
 		resultMlBuf = 0;
+		reset_status(NEED_SAVE_FINAL_RECORD);
 	}
 
 	if (is_status(NEED_INIT_RECORD_TMP)) {
@@ -276,6 +282,7 @@ void record_check()
 
 	if (__abs_dif(resultMl, resultMlBuf) > RecordTmp::TRIG_LEVEL_ML) {
     	RecordTmp::save(UI::getCard(), resultMl);
+		set_status(NEED_SAVE_RECORD_TMP);
     	resultMlBuf = resultMl;
 	}
 }
@@ -330,36 +337,30 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    if(htim->Instance == INDICATORS_TIM.Instance)
-    {
-
-        indicate_proccess();
-
+    if(htim->Instance == INDICATORS_TIM.Instance) {
+    	tm1637_proccess();
     } else if (htim->Instance == UI_TIM.Instance) {
         keyboard4x3_proccess();
 
         Pump::tick();
 
         UI::proccess();
+
+        indicate_proccess();
     }
 }
 
-int _write(int file, uint8_t *ptr, int len) {
-	(void)file;
+int _write(int, uint8_t *ptr, int len) {
 	(void)ptr;
 	(void)len;
 #ifdef DEBUG
-	if (is_error(POWER_ERROR)) {
-		return 0;
-	}
     HAL_UART_Transmit(&BEDUG_UART, (uint8_t *)ptr, static_cast<uint16_t>(len), GENERAL_TIMEOUT_MS);
     for (int DataIdx = 0; DataIdx < len; DataIdx++) {
         ITM_SendChar(*ptr++);
     }
     return len;
-#else
-    return 0;
 #endif
+    return 0;
 }
 
 
@@ -372,12 +373,9 @@ int _write(int file, uint8_t *ptr, int len) {
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  NVIC_SystemReset();
-  while (1)
-  {
-  }
+    b_assert(__FILE__, __LINE__, "The error handler has been called");
+	set_error(INTERNAL_ERROR);
+	while (1);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -392,8 +390,9 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	b_assert((char*)file, line, "Wrong parameters value");
+	set_error(INTERNAL_ERROR);
+	while (1);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
