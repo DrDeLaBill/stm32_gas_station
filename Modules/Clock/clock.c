@@ -116,7 +116,7 @@ void clock_save_date(RTC_DateTypeDef* date)
         return;
     } else {
     	/* calculating weekday begin */
-    	RTC_TimeTypeDef time = {};
+    	RTC_TimeTypeDef time = {0};
     	uint32_t seconds = clock_datetime_to_seconds(date, &time);
     	clock_seconds_to_datetime(seconds, date, &time);
     	/* calculating weekday end */
@@ -142,7 +142,7 @@ uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 {
 	uint32_t days = date->Year * DAYS_PER_YEAR;
 	if (date->Year > 0) {
-		days += (date->Year / LEAP_YEAR_PERIOD) + 1;
+		days += ((date->Year - 1) / LEAP_YEAR_PERIOD) + 1;
 	}
 	for (unsigned i = 0; i < (unsigned)(date->Month > 0 ? date->Month - 1 : 0); i++) {
 		days += _get_days_in_month(date->Year, i);
@@ -185,36 +185,31 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 	uint32_t hours = minutes / MINUTES_PER_HOUR;
 
 	time->Hours = (uint8_t)(hours % HOURS_PER_DAY);
-	uint32_t days = hours / HOURS_PER_DAY;
+	uint32_t days = 1 + hours / HOURS_PER_DAY;
 
-	uint8_t year  = 0;
-	uint8_t month = 1;
-	uint8_t day   = 1;
-	date->WeekDay = (RTC_WEEKDAY_SATURDAY + days % (DAYS_PER_WEEK + 1)) % (DAYS_PER_WEEK + 1);
+	date->WeekDay = (RTC_WEEKDAY_THURSDAY + days) % (DAYS_PER_WEEK);
+	if (!date->WeekDay) {
+		date->WeekDay = RTC_WEEKDAY_MONDAY;
+	}
+	date->Month = 1;
 	while (days) {
-		uint16_t days_in_year = (year % LEAP_YEAR_PERIOD > 0) ? DAYS_PER_YEAR : DAYS_PER_LEAP_YEAR;
+		uint16_t days_in_year = (date->Year % LEAP_YEAR_PERIOD > 0) ? DAYS_PER_YEAR : DAYS_PER_LEAP_YEAR;
 		if (days > days_in_year) {
 			days -= days_in_year;
-			year++;
+			date->Year++;
 			continue;
 		}
 
-		uint8_t days_in_month = _get_days_in_month(year, month - 1);
+		uint8_t days_in_month = _get_days_in_month(date->Year, date->Month - 1);
 		if (days > days_in_month) {
 			days -= days_in_month;
-			month++;
+			date->Month++;
 			continue;
 		}
 
-		if (days > 0) {
-			day = days;
-		}
-		days = 0;
+		date->Date = days;
+		break;
 	}
-
-	date->Year  = year;
-	date->Month = month;
-	date->Date  = day;
 }
 
 uint8_t _get_days_in_month(uint8_t year, Months month)

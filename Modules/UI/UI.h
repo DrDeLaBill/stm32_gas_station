@@ -22,7 +22,9 @@ protected:
 	FSM_CREATE_EVENT(timeout_e,   0);
 	FSM_CREATE_EVENT(input_e,     0);
 	FSM_CREATE_EVENT(cancel_e,    0);
+	FSM_CREATE_EVENT(enter_e,     0);
 	FSM_CREATE_EVENT(start_e,     0);
+	FSM_CREATE_EVENT(stop_e,      0);
 	FSM_CREATE_EVENT(limit_min_e, 0);
 	FSM_CREATE_EVENT(limit_max_e, 0);
 	FSM_CREATE_EVENT(end_e,       0);
@@ -75,6 +77,7 @@ private:
 	struct limit_ui_a       { void operator()(); };
 	struct reset_input_ui_a { void operator()(); };
 	struct check_a          { void operator()(); };
+	struct start_a          { void operator()(); };
 	struct wait_count_ui_a  { void operator()(); };
 	struct count_a          { void operator()(); };
 	struct record_ui_a      { void operator()(); };
@@ -100,17 +103,19 @@ private:
 		fsm::Transition<limit_s,      input_e,     input_s,      reset_input_ui_a, fsm::Guard::NO_GUARD>,
 		fsm::Transition<limit_s,      timeout_e,   idle_s,       idle_ui_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<limit_s,      cancel_e,    idle_s,       idle_ui_a,        fsm::Guard::NO_GUARD>,
+		fsm::Transition<limit_s,      start_e,     check_s,      start_a,          fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<input_s,      cancel_e,    idle_s,       idle_ui_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<input_s,      timeout_e,   idle_s,       idle_ui_a,        fsm::Guard::NO_GUARD>,
-		fsm::Transition<input_s,      start_e,     check_s,      check_a,          fsm::Guard::NO_GUARD>,
+		fsm::Transition<input_s,      enter_e,     check_s,      check_a,          fsm::Guard::NO_GUARD>,
+		fsm::Transition<input_s,      start_e,     check_s,      start_a,          fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<check_s,      limit_min_e, input_s,      reset_input_ui_a, fsm::Guard::NO_GUARD>,
 		fsm::Transition<check_s,      limit_max_e, limit_s,      limit_ui_a,       fsm::Guard::NO_GUARD>,
 		fsm::Transition<check_s,      success_e,   wait_count_s, wait_count_ui_a,  fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<wait_count_s, end_e,       record_s,     record_ui_a,      fsm::Guard::NO_GUARD>,
-		fsm::Transition<wait_count_s, start_e,     count_s,      count_a,          fsm::Guard::NO_GUARD>,
+		fsm::Transition<wait_count_s, enter_e,     count_s,      count_a,          fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<count_s,      end_e,       wait_count_s, wait_count_ui_a,  fsm::Guard::NO_GUARD>,
 
@@ -146,6 +151,8 @@ protected:
 
 	static bool isEnter();
 	static bool isCancel();
+	static bool isStart();
+	static bool isStop();
 
 	static void setCard(uint32_t card);
 
