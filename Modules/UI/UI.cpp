@@ -49,12 +49,22 @@ bool UI::isPumpWorking()
 
 bool UI::isEnter()
 {
-    return keyboard4x3_is_enter() || !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
+    return keyboard4x3_is_enter();
 }
 
 bool UI::isCancel()
 {
-    return keyboard4x3_is_cancel() || !HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
+    return keyboard4x3_is_cancel();
+}
+
+bool UI::isStart()
+{
+	return !HAL_GPIO_ReadPin(PUMP_START_GPIO_Port, PUMP_START_Pin);
+}
+
+bool UI::isStop()
+{
+	return !HAL_GPIO_ReadPin(PUMP_STOP_GPIO_Port, PUMP_STOP_Pin);
 }
 
 void UI::setReboot()
@@ -147,18 +157,22 @@ void UI::_limit_s::operator ()()
 		fsm.push_event(input_e{});
 	}
 
+	if (isStart()) {
+		fsm.push_event(start_e{});
+	}
+
 	if (!timer.wait()) {
 		fsm.push_event(timeout_e{});
 	}
 
-	if (isCancel()) {
+	if (isCancel() || isStop()) {
 		fsm.push_event(cancel_e{});
 	}
 }
 
 void UI::_input_s::operator ()()
 {
-	if (isCancel()) {
+	if (isCancel() || isStop()) {
 		fsm.push_event(cancel_e{});
 	}
 
@@ -167,6 +181,10 @@ void UI::_input_s::operator ()()
 	}
 
 	if (isEnter()) {
+		fsm.push_event(enter_e{});
+	}
+
+	if (isStart()) {
 		fsm.push_event(start_e{});
 	}
 
@@ -206,13 +224,13 @@ void UI::_wait_count_s::operator ()()
 		return;
 	}
 
-	if (isCancel()) {
+	if (isCancel() || isStop()) {
 		fsm.push_event(end_e{});
 		return;
 	}
 
     if (curr_count != resultMl) {
-    	fsm.push_event(start_e{});
+    	fsm.push_event(enter_e{});
     	return;
     }
 
@@ -301,7 +319,7 @@ void UI::_result_s::operator ()()
 		return;
 	}
 
-	if (isCancel()) {
+	if (isCancel() || isStop()) {
 		fsm.push_event(end_e{});
 		return;
 	}
@@ -389,6 +407,8 @@ void UI::limit_ui_a::operator ()()
     SettingsStatus status = settings_get_card_idx(UI::getCard(), &idx);
     if (status == SETTINGS_OK && settings.used_liters[idx] < settings.limits[idx]) {
     	residue = settings.limits[idx] - settings.used_liters[idx];
+    } else if (UI::getCard() == SETTINGS_MASTER_CARD) {
+    	residue = SETTINGS_MASTER_LIMIT;
     }
     uint32_t liters_multiplier = ML_IN_LTR;
 	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
@@ -453,13 +473,18 @@ void UI::check_a::operator ()()
 
     uint32_t used_liters = 0;
     uint16_t idx;
+    uint32_t limit = 0;
     if (settings_get_card_idx(UI::getCard(), &idx) == SETTINGS_OK) {
     	used_liters = settings.used_liters[idx];
+    	limit = settings.limits[idx];
+    } else if (UI::getCard() == SETTINGS_MASTER_CARD) {
+    	used_liters = 0;
+    	limit = SETTINGS_MASTER_LIMIT;
     } else {
     	fsm.push_event(limit_max_e{});
     }
 
-	if (targetMl + used_liters > settings.limits[idx]) {
+    if (targetMl + used_liters > limit) {
 		fsm.push_event(limit_max_e{});
 	} else if (targetMl < GENERAL_SESSION_ML_MIN) {
 		fsm.push_event(limit_min_e{});
@@ -473,6 +498,37 @@ void UI::check_a::operator ()()
 
 	    set_status(NEED_INIT_RECORD_TMP);
 	}
+}
+
+void UI::start_a::operator ()()
+{
+	fsm.clear_events();
+
+    uint16_t idx = 0;
+    if (settings_get_card_idx(UI::getCard(), &idx) != SETTINGS_OK) {
+    	fsm.push_event(limit_max_e{});
+    	return;
+    }
+
+    if (settings.used_liters[idx] >= settings.limits[idx]) {
+    	fsm.push_event(limit_max_e{});
+    	return;
+    }
+
+    if (UI::getCard() == SETTINGS_MASTER_CARD) {
+    	targetMl = SETTINGS_MASTER_LIMIT;
+    } else {
+    	targetMl = settings.limits[idx] - settings.used_liters[idx];
+    }
+
+	fsm.push_event(success_e{});
+
+	indicate_set_buffer_page();
+
+	Pump::clear();
+	Pump::setTargetMl(targetMl);
+
+	set_status(NEED_INIT_RECORD_TMP);
 }
 
 void UI::wait_count_ui_a::operator ()()

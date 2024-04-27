@@ -230,6 +230,9 @@ void settings_set_limit_type(LimitType type, uint16_t idx)
 void settings_add_used_liters(uint32_t used_litters, uint32_t card)
 {
     uint16_t idx = 0;
+    if (card == SETTINGS_MASTER_CARD) {
+    	return;
+    }
     if (settings_get_card_idx(card, &idx) != SETTINGS_OK) {
     	return;
     }
