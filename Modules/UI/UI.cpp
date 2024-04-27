@@ -407,6 +407,8 @@ void UI::limit_ui_a::operator ()()
     SettingsStatus status = settings_get_card_idx(UI::getCard(), &idx);
     if (status == SETTINGS_OK && settings.used_liters[idx] < settings.limits[idx]) {
     	residue = settings.limits[idx] - settings.used_liters[idx];
+    } else if (UI::getCard() == SETTINGS_MASTER_CARD) {
+    	residue = SETTINGS_MASTER_LIMIT;
     }
     uint32_t liters_multiplier = ML_IN_LTR;
 	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
@@ -471,13 +473,18 @@ void UI::check_a::operator ()()
 
     uint32_t used_liters = 0;
     uint16_t idx;
+    uint32_t limit = 0;
     if (settings_get_card_idx(UI::getCard(), &idx) == SETTINGS_OK) {
     	used_liters = settings.used_liters[idx];
+    	limit = settings.limits[idx];
+    } else if (UI::getCard() == SETTINGS_MASTER_CARD) {
+    	used_liters = 0;
+    	limit = SETTINGS_MASTER_LIMIT;
     } else {
     	fsm.push_event(limit_max_e{});
     }
 
-	if (targetMl + used_liters > settings.limits[idx]) {
+    if (targetMl + used_liters > limit) {
 		fsm.push_event(limit_max_e{});
 	} else if (targetMl < GENERAL_SESSION_ML_MIN) {
 		fsm.push_event(limit_min_e{});
@@ -508,7 +515,11 @@ void UI::start_a::operator ()()
     	return;
     }
 
-    targetMl = settings.limits[idx] - settings.used_liters[idx];
+    if (UI::getCard() == SETTINGS_MASTER_CARD) {
+    	targetMl = SETTINGS_MASTER_LIMIT;
+    } else {
+    	targetMl = settings.limits[idx] - settings.used_liters[idx];
+    }
 
 	fsm.push_event(success_e{});
 
