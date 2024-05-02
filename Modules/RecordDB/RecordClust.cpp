@@ -163,7 +163,7 @@ RecordStatus RecordClust::save(record_t *record, uint32_t size)
 
 bool RecordClust::validate(record_clust_t* clust)
 {
-    if (clust->sw_id != settings.sw_id) {
+    if (clust->version != RECORD_VERSION) {
         return false;
     }
 
@@ -184,7 +184,7 @@ void RecordClust::show()
 {
 #if RECORD_BEDUG
 	printPretty("################RECORD CLUST#################\n");
-	printPretty("Software v%02u\n", m_clust.sw_id);
+	printPretty("Software v%02u\n", m_clust.version);
 	printPretty("Record size %u\n", m_clust.rcrd_size);
     printPretty("INDEX   RCRDID    TIME     CARD     LITERS\n");
 	for (uint8_t i = 0; i < getCountByRecordSize(m_clust.rcrd_size); i++) {
@@ -310,7 +310,7 @@ bool RecordClust::createNew()
         return false;
     }
 
-    this->m_clust.sw_id     = settings.sw_id;
+    this->m_clust.version   = RECORD_VERSION;
     this->m_clust.rcrd_size = m_recordSize;
     memset(this->m_clust.records, 0, sizeof(this->m_clust.records));
 
