@@ -1,5 +1,5 @@
 LED 100
-FREEMEM 27.563
+FREEMEM 25.984
 USERSPEC 001110111111111
 PIN 0000
 CHANGEPASS 1234
@@ -14,11 +14,11 @@ SCRIPTIP c.7gis.ru,60524
 UPGRADEIP www.g-a-l-i-l-e-o.com,32132
 RSTBYTIME 599
 ID 50
-SERVERIP service.7gis.ru,60522,6,0,0
+SERVERIP nl.gpsgsm.org,21423,6,0,0
 SERVERIP2 ,0,6,0,0
 PROTOCOL 0,0
 APN internet.tele2.ru,,
-APN2 ,,
+APN2 internet.tele2.ru,,
 SIMSwitch 1,300
 ops0 ,,,,,,,,,,,,,,
 ops02 ,,,,,,,,,,,,,,

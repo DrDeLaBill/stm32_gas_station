@@ -21,7 +21,7 @@ public:
     static constexpr unsigned RECORDS_SIZE = Page::PAYLOAD_SIZE - META_SIZE;
     typedef struct __attribute__((packed)) _record_clust_t {
         // Software version
-        uint8_t  sw_id;
+        uint8_t  version;
         // Record structure unit size in cluster
         uint16_t rcrd_size;
         // Buffer for record/s

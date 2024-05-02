@@ -21,11 +21,11 @@ extern "C" {
  * 0x0004 - B.O.B.A.
  */
 #define DEVICE_TYPE        ((uint16_t)0x0002) // TODO: add to settings
-#define SW_VERSION         ((uint8_t)0x03)
+#define SW_VERSION         ((uint8_t)0x04)
 #define FW_VERSION         ((uint8_t)0x01)
 #define DEFAULT_CF_VERSION ((uint8_t)0x01)
 #define DEFAULT_ID         ((uint8_t)0x01)
-#define RFID_CARDS_COUNT   ((uint16_t)40)
+#define RFID_CARDS_COUNT   ((uint16_t)50)
 
 #define SETTINGS_MASTER_CARD  (1225648)
 #define SETTINGS_MASTER_LIMIT (1000000)
