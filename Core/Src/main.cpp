@@ -152,7 +152,11 @@ int main(void)
 
   set_status(WAIT_LOAD);
 
+#ifdef DEBUG
+  HAL_Delay(300);
+#else
   HAL_Delay(100);
+#endif
 
   gprint("\n\n\n");
   printTagLog(MAIN_TAG, "The device is loading");
