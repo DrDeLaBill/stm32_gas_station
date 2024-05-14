@@ -64,6 +64,7 @@ bool has_errors();
 bool is_error(SOUL_STATUS error);
 void set_error(SOUL_STATUS error);
 void reset_error(SOUL_STATUS error);
+unsigned get_first_error();
 
 bool is_status(SOUL_STATUS status);
 void set_status(SOUL_STATUS status);

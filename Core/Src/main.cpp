@@ -33,6 +33,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "soul.h"
 #include "utils.h"
 #include "clock.h"
 #include "TM1637.h"
@@ -187,11 +188,21 @@ int main(void)
 
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
+#ifdef DEBUG
+	static unsigned last_error = get_first_error();
+#endif
 	while (1)
 	{
 		soulGuard.defend();
 
 		Pump::measure();
+
+#ifdef DEBUG
+		if (last_error != get_first_error()) {
+			printTagLog(MAIN_TAG, "New error: %u", last_error);
+			last_error = get_first_error();
+		}
+#endif
 
 		if (has_errors()) {
 			continue;

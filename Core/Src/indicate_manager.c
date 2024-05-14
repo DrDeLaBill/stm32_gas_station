@@ -2,12 +2,14 @@
 
 #include "indicate_manager.h"
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 #include "main.h"
+#include "soul.h"
 #include "utils.h"
 #include "TM1637.h"
 
@@ -345,5 +347,13 @@ void _indicate_fsm_denied()
 
 void _indicate_fsm_error()
 {
+	char line[4] = "";
+	snprintf(line, sizeof(line) - 1, "%u", get_first_error());
 	memcpy(display_buffer, error_arr, sizeof(display_buffer));
+	for (unsigned i = 0; i < strlen(line); i++) {
+		char number = line[i];
+		if (number >= '0' && number <= '9') {
+			memcpy(display_buffer[2 + i], digits_pins[number - '0'], sizeof(display_buffer[2 + i]));
+		}
+	}
 }
