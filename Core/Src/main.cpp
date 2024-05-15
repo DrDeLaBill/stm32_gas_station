@@ -217,9 +217,10 @@ int main(void)
 		Pump::measure();
 
 #ifdef DEBUG
-		if (last_error != get_first_error()) {
-			printTagLog(MAIN_TAG, "New error: %u", last_error);
-			last_error = get_first_error();
+		unsigned error = get_first_error();
+		if (error && last_error != error) {
+			printTagLog(MAIN_TAG, "New error: %u", error);
+			last_error = error;
 		}
 #endif
 
@@ -298,19 +299,21 @@ void record_check()
 	uint32_t resultMl = UI::getResultMl();
 
 	if (is_status(NEED_SAVE_FINAL_RECORD)) {
-		save_new_log(UI::getResultMl());
-		RecordTmp::remove();
-		UI::resetResultMl();
-		resultMlBuf = 0;
-		reset_status(NEED_SAVE_FINAL_RECORD);
-	}
+		if (RecordTmp::remove() == RECORD_OK) {
+			save_new_log(resultMl);
+			UI::resetResultMl();
+			resultMlBuf = 0;
+			resultMl = 0;
 
-	if (is_status(NEED_INIT_RECORD_TMP)) {
-		reset_status(NEED_INIT_RECORD_TMP);
-		RecordTmp::init();
-	}
-
-	if (__abs_dif(resultMl, resultMlBuf) > RecordTmp::TRIG_LEVEL_ML) {
+			reset_status(NEED_SAVE_FINAL_RECORD);
+			reset_status(NEED_INIT_RECORD_TMP);
+			reset_status(NEED_SAVE_RECORD_TMP);
+		}
+	} else if (is_status(NEED_INIT_RECORD_TMP)) {
+		if (RecordTmp::init() == RECORD_OK) {
+			reset_status(NEED_INIT_RECORD_TMP);
+		}
+	} else if (__abs_dif(resultMl, resultMlBuf) > RecordTmp::TRIG_LEVEL_ML) {
     	RecordTmp::save(UI::getCard(), resultMl);
 		set_status(NEED_SAVE_RECORD_TMP);
     	resultMlBuf = resultMl;
