@@ -3,6 +3,7 @@
 #include "Watchdogs.h"
 
 #include "log.h"
+#include "main.h"
 #include "soul.h"
 #include "clock.h"
 #include "hal_defs.h"
