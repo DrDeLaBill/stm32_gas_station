@@ -47,9 +47,6 @@ typedef struct _tm1637_state_t {
 } tm1637_state_t;
 
 
-static const char TM1637_TAG[] = "TM16";
-
-
 GPIO_PAIR clk  = {0};
 GPIO_PAIR data = {0};
 tm1637_state_t state = {

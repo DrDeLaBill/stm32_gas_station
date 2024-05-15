@@ -135,7 +135,13 @@ RecordStatus Record::save(uint32_t time)
 void Record::show()
 {
 #if RECORD_BEDUG
+	RTC_DateTypeDef date = {};
+    RTC_TimeTypeDef time = {};
+
+    clock_seconds_to_datetime(record.time, &date, &time);
+
     printPretty("#########RECORD#########\n");
+    printPretty("  20%02u-%02u-%02uT%02u:%02u:%02u\n", date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
 	printPretty("ID:       %lu\n", record.id);
 	printPretty("Time:     %lu\n", record.time);
 	printPretty("Card:     %lu\n", record.card);

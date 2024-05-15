@@ -10,6 +10,9 @@
 #define POWER_WATCHDOG_BEDUG    (true)
 
 
+#define WATCHDOG_TIMEOUT_MS     ((uint32_t)100)
+
+
 /*
  * Filling an empty area of RAM with the STACK_CANARY_WORD value
  * For calculating the RAM fill factor

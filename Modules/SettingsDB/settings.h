@@ -27,7 +27,7 @@ extern "C" {
 #define DEFAULT_ID         ((uint8_t)0x01)
 #define RFID_CARDS_COUNT   ((uint16_t)50)
 
-#define SETTINGS_MASTER_CARD  (1225648)
+#define SETTINGS_MASTER_CARD  (1255648)
 #define SETTINGS_MASTER_LIMIT (1000000)
 
 

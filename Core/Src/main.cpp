@@ -135,6 +135,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+#if IS_DEVICE_WITH_4PIN()
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -149,6 +150,20 @@ int main(void)
   MX_IWDG_Init();
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
+
+#else
+  DISPLAY_16PIN_GPIO_Init();
+
+  MX_RTC_Init();
+  MX_I2C1_Init();
+  MX_USART2_UART_Init();
+  MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_USART1_UART_Init();
+  MX_TIM4_Init();
+  MX_IWDG_Init();
+  MX_TIM5_Init();
+#endif
 
   set_status(WAIT_LOAD);
 
@@ -355,7 +370,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if(htim->Instance == INDICATORS_TIM.Instance) {
     	tm1637_proccess();
     } else if (htim->Instance == UI_TIM.Instance) {
+#if IS_DEVICE_WITH_KEYBOARD()
         keyboard4x3_proccess();
+#endif
 
         Pump::tick();
 
