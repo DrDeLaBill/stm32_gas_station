@@ -50,6 +50,19 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 
+
+#define DEVICE_MODE_4PIN_KEYBOARD  (1)
+#define DEVICE_MODE_4PIN           (2)
+#define DEVICE_MODE_16PIN_KEYBOARD (3)
+#define DEVICE_MODE_16PIN          (4)
+
+#define DEVICE_MODE                (DEVICE_MODE_4PIN_KEYBOARD)
+
+#define IS_DEVICE_WITH_4PIN()      (DEVICE_MODE == DEVICE_MODE_4PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_4PIN)
+#define IS_DEVICE_WITH_16PIN()     (DEVICE_MODE == DEVICE_MODE_16PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_16PIN)
+#define IS_DEVICE_WITH_KEYBOARD()  (DEVICE_MODE == DEVICE_MODE_4PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_16PIN_KEYBOARD)
+
+
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
@@ -124,6 +137,37 @@ int _write(int file, uint8_t *ptr, int len);
 #define KBD_BL_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
+
+#if IS_DEVICE_WITH_16PIN()
+#   define DIGITS_1_Pin GPIO_PIN_4
+#   define DIGITS_1_GPIO_Port GPIOA
+#   define DIGITS_2_Pin GPIO_PIN_5
+#   define DIGITS_2_GPIO_Port GPIOA
+#   define DIGITS_4_Pin GPIO_PIN_6
+#   define DIGITS_4_GPIO_Port GPIOA
+#   define DIGITS_3_Pin GPIO_PIN_7
+#   define DIGITS_3_GPIO_Port GPIOA
+#   define DIGITS_5_Pin GPIO_PIN_4
+#   define DIGITS_5_GPIO_Port GPIOC
+#   define DIGITS_6_Pin GPIO_PIN_5
+#   define DIGITS_6_GPIO_Port GPIOC
+#   define DIGITS_D_Pin GPIO_PIN_0
+#   define DIGITS_D_GPIO_Port GPIOB
+#   define DIGITS_E_Pin GPIO_PIN_1
+#   define DIGITS_E_GPIO_Port GPIOB
+#   define DIGITS_C_Pin GPIO_PIN_2
+#   define DIGITS_C_GPIO_Port GPIOB
+#   define DIGITS_G_Pin GPIO_PIN_10
+#   define DIGITS_G_GPIO_Port GPIOB
+#   define DIGITS_DP_Pin GPIO_PIN_12
+#   define DIGITS_DP_GPIO_Port GPIOB
+#   define DIGITS_F_Pin GPIO_PIN_13
+#   define DIGITS_F_GPIO_Port GPIOB
+#   define DIGITS_A_Pin GPIO_PIN_14
+#   define DIGITS_A_GPIO_Port GPIOB
+#   define DIGITS_B_Pin GPIO_PIN_15
+#   define DIGITS_B_GPIO_Port GPIOB
+#endif
 
 // General settings
 #define GENERAL_TIMEOUT_MS       ((uint32_t)100)

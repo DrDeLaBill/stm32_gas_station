@@ -142,7 +142,7 @@ uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 {
 	uint32_t days = date->Year * DAYS_PER_YEAR;
 	if (date->Year > 0) {
-		days += ((date->Year - 1) / LEAP_YEAR_PERIOD) + 1;
+		days += (uint32_t)((date->Year - 1) / LEAP_YEAR_PERIOD) + 1;
 	}
 	for (unsigned i = 0; i < (unsigned)(date->Month > 0 ? date->Month - 1 : 0); i++) {
 		days += _get_days_in_month(date->Year, i);
@@ -207,7 +207,7 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 			continue;
 		}
 
-		date->Date = days;
+		date->Date = (uint8_t)days;
 		break;
 	}
 }

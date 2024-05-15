@@ -33,6 +33,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "soul.h"
 #include "utils.h"
 #include "clock.h"
 #include "TM1637.h"
@@ -134,6 +135,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+#if IS_DEVICE_WITH_4PIN()
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -149,9 +151,27 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
+#else
+  DISPLAY_16PIN_GPIO_Init();
+
+  MX_RTC_Init();
+  MX_I2C1_Init();
+  MX_USART2_UART_Init();
+  MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_USART1_UART_Init();
+  MX_TIM4_Init();
+  MX_IWDG_Init();
+  MX_TIM5_Init();
+#endif
+
   set_status(WAIT_LOAD);
 
+#ifdef DEBUG
+  HAL_Delay(300);
+#else
   HAL_Delay(100);
+#endif
 
   gprint("\n\n\n");
   printTagLog(MAIN_TAG, "The device is loading");
@@ -187,11 +207,21 @@ int main(void)
 
 	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
+#ifdef DEBUG
+	static unsigned last_error = get_first_error();
+#endif
 	while (1)
 	{
 		soulGuard.defend();
 
 		Pump::measure();
+
+#ifdef DEBUG
+		if (last_error != get_first_error()) {
+			printTagLog(MAIN_TAG, "New error: %u", last_error);
+			last_error = get_first_error();
+		}
+#endif
 
 		if (has_errors()) {
 			continue;
@@ -340,7 +370,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if(htim->Instance == INDICATORS_TIM.Instance) {
     	tm1637_proccess();
     } else if (htim->Instance == UI_TIM.Instance) {
+#if IS_DEVICE_WITH_KEYBOARD()
         keyboard4x3_proccess();
+#endif
 
         Pump::tick();
 

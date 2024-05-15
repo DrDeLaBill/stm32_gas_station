@@ -16,7 +16,7 @@ extern "C" {
 #include "hal_defs.h"
 
 
-typedef enum _SOUK_STATUS {
+typedef enum _SOUL_STATUS {
 	/* Device statuses start */
 	STATUSES_START,
 
@@ -38,13 +38,13 @@ typedef enum _SOUK_STATUS {
 	/* Device errors start */
 	ERRORS_START,
 
-	SETTINGS_LOAD_ERROR,
 	INTERNAL_ERROR,
 	MEMORY_ERROR,
 	POWER_ERROR,
 	STACK_ERROR,
 	LOAD_ERROR,
 	RAM_ERROR,
+	SETTINGS_LOAD_ERROR,
 
 	/* Device errors end */
 	ERRORS_END,
@@ -64,6 +64,7 @@ bool has_errors();
 bool is_error(SOUL_STATUS error);
 void set_error(SOUL_STATUS error);
 void reset_error(SOUL_STATUS error);
+unsigned get_first_error();
 
 bool is_status(SOUL_STATUS status);
 void set_status(SOUL_STATUS status);

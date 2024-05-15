@@ -9,7 +9,6 @@
 #include "main.h"
 #include "settings.h"
 
-#include "UI.h"
 #include "SettingsDB.h"
 #include "CodeStopwatch.h"
 
@@ -37,23 +36,23 @@ void SettingsWatchdog::state_init::operator ()() const
 		printTagLog(TAG, "state_init: event_loaded");
 #endif
 		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_loaded{});
-		reset_error(SETTINGS_LOAD_ERROR);
-		settings_show();
-
-		set_status(SETTINGS_INITIALIZED);
-		reset_error(SETTINGS_LOAD_ERROR);
-		reset_status(WAIT_LOAD);
-
-		return;
+		if (!settings_check(&settings)) {
+			status = SETTINGS_ERROR;
+		}
 	}
 
-	settings_reset(&settings);
-	status = settingsDB.save();
-	if (status == SETTINGS_OK) {
+	if (status != SETTINGS_OK) {
+		settings_reset(&settings);
+		status = settingsDB.save();
+		if (status == SETTINGS_OK) {
 #if SETTINGS_WATCHDOG_BEDUG
-		printTagLog(TAG, "state_init: event_saved");
+			printTagLog(TAG, "state_init: event_saved");
 #endif
-		SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
+			SettingsWatchdog::fsm.push_event(SettingsWatchdog::event_saved{});
+		}
+	}
+
+	if (status == SETTINGS_OK) {
 		reset_error(SETTINGS_LOAD_ERROR);
 		settings_show();
 
@@ -61,11 +60,9 @@ void SettingsWatchdog::state_init::operator ()() const
 		reset_error(SETTINGS_LOAD_ERROR);
 		reset_status(NEED_SAVE_SETTINGS);
 		reset_status(WAIT_LOAD);
-
-		return;
+	} else {
+		set_error(SETTINGS_LOAD_ERROR);
 	}
-
-	set_error(SETTINGS_LOAD_ERROR);
 }
 
 void SettingsWatchdog::state_idle::operator ()() const
@@ -85,6 +82,7 @@ void SettingsWatchdog::state_idle::operator ()() const
 
 void SettingsWatchdog::state_save::operator ()() const
 {
+	set_status(WAIT_LOAD);
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
 	SettingsStatus status = settingsDB.save();
 	if (status == SETTINGS_OK) {
@@ -105,6 +103,7 @@ void SettingsWatchdog::state_save::operator ()() const
 
 void SettingsWatchdog::state_load::operator ()() const
 {
+	set_status(WAIT_LOAD);
 	SettingsDB settingsDB(reinterpret_cast<uint8_t*>(&settings), settings_size());
 	SettingsStatus status = settingsDB.load();
 	if (status == SETTINGS_OK) {
@@ -116,6 +115,7 @@ void SettingsWatchdog::state_load::operator ()() const
 		settings_show();
 
 		reset_error(SETTINGS_LOAD_ERROR);
+		reset_status(NEED_LOAD_SETTINGS);
 		reset_status(WAIT_LOAD);
 	}
 }
@@ -139,4 +139,5 @@ void SettingsWatchdog::action_reset::operator ()() const
 #endif
 	settings_reset(&settings);
 	set_settings_update_status(true);
+	set_status(NEED_SAVE_SETTINGS);
 }

@@ -123,9 +123,6 @@ RecordStatus RecordTmp::restore()
 
     Record record(0);
     memcpy(reinterpret_cast<uint8_t*>(&record.record), reinterpret_cast<uint8_t*>(&recordTmp), sizeof(recordTmp));
-#ifndef POWER_Pin
-    record.record.used_mls += TRIG_LEVEL_ML;
-#endif
 
 #if RECORD_TMP_BEDUG
 	printTagLog(TAG, "Adding %lu used milliliters for %lu card", record.record.used_mls, record.record.card);

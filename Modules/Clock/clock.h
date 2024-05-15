@@ -23,7 +23,7 @@ extern "C" {
 #define MONTHS_PER_YEAR    (12)
 #define DAYS_PER_YEAR      (365)
 #define DAYS_PER_LEAP_YEAR (366)
-#define LEAP_YEAR_PERIOD   (4)
+#define LEAP_YEAR_PERIOD   ((uint32_t)4)
 
 
 uint8_t  clock_get_year();

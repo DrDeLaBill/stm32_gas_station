@@ -39,7 +39,9 @@ extern "C" {
 void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+#if IS_DEVICE_WITH_16PIN()
+void DISPLAY_16PIN_GPIO_Init(void);
+#endif
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

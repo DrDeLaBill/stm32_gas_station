@@ -33,7 +33,8 @@ void STACK_WATCHDOG_FILL_RAM(void) {
 
 void StackWatchdog::check()
 {
-	utl::CodeStopwatch stopwatch("STCK", GENERAL_TIMEOUT_MS);
+	utl::CodeStopwatch stopwatch("STCK", WATCHDOG_TIMEOUT_MS);
+
 	extern unsigned _ebss;
 	unsigned *start, *end;
 	__asm__ volatile ("mov %[end], sp" : [end] "=r" (end) : : );
@@ -59,19 +60,23 @@ void StackWatchdog::check()
 	}
 
 	uint32_t freeRamBytes = last_counter * sizeof(STACK_CANARY_WORD);
-	if (!freeRamBytes) {
-		set_error(STACK_ERROR);
-	} else if (__abs_dif(lastFree, freeRamBytes)) {
+	if (freeRamBytes && __abs_dif(lastFree, freeRamBytes)) {
 		extern unsigned _sdata;
 		extern unsigned _estack;
 		printTagLog(TAG, "-----ATTENTION! INDIRECT DATA BEGIN:-----");
-		printTagLog(TAG, "RAM occupied MAX: %u bytes", (unsigned)__abs_dif((unsigned)&_sdata, (unsigned)&_estack) - freeRamBytes);
-		printTagLog(TAG, "RAM free  MIN:    %u bytes [0x%08X->0x%08X]", (unsigned)freeRamBytes, stack_end - freeRamBytes, stack_end);
+		printTagLog(TAG, "RAM occupied MAX: %u bytes", (unsigned)(__abs_dif((unsigned)&_sdata, (unsigned)&_estack) - freeRamBytes));
+		printTagLog(TAG, "RAM free  MIN:    %u bytes [0x%08X->0x%08X]", (unsigned)freeRamBytes, (unsigned)(stack_end - freeRamBytes), (unsigned)stack_end);
 		printTagLog(TAG, "------ATTENTION! INDIRECT DATA END-------");
 	}
 
 	if (freeRamBytes) {
 		lastFree = freeRamBytes;
+	}
+
+	if (freeRamBytes && lastFree && heap_end < stack_end) {
+		reset_error(STACK_ERROR);
+	} else {
+		set_error(STACK_ERROR);
 	}
 
 	BEDUG_ASSERT(

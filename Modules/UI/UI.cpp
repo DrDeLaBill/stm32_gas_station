@@ -215,16 +215,30 @@ void UI::_wait_count_s::operator ()()
     }
 
     if (Pump::hasStopped()) {
+#ifdef UI_BEDUG
+    	printTagLog(TAG, "Pump has been stopped");
+#endif
     	fsm.push_event(end_e{});
     	return;
     }
 
 	if (!timer.wait()) {
+#ifdef UI_BEDUG
+    	printTagLog(TAG, "Time is out. Stopping the pump.");
+#endif
 		fsm.push_event(end_e{});
 		return;
 	}
 
 	if (isCancel() || isStop()) {
+#ifdef UI_BEDUG
+		if (isCancel()) {
+			printTagLog(TAG, "Keyboard cansel has been pressed. Stopping the pump.");
+		}
+		if (isStop()) {
+			printTagLog(TAG, "Stop button has been pressed. Stopping the pump.");
+		}
+#endif
 		fsm.push_event(end_e{});
 		return;
 	}

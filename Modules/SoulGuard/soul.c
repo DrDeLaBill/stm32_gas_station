@@ -48,6 +48,16 @@ void reset_error(SOUL_STATUS error)
 	}
 }
 
+unsigned get_first_error()
+{
+	for (unsigned i = ERRORS_START + 1; i < ERRORS_END; i++) {
+		if (is_error((SOUL_STATUS)(i))) {
+			return i;
+		}
+	}
+	return 0;
+}
+
 bool is_status(SOUL_STATUS status)
 {
 	if (status > STATUSES_START && status < STATUSES_END) {

@@ -139,6 +139,7 @@ private:
 protected:
 	static constexpr uint32_t BASE_TIMEOUT_MS = 30000;
 	static constexpr uint32_t BLINK_DELAY_MS = 1000;
+	static constexpr char TAG[] = "UI";
 
 	static fsm::FiniteStateMachine<fsm_table> fsm;
 	static utl::Timer timer;
