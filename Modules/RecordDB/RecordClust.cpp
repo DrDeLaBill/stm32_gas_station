@@ -186,12 +186,12 @@ void RecordClust::show()
 	printPretty("################RECORD CLUST#################\n");
 	printPretty("Software v%02u\n", m_clust.version);
 	printPretty("Record size %u\n", m_clust.rcrd_size);
-    printPretty("INDEX   RCRDID    TIME     CARD     LITERS\n");
+    printPretty("INDEX   RCRDID    TIME      CARD     LITERS\n");
 	for (uint8_t i = 0; i < getCountByRecordSize(m_clust.rcrd_size); i++) {
 		if (!(*this)[i].id) {
 			break;
 		}
-	    printPretty("%03u     %09lu %08lu %08lu %08lu\n", i, (*this)[i].id, (*this)[i].time, (*this)[i].card, (*this)[i].used_mls);
+	    printPretty("%03u     %09lu %08lu %09lu %08lu\n", i, (*this)[i].id, (*this)[i].time, (*this)[i].card, (*this)[i].used_mls);
 	}
 	if (!getCountByRecordSize(m_clust.rcrd_size)) {
         printPretty("--------------------EMPTY--------------------\n");

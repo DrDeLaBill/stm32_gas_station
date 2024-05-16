@@ -48,7 +48,7 @@ ModbusManager::ModbusManager(UART_HandleTypeDef* huart)
 void ModbusManager::tick()
 {
 	if (errorFound && !errorTimer.wait()) {
-#if MB_MANAGER_BEDUG
+#if MB_PROTOCOL_BEDUG
         printTagLog(TAG, "Modbus error")
 #endif
 		modbus_slave_timeout();
@@ -57,7 +57,7 @@ void ModbusManager::tick()
 	}
 
     if (ModbusManager::requestInProgress && !timer.wait()) {
-#if MB_MANAGER_BEDUG
+#if MB_PROTOCOL_BEDUG
         printTagLog(TAG, "Modbus timeout")
 #endif
         modbus_slave_timeout();

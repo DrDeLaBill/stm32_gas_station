@@ -112,17 +112,17 @@ main()
         if (tmp_days > days_in_year) {
             tmp_days -= days_in_year
             year++
-			Diagnostics("year: %d, days_in_year: %d, tmp_days: %d", year, days_in_year, tmp_days)
+			// Diagnostics("year: %d, days_in_year: %d, tmp_days: %d", year, days_in_year, tmp_days)
         } else {
             days_in_month = get_days_in_month(year, month - 1);
             if (tmp_days > days_in_month) {
                 tmp_days -= days_in_month
                 month++
-				Diagnostics("month: %d, days_in_month: %d, tmp_days: %d", month, days_in_month, tmp_days)
+				// Diagnostics("month: %d, days_in_month: %d, tmp_days: %d", month, days_in_month, tmp_days)
             } else {
                 date = tmp_days
                 tmp_days = 0
-				Diagnostics("date: %d", date)
+				// Diagnostics("date: %d", date)
             }
         }
     }
