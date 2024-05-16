@@ -36,6 +36,9 @@ private:
     static std::unique_ptr<uint8_t[]> data;
     static utl::Timer timer;
 
+    static bool errorFound;
+    static utl::Timer errorTimer;
+
     static bool recievedNewData;
     static bool requestInProgress;
 
