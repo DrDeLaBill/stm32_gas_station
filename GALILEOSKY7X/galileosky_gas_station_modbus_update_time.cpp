@@ -38,28 +38,40 @@
 #define MODBUS_MESSAGE_DATA_SIZE         (2 * (MODBUS_REGISTER_SIZE + 2))
 /**********************************************/
 
+/******************** TIME ********************/
+#define SECONDS_PER_MINUTE (60)
+#define MINUTES_PER_HOUR   (60)
+#define HOURS_PER_DAY      (24)
+#define DAYS_PER_WEEK      (7)
+#define DAYS_PER_MONTH_MAX (31)
+#define MONTHS_PER_YEAR    (12)
+#define DAYS_PER_YEAR      (365)
+#define DAYS_PER_LEAP_YEAR (366)
+#define LEAP_YEAR_PERIOD   (4)
+/**********************************************/
+
 new request{MODBUS_MESSAGE_DATA_SIZE}      = { }
 new response_data_len                      = 0
 new registers_values[MODBUS_REGISTER_SIZE] = { 0 }
 
-#define JANUARY   1
-#define FEBRUARY  2
-#define MARCH     3
-#define APRIL     4
-#define MAY       5
-#define JUNE      6
-#define JULY      7
-#define AUGUST    8
-#define SEPTEMBER 9
-#define OCTOBER   10
-#define NOVEMBER  11
-#define DECEMBER  12
+#define JANUARY   0
+#define FEBRUARY  1
+#define MARCH     2
+#define APRIL     3
+#define MAY       4
+#define JUNE      5
+#define JULY      6
+#define AUGUST    7
+#define SEPTEMBER 8
+#define OCTOBER   9
+#define NOVEMBER  10
+#define DECEMBER  11
 
 main()
 {
-	SetVar(globTime, GetVar(TIME))
+    SetVar(globTime, GetVar(TIME))
     SetVar(globResult, SCRIPT_RESPONSE_SUCCESS)
-	SetVar(globTimeDelay, 10000)
+    SetVar(globTimeDelay, 10000)
     new cards_count = GetVar(globCardsCount)
     if (cards_count <= 0) {
         SetVar(globResult, SCRIPT_RESPONSE_ERROR_CNFG)
@@ -67,7 +79,7 @@ main()
     }
     
     new unix_time = GetVar(UNIX_TIME)
-    Diagnostics("############## CURRENT TIME: %d ##############", unix_time)
+    Diagnostics("############## CURRENT UNIX TIME: %d ##############", unix_time)
     
     new year = 0
     new month = 0
@@ -76,99 +88,107 @@ main()
     new minute = 0
     new second = 0
     
-    new tmp_time = unix_time
+    new seconds = unix_time - 946670400
     
-    second = tmp_time % 60
-    tmp_time /= 60
+    Diagnostics("############## CURRENT INTERNAL TIME: %d ##############", seconds)
     
-    minute = tmp_time % 60
-    tmp_time /= 60
-    
-    hour = tmp_time % 24
-    tmp_time /= 24
-    
-    year = 1970
+    second = seconds % SECONDS_PER_MINUTE
+    new tmp_minutes = seconds / SECONDS_PER_MINUTE
+
+    minute = tmp_minutes % MINUTES_PER_HOUR
+    new tmp_hours = tmp_minutes / MINUTES_PER_HOUR
+
+    hour = tmp_hours % HOURS_PER_DAY
+    new tmp_days = 1 + tmp_hours / HOURS_PER_DAY
+
     month = 1
-    while (tmp_time > 0)
-    {
-        new days_in_month = get_days_in_month(year, month)
-        if (days_in_month > tmp_time) {
-            date = tmp_time + 1
-            break;
+    new days_in_year = 0
+    new days_in_month = 0
+    while (tmp_days > 0) {
+        days_in_year = DAYS_PER_YEAR
+        if (year % LEAP_YEAR_PERIOD == 0) {
+            days_in_year = DAYS_PER_LEAP_YEAR
         }
-        if (month == 12) {
-            month = 0
+        if (tmp_days > days_in_year) {
+            tmp_days -= days_in_year
             year++
+			Diagnostics("year: %d, days_in_year: %d, tmp_days: %d", year, days_in_year, tmp_days)
+        } else {
+            days_in_month = get_days_in_month(year, month - 1);
+            if (tmp_days > days_in_month) {
+                tmp_days -= days_in_month
+                month++
+				Diagnostics("month: %d, days_in_month: %d, tmp_days: %d", month, days_in_month, tmp_days)
+            } else {
+                date = tmp_days
+                tmp_days = 0
+				Diagnostics("date: %d", date)
+            }
         }
-        month++
-        tmp_time -= days_in_month
     }
     year %= 100
     
-    Diagnostics("############## CURRENT TIME: %d-%d-%dT%d:%d:%d ##############", year, month, date, hour, minute, second)
+    Diagnostics("############## CURRENT TIME: 20%d-%d-%dT%d:%d:%d ##############", year, month, date, hour, minute, second)
     
-	// Set year
-	new val = 0x00000000;
+    // Set year
+    new val = 0x00000000;
     val += ((year & 0x000000FF) << 8)
     val += ((year & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
+    val = ((val) & 0xFFFF)
     new addr = MODBUS_REGISTER_CARDS_IDX + 5 * cards_count + 5
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
+    Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
     modbus_master_preset_single_register(1, addr, val)
     addr++
-	
-	// Set month
-	val = 0x00000000;
+    
+    // Set month
+    val = 0x00000000;
     val += ((month & 0x000000FF) << 8)
     val += ((month & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
+    val = ((val) & 0xFFFF)
+    Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
     modbus_master_preset_single_register(1, addr, val)
     addr++
-	
-	// Set date
-	val = 0x00000000;
+    
+    // Set date
+    val = 0x00000000;
     val += ((date & 0x000000FF) << 8)
     val += ((date & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
+    val = ((val) & 0xFFFF)
+    Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
     modbus_master_preset_single_register(1, addr, val)
     addr++
-	
-	// Set hour
-	val = 0x00000000;
+    
+    // Set hour
+    val = 0x00000000;
     val += ((hour & 0x000000FF) << 8)
     val += ((hour & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
+    val = ((val) & 0xFFFF)
+    Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
     modbus_master_preset_single_register(1, addr, val)
     addr++
-	
-	// Set minute
-	val = 0x00000000;
+    
+    // Set minute
+    val = 0x00000000;
     val += ((minute & 0x000000FF) << 8)
     val += ((minute & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
+    val = ((val) & 0xFFFF)
+    Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
     modbus_master_preset_single_register(1, addr, val)
     addr++
-	
-	// Set second
-	val = 0x00000000;
+    
+    // Set second
+    val = 0x00000000;
     val += ((second & 0x000000FF) << 8)
     val += ((second & 0x0000FF00) >> 8)
-	val = ((val) & 0xFFFF)
-	Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
+    val = ((val) & 0xFFFF)
+    Diagnostics("COMMAND: modbus write (%d) - %X", addr, val) 
     modbus_master_preset_single_register(1, addr, val)
-	
-	SetVar(globTimeDelay, 86400)
+    
+    SetVar(globTimeDelay, 86400)
 }
 
 get_days_in_month(year, month_num)
 {
-    if (year <= 2) {
-        return 0
-    }
     if (month_num == JANUARY) {
         return 31
     }

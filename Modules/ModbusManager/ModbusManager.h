@@ -14,8 +14,8 @@
 #include "Timer.h"
 
 
-#define MB_MANAGER_BEDUG  (false)
-#define MB_PROTOCOL_BEDUG (false)
+#define MB_MANAGER_BEDUG  (true)
+#define MB_PROTOCOL_BEDUG (true)
 
 
 class ModbusManager
@@ -35,6 +35,9 @@ private:
     static uint16_t data_length;
     static std::unique_ptr<uint8_t[]> data;
     static utl::Timer timer;
+
+    static bool errorFound;
+    static utl::Timer errorTimer;
 
     static bool recievedNewData;
     static bool requestInProgress;

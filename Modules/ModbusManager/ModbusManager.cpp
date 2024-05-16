@@ -27,6 +27,8 @@ std::unique_ptr<uint8_t[]> ModbusManager::data;
 bool ModbusManager::recievedNewData = false;
 bool ModbusManager::requestInProgress = false;
 utl::Timer ModbusManager::timer(GENERAL_TIMEOUT_MS);
+bool ModbusManager::errorFound = false;
+utl::Timer ModbusManager::errorTimer(5000);
 
 #if MB_PROTOCOL_BEDUG
 uint16_t ModbusManager::counter = 0;
@@ -45,6 +47,15 @@ ModbusManager::ModbusManager(UART_HandleTypeDef* huart)
 
 void ModbusManager::tick()
 {
+	if (errorFound && !errorTimer.wait()) {
+#if MB_MANAGER_BEDUG
+        printTagLog(TAG, "Modbus error")
+#endif
+		modbus_slave_timeout();
+		ModbusManager::reset();
+		return;
+	}
+
     if (ModbusManager::requestInProgress && !timer.wait()) {
 #if MB_MANAGER_BEDUG
         printTagLog(TAG, "Modbus timeout")
@@ -455,6 +466,8 @@ void ModbusManager::response_data_handler(uint8_t* data, uint32_t len)
         return;
     }
 
+	errorFound = false;
+
     ModbusManager::data = std::make_unique<uint8_t[]>(len);
     for (unsigned i = 0; i < len; i++) {
         ModbusManager::data[i] = data[i];
@@ -472,7 +485,10 @@ void ModbusManager::response_data_handler(uint8_t* data, uint32_t len)
 
 void ModbusManager::request_error_handler()
 {
-    // TODO: error
+	errorFound = true;
+	if (!errorFound) {
+		errorTimer.start();
+	}
 }
 
 void ModbusManager::send_data()
@@ -497,6 +513,8 @@ void ModbusManager::send_data()
 
 void ModbusManager::reset()
 {
+	errorFound = false;
+
     ModbusManager::data = NULL;
     ModbusManager::data_length = 0;
 //    memset(reinterpret_cast<void*>(&ModbusManager::timer), 0, sizeof(ModbusManager::timer));
