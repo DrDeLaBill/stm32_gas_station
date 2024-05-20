@@ -42,6 +42,8 @@ private:
     static bool recievedNewData;
     static bool requestInProgress;
 
+    unsigned lastHash;
+
 
     static void response_data_handler(uint8_t* data, uint32_t len);
     static void request_error_handler();

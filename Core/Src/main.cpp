@@ -67,6 +67,14 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
+#ifdef DEBUG
+#   ifndef IS_SAME_TIME
+#       define IS_SAME_TIME(TIME1, TIME2) (TIME1.Hours   == TIME2.Hours && \
+                                           TIME1.Minutes == TIME2.Minutes && \
+										   TIME1.Seconds == TIME2.Seconds)
+#   endif
+#endif
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -80,10 +88,7 @@ uint8_t modbus_uart_byte = 0;
 extern settings_t settings;
 
 StorageDriver storageDriver;
-StorageAT storage(
-	eeprom_get_size() / Page::PAGE_SIZE,
-	&storageDriver
-);
+StorageAT* storage;
 
 /* USER CODE END PV */
 
@@ -94,6 +99,10 @@ void SystemClock_Config(void);
 void save_new_log(uint32_t mlCount);
 
 void record_check();
+
+#ifdef DEBUG
+void test();
+#endif
 
 /* USER CODE END PFP */
 
@@ -135,7 +144,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-#if IS_DEVICE_WITH_4PIN()
+#ifdef __STANDART_GAS_STATION__
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -152,6 +161,24 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 #else
+
+
+#   if IS_DEVICE_WITH_4PIN()
+
+  MX_GPIO_Init();
+  MX_RTC_Init();
+  MX_I2C1_Init();
+  MX_USART2_UART_Init();
+  MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_USART1_UART_Init();
+  MX_TIM4_Init();
+#       ifndef DEBUG
+  MX_IWDG_Init();
+#       endif
+  MX_TIM5_Init();
+
+#   else
   DISPLAY_16PIN_GPIO_Init();
 
   MX_RTC_Init();
@@ -161,8 +188,12 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
+#       ifndef DEBUG
   MX_IWDG_Init();
+#       endif
   MX_TIM5_Init();
+#   endif
+
 #endif
 
   set_status(WAIT_LOAD);
@@ -171,6 +202,10 @@ int main(void)
   HAL_Delay(300);
 #else
   HAL_Delay(100);
+#endif
+
+#ifdef DEBUG
+  test();
 #endif
 
   gprint("\n\n\n");
@@ -195,9 +230,12 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	storage = new StorageAT(
+		eeprom_get_size() / Page::PAGE_SIZE,
+		&storageDriver
+	);
 
 	while (is_status(WAIT_LOAD)) soulGuard.defend();
-	set_status(NEED_UPDATE_MODBUS_REGS);
 
 	Record::showMax();
 
@@ -339,14 +377,14 @@ void save_new_log(uint32_t mlCount)
 
     RecordStatus status = record.save();
     if (status != RECORD_OK) {
-        printTagLog(MAIN_TAG, "save new log: error=%02x", status);
+        printTagLog(MAIN_TAG, "save new logerror=%02x", status);
     } else {
     	printTagLog(MAIN_TAG, "save new log: success");
     }
 
 	printTagLog(MAIN_TAG, "adding %lu used milliliters for %lu card", record.record.used_mls, record.record.card);
     settings_add_used_liters(record.record.used_mls, record.record.card);
-    set_settings_update_status(true);
+    set_status(NEED_SAVE_SETTINGS);
 
     reset_status(WAIT_LOAD);
 }
@@ -385,6 +423,129 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 }
 
+#ifdef DEBUG
+void test()
+{
+	static const char TEST_TAG[] = "TEST";
+	gprint("\n\n\n");
+	printTagLog(TEST_TAG, "Testing in progress...");
+
+	RTC_DateTypeDef readDate  ={};
+	RTC_TimeTypeDef readTime = {};
+
+	printPretty("Get date test: ");
+	if (!clock_get_rtc_date(&readDate)) {
+		printPretty("error\n");
+		Error_Handler();
+	}
+	printPretty("OK\n");
+
+	printPretty("Get time test: ");
+	if (!clock_get_rtc_time(&readTime)) {
+		printPretty("error\n");
+		Error_Handler();
+	}
+	printPretty("OK\n");
+
+
+	printPretty("Save date test: ");
+	if (!clock_save_date(&readDate)) {
+		printPretty("error\n");
+		Error_Handler();
+	}
+	printPretty("OK\n");
+
+	printPretty("Save time test: ");
+	if (!clock_save_time(&readTime)) {
+		printPretty("error\n");
+		Error_Handler();
+	}
+	printPretty("OK\n");
+
+
+	RTC_DateTypeDef checkDate  ={};
+	RTC_TimeTypeDef checkTime = {};
+	printPretty("Check date test: ");
+	if (!clock_get_rtc_date(&checkDate)) {
+		printPretty("error\n");
+		Error_Handler();
+	}
+	if (memcmp((void*)&readDate, (void*)&checkDate, sizeof(readDate))) {
+		printPretty("error\n");
+		Error_Handler();
+	}
+	printPretty("OK\n");
+
+	printPretty("Check time test: ");
+	if (!clock_get_rtc_time(&checkTime)) {
+		printPretty("error\n");
+		Error_Handler();
+	}
+	if (!IS_SAME_TIME(readTime, checkTime)) {
+		printPretty("error\n");
+		Error_Handler();
+	}
+	printPretty("OK\n");
+
+
+	printPretty("Weekday test:\n");
+	const RTC_DateTypeDef dates[] = {
+		{RTC_WEEKDAY_SATURDAY,  04, 27, 24},
+		{RTC_WEEKDAY_SUNDAY,    04, 28, 24},
+		{RTC_WEEKDAY_MONDAY,    04, 29, 24},
+		{RTC_WEEKDAY_TUESDAY,   04, 30, 24},
+		{RTC_WEEKDAY_WEDNESDAY, 05, 01, 24},
+		{RTC_WEEKDAY_THURSDAY,  05, 02, 24},
+		{RTC_WEEKDAY_FRIDAY,    05, 03, 24},
+	};
+	const RTC_TimeTypeDef times[] = {
+		{03, 24, 49,},
+		{04, 14, 24,},
+		{03, 27, 01,},
+		{23, 01, 40,},
+		{03, 01, 40,},
+		{04, 26, 12,},
+		{03, 52, 35,},
+	};
+	const uint32_t seconds[] = {
+		767503489,
+		767592864,
+		767676421,
+		767833300,
+		767847700,
+		767939172,
+		768023555,
+	};
+
+	for (unsigned i = 0; i < __arr_len(seconds); i++) {
+		printPretty("[%02u]: ", i);
+
+		RTC_DateTypeDef tmpDate = {};
+		RTC_TimeTypeDef tmpTime = {};
+		clock_seconds_to_datetime(seconds[i], &tmpDate, &tmpTime);
+		if (memcmp((void*)&tmpDate, (void*)&dates[i], sizeof(tmpDate))) {
+			printPretty("error\n");
+			Error_Handler();
+		}
+		if (!IS_SAME_TIME(tmpTime, times[i])) {
+			printPretty("error\n");
+			Error_Handler();
+		}
+
+		uint32_t tmpSeconds = clock_datetime_to_seconds(&dates[i], &times[i]);
+		if (tmpSeconds != seconds[i]) {
+			printPretty("error\n");
+			Error_Handler();
+		}
+
+		printPretty("OK\n");
+	}
+
+
+	printTagLog(TEST_TAG, "Testing done");
+}
+#endif
+
 int _write(int, uint8_t *ptr, int len) {
 	(void)ptr;
 	(void)len;
@@ -409,12 +570,17 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
-	set_error(INTERNAL_ERROR);
-#ifdef DEBUG
-	while (1);
-#else
-	NVIC_SystemReset();
-#endif
+	set_error(ERROR_HANDLER_CALLED);
+	while (1)
+	{
+		Pump::stop();
+
+        Pump::tick();
+
+        UI::proccess();
+
+        indicate_proccess();
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -430,12 +596,17 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
 	b_assert((char*)file, line, "Wrong parameters value");
-	set_error(INTERNAL_ERROR);
-#ifdef DEBUG
-	while (1);
-#else
-	NVIC_SystemReset();
-#endif
+	set_error(ASSERT_ERROR);
+	while (1)
+	{
+		Pump::stop();
+
+        Pump::tick();
+
+        UI::proccess();
+
+        indicate_proccess();
+	}
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

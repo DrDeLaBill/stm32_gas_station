@@ -92,7 +92,7 @@ uint8_t clock_get_second()
     return time.Seconds;
 }
 
-void clock_save_time(RTC_TimeTypeDef* time)
+bool clock_save_time(const RTC_TimeTypeDef* time)
 {
     HAL_StatusTypeDef status = HAL_ERROR;
     if (time->Seconds >= SECONDS_PER_MINUTE ||
@@ -103,29 +103,31 @@ void clock_save_time(RTC_TimeTypeDef* time)
     } else {
         status = HAL_RTC_SetTime(&hrtc, time, RTC_FORMAT_BIN);
     }
-    if (status != HAL_OK)
-    {
-		BEDUG_ASSERT(false, "Unable to set current time");
-    }
+	BEDUG_ASSERT(status == HAL_OK, "Unable to set current time");
+    return status == HAL_OK;
 }
 
-void clock_save_date(RTC_DateTypeDef* date)
+bool clock_save_date(const RTC_DateTypeDef* date)
 {
     HAL_StatusTypeDef status = HAL_ERROR;
     if (date->Date > DAYS_PER_MONTH_MAX || date->Month > MONTHS_PER_YEAR) {
-        return;
+        return false;
     } else {
     	/* calculating weekday begin */
-    	RTC_TimeTypeDef time = {0};
-    	uint32_t seconds = clock_datetime_to_seconds(date, &time);
-    	clock_seconds_to_datetime(seconds, date, &time);
+    	RTC_TimeTypeDef tmpTime = {0};
+    	RTC_DateTypeDef tmpDate = {0};
+    	memcpy((void*)&tmpDate, (void*)date, sizeof(tmpDate));
+    	uint32_t seconds = clock_datetime_to_seconds(&tmpDate, &tmpTime);
+    	clock_seconds_to_datetime(seconds, &tmpDate, &tmpTime);
+        if (!tmpDate.WeekDay) {
+        	BEDUG_ASSERT(false, "Error calculating clock weekday");
+        	tmpDate.WeekDay = RTC_WEEKDAY_MONDAY;
+        }
     	/* calculating weekday end */
-        status = HAL_RTC_SetDate(&hrtc, date, RTC_FORMAT_BIN);
+        status = HAL_RTC_SetDate(&hrtc, &tmpDate, RTC_FORMAT_BIN);
     }
-    if (status != HAL_OK)
-    {
-		BEDUG_ASSERT(false, "Unable to set current date");
-    }
+	BEDUG_ASSERT(status == HAL_OK, "Unable to set current date");
+    return status == HAL_OK;
 }
 
 bool clock_get_rtc_time(RTC_TimeTypeDef* time)
@@ -138,7 +140,8 @@ bool clock_get_rtc_date(RTC_DateTypeDef* date)
 	return HAL_OK == HAL_RTC_GetDate(&hrtc, date, RTC_FORMAT_BIN);
 }
 
-uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
+
+uint32_t clock_datetime_to_seconds(const RTC_DateTypeDef* date, const RTC_TimeTypeDef* time)
 {
 	uint32_t days = date->Year * DAYS_PER_YEAR;
 	if (date->Year > 0) {
@@ -173,7 +176,7 @@ uint32_t clock_get_timestamp()
 	return clock_datetime_to_seconds(&date, &time);
 }
 
-void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
+void clock_seconds_to_datetime(const uint32_t seconds, RTC_DateTypeDef* date, RTC_TimeTypeDef* time)
 {
 	memset(date, 0, sizeof(RTC_DateTypeDef));
 	memset(time, 0, sizeof(RTC_TimeTypeDef));
@@ -187,10 +190,7 @@ void clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_Time
 	time->Hours = (uint8_t)(hours % HOURS_PER_DAY);
 	uint32_t days = 1 + hours / HOURS_PER_DAY;
 
-	date->WeekDay = (RTC_WEEKDAY_THURSDAY + days) % (DAYS_PER_WEEK);
-	if (!date->WeekDay) {
-		date->WeekDay = RTC_WEEKDAY_MONDAY;
-	}
+	date->WeekDay = (uint8_t)((RTC_WEEKDAY_THURSDAY + days) % (DAYS_PER_WEEK)) + 1;
 	date->Month = 1;
 	while (days) {
 		uint16_t days_in_year = (date->Year % LEAP_YEAR_PERIOD > 0) ? DAYS_PER_YEAR : DAYS_PER_LEAP_YEAR;

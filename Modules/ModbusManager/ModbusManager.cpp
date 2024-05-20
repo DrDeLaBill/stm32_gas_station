@@ -36,7 +36,7 @@ uint8_t ModbusManager::request[20] = {};
 #endif
 
 
-ModbusManager::ModbusManager(UART_HandleTypeDef* huart)
+ModbusManager::ModbusManager(UART_HandleTypeDef* huart): lastHash(0)
 {
     modbus_slave_set_slave_id(ModbusManager::SLAVE_ID);
     modbus_slave_set_response_data_handler(&(ModbusManager::response_data_handler));
@@ -75,7 +75,13 @@ void ModbusManager::tick()
         return;
     }
 
-    if (is_status(NEED_UPDATE_MODBUS_REGS)) {
+    if (is_status(WAIT_LOAD)) {
+    	return;
+    }
+
+    unsigned settingsHash = util_hash((uint8_t*)&settings, sizeof(settings));
+    if (settingsHash != lastHash) {
+    	lastHash = settingsHash;
         this->updateData();
     } else if (ModbusManager::recievedNewData) {
         this->loadData();
@@ -202,7 +208,7 @@ void ModbusManager::loadData()
 
     if (memcmp(&tmpSettings, settings_get(), sizeof(tmpSettings))) {
     	settings_set(&tmpSettings);
-        set_settings_update_status(true);
+    	set_status(NEED_SAVE_SETTINGS);
     }
 
     RTC_DateTypeDef date = {};
@@ -271,8 +277,6 @@ void ModbusManager::loadData()
 
 void ModbusManager::updateData()
 {
-	reset_status(NEED_UPDATE_MODBUS_REGS);
-
     ModbusManager::showLogLine();    printTagLog(TAG, "UPDATE TO MODBUS TABLE");
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    printTagLog(TAG, "Save cf_id");

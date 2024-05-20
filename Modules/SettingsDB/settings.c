@@ -13,7 +13,13 @@
 #include "hal_defs.h"
 
 
+#define IS_LIMIT_TYPE(TYPE) ((TYPE) == LIMIT_DAY || (TYPE) == LIMIT_MONTH)
+
+
+#ifdef DEBUG
 static const char SETTINGS_TAG[] = "STNG";
+#endif
+
 
 settings_t settings = { 0 };
 
@@ -26,6 +32,9 @@ settings_t* settings_get()
 void settings_set(settings_t* other)
 {
 	memcpy((uint8_t*)&settings, (uint8_t*)other, sizeof(settings));
+	if (!settings_check(&settings)) {
+		settings_repair(&settings);
+	}
 }
 
 void settings_reset(settings_t* other)
@@ -48,7 +57,6 @@ void settings_reset(settings_t* other)
     other->last_day   = (uint8_t)clock_get_date();
     other->last_month = (uint8_t)clock_get_month();
 
-	set_status(NEED_UPDATE_MODBUS_REGS);
 	set_status(NEED_SAVE_SETTINGS);
 }
 
@@ -71,11 +79,74 @@ bool settings_check(settings_t* other)
 		if (*type == LIMIT_DAY || *type == LIMIT_MONTH) {
 			continue;
 		}
-		*type = LIMIT_DAY;
-		set_settings_update_status(true);
+		return false;
 	}
 
 	return true;
+}
+
+void settings_repair(settings_t* other)
+{
+	set_status(NEED_SAVE_SETTINGS);
+
+	if (other->fw_id != FW_VERSION) {
+		other->fw_id = FW_VERSION;
+		return;
+	}
+
+	for (unsigned i = 0; i < __arr_len(other->limit_type); i++) {
+		LimitType *type = &(other->limit_type[i]);
+		if (IS_LIMIT_TYPE(*type)) {
+			continue;
+		}
+		*type = LIMIT_DAY;
+	}
+
+	if (other->sw_id == SW_VERSION) {
+		return;
+	}
+
+	if (other->sw_id == 0x01) {
+		settings_reset(&settings);
+
+		other->sw_id = 0x02;
+	}
+
+	if (other->sw_id == 0x02) {
+		settings_v2_t settings_v2 = {0};
+		memcpy((void*)&settings_v2, (void*)other, sizeof(settings_v2));
+		memset(other->cards, 0, sizeof(other->cards));
+		memset(other->limits, 0, sizeof(other->limits));
+		memset(other->limit_type, 0, sizeof(other->limit_type));
+		memset(other->used_liters, 0, sizeof(other->used_liters));
+		for (unsigned i = 0; i < __arr_len(settings_v2.cards); i++) {
+			other->cards[i] = settings_v2.cards[i];
+			other->limits[i] = settings_v2.limits[i];
+			other->limit_type[i] = settings_v2.limit_type[i];
+			other->used_liters[i] = settings_v2.used_liters[i];
+		}
+
+		other->sw_id = 0x03;
+	}
+
+	if (other->sw_id == 0x03) {
+		settings_v3_t settings_v3 = {0};
+		memcpy((void*)&settings_v3, (void*)other, sizeof(settings_v3));
+		memset(other->cards, 0, sizeof(other->cards));
+		memset(other->limits, 0, sizeof(other->limits));
+		memset(other->limit_type, 0, sizeof(other->limit_type));
+		memset(other->used_liters, 0, sizeof(other->used_liters));
+		for (unsigned i = 0; i < __arr_len(settings_v3.cards); i++) {
+			other->cards[i] = settings_v3.cards[i];
+			other->limits[i] = settings_v3.limits[i];
+			other->limit_type[i] = settings_v3.limit_type[i];
+			other->used_liters[i] = settings_v3.used_liters[i];
+		}
+	}
+
+	if (!settings_check(other)) {
+		settings_reset(other);
+	}
 }
 
 void settings_show()
@@ -140,21 +211,23 @@ void settings_check_residues()
 	if (settingsChanged) {
 		settings.last_day   = date;
 		settings.last_month = month;
-		set_settings_update_status(true);
+	    set_status(NEED_SAVE_SETTINGS);
 	}
 }
 
 void settings_set_cf_id(uint32_t cf_id)
 {
-    if (cf_id) {
+    if (settings.cf_id != cf_id) {
         settings.cf_id = cf_id;
+	    set_status(NEED_SAVE_SETTINGS);
     }
 }
 
 void settings_set_device_id(uint32_t device_id)
 {
-    if (device_id) {
+    if (settings.device_id != device_id) {
         settings.device_id = device_id;
+	    set_status(NEED_SAVE_SETTINGS);
     }
 }
 
@@ -168,6 +241,7 @@ void settings_set_cards(void* cards, uint16_t len)
     }
     if (cards) {
         memcpy(settings.cards, cards, __min(len, sizeof(settings.cards)));
+	    set_status(NEED_SAVE_SETTINGS);
     }
 }
 
@@ -181,6 +255,7 @@ void settings_set_limits(void* limits, uint16_t len)
     }
     if (limits) {
         memcpy(settings.limits, limits, __min(len, sizeof(settings.limits)));
+	    set_status(NEED_SAVE_SETTINGS);
     }
 }
 
@@ -190,6 +265,7 @@ void settings_set_log_id(uint32_t log_id)
 		return;
 	}
     settings.log_id = log_id;
+    set_status(NEED_SAVE_SETTINGS);
 }
 
 void settings_set_card(uint32_t card, uint16_t idx)
@@ -201,6 +277,7 @@ void settings_set_card(uint32_t card, uint16_t idx)
         return;
     }
     settings.cards[idx] = card;
+    set_status(NEED_SAVE_SETTINGS);
 }
 
 void settings_set_limit(uint32_t limit, uint16_t idx)
@@ -212,6 +289,7 @@ void settings_set_limit(uint32_t limit, uint16_t idx)
         return;
     }
     settings.limits[idx] = limit;
+    set_status(NEED_SAVE_SETTINGS);
 }
 
 void settings_set_limit_type(LimitType type, uint16_t idx)
@@ -222,13 +300,17 @@ void settings_set_limit_type(LimitType type, uint16_t idx)
 	if (settings.limit_type[idx] == type) {
 		return;
 	}
-	if (type == LIMIT_DAY || type == LIMIT_MONTH) {
+	if (IS_LIMIT_TYPE(type)) {
 		settings.limit_type[idx] = type;
+	    set_status(NEED_SAVE_SETTINGS);
 	}
 }
 
 void settings_add_used_liters(uint32_t used_litters, uint32_t card)
 {
+	if (!used_litters) {
+		return;
+	}
     uint16_t idx = 0;
     if (card == SETTINGS_MASTER_CARD) {
     	return;
@@ -237,6 +319,7 @@ void settings_add_used_liters(uint32_t used_litters, uint32_t card)
     	return;
     }
     settings.used_liters[idx] += used_litters;
+    set_status(NEED_SAVE_SETTINGS);
 }
 
 void settings_clear_limit(uint32_t idx)
@@ -244,21 +327,9 @@ void settings_clear_limit(uint32_t idx)
 	if (idx >= __arr_len(settings.used_liters)) {
 		return;
 	}
+	if (!settings.used_liters[idx]) {
+		return;
+	}
 	settings.used_liters[idx] = 0;
-}
-
-void set_settings_save_status(bool state)
-{
-	if (state) {
-		reset_status(NEED_SAVE_SETTINGS);
-	}
-	set_status(NEED_LOAD_SETTINGS);
-}
-
-void set_settings_update_status(bool state)
-{
-	if (state) {
-		reset_status(NEED_LOAD_SETTINGS);
-	}
-	set_status(NEED_SAVE_SETTINGS);
+    set_status(NEED_SAVE_SETTINGS);
 }
