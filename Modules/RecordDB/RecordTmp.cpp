@@ -76,7 +76,7 @@ RecordStatus RecordTmp::findAddress()
 
     if (storageStatus != STORAGE_OK) {
 #if RECORD_TMP_BEDUG
-        printTagLog(TAG, "There is no empty address in the memory, try to search a MIN record cluster address");
+        printTagLog(TAG, "There is no empty address in the memory, try to search a MIN temporary record cluster address");
 #endif
         storageStatus = storage->find(FIND_MODE_MIN, &lastAddress, RecordClust::PREFIX);
     }
@@ -131,19 +131,19 @@ RecordStatus RecordTmp::restore()
     settings_add_used_liters(record.record.used_mls, record.record.card);
 
 #if RECORD_TMP_BEDUG
-	printTagLog(TAG, "Record is saving");
+	printTagLog(TAG, "Temporary record is saving");
 #endif
 
 	RecordStatus recordStatus = record.save(recordTmp.time);
     if (recordStatus != RECORD_OK) {
 #if RECORD_TMP_BEDUG
-        printTagLog(TAG, "Unable to save record, error=%u", recordStatus);
+        printTagLog(TAG, "Unable to save temporary record, error=%u", recordStatus);
 #endif
         return recordStatus;
     }
 
 #if RECORD_TMP_BEDUG
-	printTagLog(TAG, "Record has been saved");
+	printTagLog(TAG, "Temporary record has been saved as unchangeable");
 #endif
 
 	lastAddress = 0;

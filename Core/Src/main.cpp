@@ -100,6 +100,8 @@ void save_new_log(uint32_t mlCount);
 
 void record_check();
 
+void system_error_handler();
+
 #ifdef DEBUG
 void test();
 #endif
@@ -224,8 +226,6 @@ int main(void)
   // Gas sensor encoder
   HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
 
-  // MODBUS slave initialization
-  HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -270,6 +270,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+		if (!(MODBUS_UART.Instance->CR1 & USART_CR1_RXNEIE)) {
+			// MODBUS uart initialization
+			HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
+		}
 
 		settings_check_residues();
 
@@ -394,6 +399,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     if (huart->Instance == MODBUS_UART.Instance) {
         mbManager.recieveByte(modbus_uart_byte);
         HAL_UART_Receive_IT(&MODBUS_UART, (uint8_t*)&modbus_uart_byte, 1);
+    } else {
+    	Error_Handler();
     }
 }
 
@@ -409,7 +416,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if(htim->Instance == INDICATORS_TIM.Instance) {
+#if IS_DEVICE_WITH_4PIN()
     	tm1637_proccess();
+#else
+        indicate_proccess();
+#endif
     } else if (htim->Instance == UI_TIM.Instance) {
 #if IS_DEVICE_WITH_KEYBOARD()
         keyboard4x3_proccess();
@@ -419,8 +430,30 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
         UI::proccess();
 
+#if IS_DEVICE_WITH_4PIN()
         indicate_proccess();
+#endif
     }
+}
+
+void system_error_handler()
+{
+	utl::Timer timer(30000);
+	timer.start();
+	while (1)
+	{
+		if (!timer.wait()) {
+			NVIC_SystemReset();
+		}
+
+		Pump::stop();
+
+        Pump::tick();
+
+        UI::proccess();
+
+        indicate_proccess();
+	}
 }
 
 #ifdef DEBUG
@@ -490,6 +523,8 @@ void test()
 
 	printPretty("Weekday test:\n");
 	const RTC_DateTypeDef dates[] = {
+		{RTC_WEEKDAY_SATURDAY,  01, 01, 00},
+		{RTC_WEEKDAY_SUNDAY,    01, 02, 00},
 		{RTC_WEEKDAY_SATURDAY,  04, 27, 24},
 		{RTC_WEEKDAY_SUNDAY,    04, 28, 24},
 		{RTC_WEEKDAY_MONDAY,    04, 29, 24},
@@ -499,15 +534,19 @@ void test()
 		{RTC_WEEKDAY_FRIDAY,    05, 03, 24},
 	};
 	const RTC_TimeTypeDef times[] = {
-		{03, 24, 49,},
-		{04, 14, 24,},
-		{03, 27, 01,},
-		{23, 01, 40,},
-		{03, 01, 40,},
-		{04, 26, 12,},
-		{03, 52, 35,},
+		{00, 00, 00, 0, 0, 0, 0, 0},
+		{00, 00, 00, 0, 0, 0, 0, 0},
+		{03, 24, 49, 0, 0, 0, 0, 0},
+		{04, 14, 24, 0, 0, 0, 0, 0},
+		{03, 27, 01, 0, 0, 0, 0, 0},
+		{23, 01, 40, 0, 0, 0, 0, 0},
+		{03, 01, 40, 0, 0, 0, 0, 0},
+		{04, 26, 12, 0, 0, 0, 0, 0},
+		{03, 52, 35, 0, 0, 0, 0, 0},
 	};
 	const uint32_t seconds[] = {
+		0,
+		86400,
 		767503489,
 		767592864,
 		767676421,
@@ -571,16 +610,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
 	set_error(ERROR_HANDLER_CALLED);
-	while (1)
-	{
-		Pump::stop();
-
-        Pump::tick();
-
-        UI::proccess();
-
-        indicate_proccess();
-	}
+	system_error_handler();
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -597,16 +627,7 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE BEGIN 6 */
 	b_assert((char*)file, line, "Wrong parameters value");
 	set_error(ASSERT_ERROR);
-	while (1)
-	{
-		Pump::stop();
-
-        Pump::tick();
-
-        UI::proccess();
-
-        indicate_proccess();
-	}
+	system_error_handler();
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

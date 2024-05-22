@@ -99,10 +99,11 @@ bool clock_save_time(const RTC_TimeTypeDef* time)
 		time->Minutes >= MINUTES_PER_HOUR ||
 		time->Hours   >= HOURS_PER_DAY
 	) {
-        return;
-    } else {
-        status = HAL_RTC_SetTime(&hrtc, time, RTC_FORMAT_BIN);
+        return false;
     }
+    RTC_TimeTypeDef tmpTime = {0};
+    memcpy((void*)&tmpTime, (void*)time, sizeof(tmpTime));
+	status = HAL_RTC_SetTime(&hrtc, &tmpTime, RTC_FORMAT_BIN);
 	BEDUG_ASSERT(status == HAL_OK, "Unable to set current time");
     return status == HAL_OK;
 }

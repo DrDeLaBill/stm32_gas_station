@@ -80,8 +80,9 @@ void ModbusManager::tick()
     }
 
     unsigned settingsHash = util_hash((uint8_t*)&settings, sizeof(settings));
-    if (settingsHash != lastHash) {
+    if (settingsHash != lastHash || is_status(RECORD_UPDATED)) {
     	lastHash = settingsHash;
+    	reset_status(RECORD_UPDATED);
         this->updateData();
     } else if (ModbusManager::recievedNewData) {
         this->loadData();
@@ -526,6 +527,8 @@ void ModbusManager::reset()
 //    ModbusManager::recievedNewData = false;
     ModbusManager::requestInProgress = false;
     ModbusManager::data.reset();
+
+    timer.start();
 
 #if MB_PROTOCOL_BEDUG
     ModbusManager::counter = 0;

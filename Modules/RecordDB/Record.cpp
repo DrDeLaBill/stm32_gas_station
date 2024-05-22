@@ -127,6 +127,7 @@ RecordStatus Record::save(uint32_t time)
     }
 #endif
 
+    set_status(RECORD_UPDATED);
 	reset_status(NEED_SAVE_FINAL_RECORD);
 	reset_status(WAIT_LOAD);
     return recordStatus;
