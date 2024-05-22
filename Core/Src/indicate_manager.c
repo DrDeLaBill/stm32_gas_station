@@ -533,7 +533,7 @@ void _indicate_fsm_error()
 	for (unsigned i = 0; i < strlen(line); i++) {
 		char number = line[i];
 		if (number >= '0' && number <= '9') {
-			memcpy(display_buffer[2 + i], digits_pins[number - '0'], sizeof(display_buffer[2 + i]));
+			memcpy(display_buffer[3 + i], digits_pins[number - '0'], sizeof(display_buffer[3 + i]));
 		}
 	}
 }

@@ -32,13 +32,13 @@ uint8_t  clock_get_date();
 uint8_t  clock_get_hour();
 uint8_t  clock_get_minute();
 uint8_t  clock_get_second();
-void     clock_save_time(RTC_TimeTypeDef* time);
-void     clock_save_date(RTC_DateTypeDef* date);
+bool     clock_save_time(const RTC_TimeTypeDef* time);
+bool     clock_save_date(const RTC_DateTypeDef* date);
 bool     clock_get_rtc_time(RTC_TimeTypeDef* time);
 bool     clock_get_rtc_date(RTC_DateTypeDef* date);
-uint32_t clock_datetime_to_seconds(RTC_DateTypeDef* date, RTC_TimeTypeDef* time);
+uint32_t clock_datetime_to_seconds(const RTC_DateTypeDef* date, const RTC_TimeTypeDef* time);
 uint32_t clock_get_timestamp();
-void     clock_seconds_to_datetime(uint32_t seconds, RTC_DateTypeDef* date, RTC_TimeTypeDef* time);
+void     clock_seconds_to_datetime(const uint32_t seconds, RTC_DateTypeDef* date, RTC_TimeTypeDef* time);
 
 
 #ifdef __cplusplus

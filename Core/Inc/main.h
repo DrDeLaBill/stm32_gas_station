@@ -56,12 +56,39 @@ extern "C" {
 #define DEVICE_MODE_16PIN_KEYBOARD (DEVICE_MODE_4PIN + 1)
 #define DEVICE_MODE_16PIN          (DEVICE_MODE_16PIN_KEYBOARD + 1)
 
-#define DEVICE_MODE                (DEVICE_MODE_16PIN_KEYBOARD)
+#if defined(MODE4PIN) && !defined(MODEKEYBOARD)
+#   warning "Selected 4-pin device mode without keyboard"
+#   define DEVICE_MODE                (DEVICE_MODE_4PIN)
+#elif defined(MODE4PIN) && defined(MODEKEYBOARD)
+#   warning "Selected 4-pin device mode with keyboard"
+#   define DEVICE_MODE                (DEVICE_MODE_4PIN_KEYBOARD)
+#elif defined(MODE16PIN) && !defined(MODEKEYBOARD)
+#   warning "Selected 16-pin device mode without keyboard"
+#   define DEVICE_MODE                (DEVICE_MODE_16PIN)
+#elif defined(MODE16PIN) && defined(MODEKEYBOARD)
+#   warning "Selected 16-pin device mode with keyboard"
+#   define DEVICE_MODE                (DEVICE_MODE_16PIN_KEYBOARD)
+#else
+#   warning "Selected default device mode"
+#   define DEVICE_MODE                (DEVICE_MODE_16PIN_KEYBOARD)
+#endif
 
-#define IS_DEVICE_WITH_4PIN()      (DEVICE_MODE == DEVICE_MODE_4PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_4PIN)
-#define IS_DEVICE_WITH_16PIN()     (DEVICE_MODE == DEVICE_MODE_16PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_16PIN)
-#define IS_DEVICE_WITH_KEYBOARD()  (DEVICE_MODE == DEVICE_MODE_4PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_16PIN_KEYBOARD)
+#ifndef IS_DEVICE_WITH_4PIN
+#   define IS_DEVICE_WITH_4PIN()      (DEVICE_MODE == DEVICE_MODE_4PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_4PIN)
+#endif
 
+#ifndef IS_DEVICE_WITH_16PIN
+#   define IS_DEVICE_WITH_16PIN()     (DEVICE_MODE == DEVICE_MODE_16PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_16PIN)
+#endif
+
+#ifndef IS_DEVICE_WITH_KEYBOARD
+#   define IS_DEVICE_WITH_KEYBOARD()  (DEVICE_MODE == DEVICE_MODE_4PIN_KEYBOARD || DEVICE_MODE == DEVICE_MODE_16PIN_KEYBOARD)
+#endif
+
+
+#if !(IS_DEVICE_WITH_4PIN() || IS_DEVICE_WITH_16PIN())
+#   error "unknown device mode"
+#endif
 
 /* USER CODE END EM */
 
