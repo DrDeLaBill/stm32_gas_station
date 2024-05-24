@@ -156,7 +156,7 @@ jobs:
         cd ./build
         rm -rf ../build/*
         cmake -G"Unix Makefiles" .. -DMODE16PIN=1
-        cmake --build . -DMODE16PIN
+        cmake --build .
     - name: Upload artifact
       uses: actions/upload-release-asset@v1
       env:
