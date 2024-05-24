@@ -166,3 +166,25 @@ jobs:
         asset_path: ./build/stm32_gas_station.bin
         asset_name: release_16pin.bin
         asset_content_type: application/octet-stream
+
+
+    - name: Upload GALILEOSKY script artifacts
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./GALILEOSKY7X/galileosky_gas_station.gss
+        asset_name: galileo_scripts.gss
+        asset_content_type: application/octet-stream
+        
+    - name: Upload GALILEOSKY script artifacts
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./GALILEOSKY7X/settings.gcm
+        asset_name: galileo_settings.gcm
+        asset_content_type: application/octet-stream
+      
