@@ -1,0 +1,168 @@
+name: Build binaries
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install packages
+      run: |
+        sudo apt install gcc-arm-none-eabi
+        git submodule init
+        git submodule update
+
+    - name: Set outputs
+      id: vars
+      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Create build direcrory
+      run: |
+        mkdir ./build
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        draft: false
+        prerelease: false
+        release_name: ${{ github.ref }}-${{ steps.vars.outputs.sha_short }}
+        tag_name: ${{ github.ref }}
+        body_path: CHANGELOG.md
+
+    - name: Build debug 4pin keyboard
+      run: |
+        cd ./build
+        rm -rf ../build/*
+        cmake -G"Unix Makefiles" .. -DDEBUG=1 -DMODE4PIN=1 -DMODEKEYBOARD=1
+        cmake --build .
+    - name: Upload artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: debug_4pin_keyboard.bin
+        asset_content_type: application/octet-stream
+
+    - name: Build debug 4pin
+      run: |
+        cd ./build
+        rm -rf ../build/*
+        cmake -G"Unix Makefiles" .. -DDEBUG=1 -DMODE4PIN=1
+        cmake --build .
+    - name: Upload artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: debug_4pin.bin
+        asset_content_type: application/octet-stream
+
+    - name: Build debug 16pin keyboard
+      run: |
+        cd ./build
+        rm -rf ../build/*
+        cmake -G"Unix Makefiles" .. -DDEBUG=1 -DMODE16PIN=1 -DMODEKEYBOARD=1
+        cmake --build .
+    - name: Upload artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: debug_16pin_keyboard.bin
+        asset_content_type: application/octet-stream
+
+    - name: Build debug 16pin
+      run: |
+        cd ./build
+        rm -rf ../build/*
+        cmake -G"Unix Makefiles" .. -DDEBUG=1 -DMODE16PIN=1
+        cmake --build .
+    - name: Upload artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: debug_16pin.bin
+        asset_content_type: application/octet-stream
+      
+
+    - name: Build release 4pin keyboard
+      run: |
+        cd ./build
+        rm -rf ../build/*
+        cmake -G"Unix Makefiles" .. -DMODE4PIN=1 -DMODEKEYBOARD=1
+        cmake --build .
+    - name: Upload artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: release_4pin_keyboard.bin
+        asset_content_type: application/octet-stream
+
+    - name: Build release 4pin
+      run: |
+        cd ./build
+        rm -rf ../build/*
+        cmake -G"Unix Makefiles" .. -DMODE4PIN=1
+        cmake --build .
+    - name: Upload artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: release_4pin.bin
+        asset_content_type: application/octet-stream
+
+    - name: Build release 16pin keyboard
+      run: |
+        cd ./build
+        rm -rf ../build/*
+        cmake -G"Unix Makefiles" .. -DMODE16PIN=1 -DMODEKEYBOARD=1
+        cmake --build .
+    - name: Upload artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: release_16pin_keyboard.bin
+        asset_content_type: application/octet-stream
+
+    - name: Build release 16pin
+      run: |
+        cd ./build
+        rm -rf ../build/*
+        cmake -G"Unix Makefiles" .. -DMODE16PIN=1
+        cmake --build . -DMODE16PIN
+    - name: Upload artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: release_16pin.bin
+        asset_content_type: application/octet-stream
