@@ -51,7 +51,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/stm32_gas_station.bin
-        asset_name: debug_4pin_keyboard-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.bin
+        asset_name: debug_4pin_keyboard-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.bin
         asset_content_type: application/octet-stream
 
     - name: Build debug 4pin
@@ -66,8 +66,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./build/stm32_gas_station-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.bin
-        asset_name: debug_4pin.bin
+        asset_path: ./build/stm32_gas_station.bin
+        asset_name: debug_4pin-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.bin
         asset_content_type: application/octet-stream
 
     - name: Build debug 16pin keyboard
@@ -83,7 +83,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/stm32_gas_station.bin
-        asset_name: debug_16pin_keyboard-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.bin
+        asset_name: debug_16pin_keyboard-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.bin
         asset_content_type: application/octet-stream
 
     - name: Build debug 16pin
@@ -99,7 +99,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/stm32_gas_station.bin
-        asset_name: debug_16pin-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.bin
+        asset_name: debug_16pin-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.bin
         asset_content_type: application/octet-stream
       
 
@@ -116,7 +116,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/stm32_gas_station.bin
-        asset_name: release_4pin_keyboard-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.bin
+        asset_name: release_4pin_keyboard-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.bin
         asset_content_type: application/octet-stream
 
     - name: Build release 4pin
@@ -132,7 +132,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/stm32_gas_station.bin
-        asset_name: release_4pin-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.bin
+        asset_name: release_4pin-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.bin
         asset_content_type: application/octet-stream
 
     - name: Build release 16pin keyboard
@@ -148,7 +148,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/stm32_gas_station.bin
-        asset_name: release_16pin_keyboard-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.bin
+        asset_name: release_16pin_keyboard-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.bin
         asset_content_type: application/octet-stream
 
     - name: Build release 16pin
@@ -164,7 +164,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./build/stm32_gas_station.bin
-        asset_name: release_16pin-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.bin
+        asset_name: release_16pin-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.bin
         asset_content_type: application/octet-stream
 
 
@@ -175,7 +175,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./GALILEOSKY7X/galileosky_gas_station.gss
-        asset_name: galileo_scripts-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.gss
+        asset_name: galileo_scripts-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.gss
         asset_content_type: application/octet-stream
         
     - name: Upload GALILEOSKY script artifacts
@@ -185,6 +185,6 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./GALILEOSKY7X/settings.gcm
-        asset_name: galileo_settings-${{ github.ref }}-${{ steps.vars.outputs.sha_short }}.gcm
+        asset_name: galileo_settings-${{ github.ref_name }}-${{ steps.vars.outputs.sha_short }}.gcm
         asset_content_type: application/octet-stream
       
