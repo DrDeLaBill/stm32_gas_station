@@ -18,7 +18,7 @@ public:
     static constexpr char PREFIX[] = "RDC";
 
     static constexpr unsigned META_SIZE    = sizeof(uint8_t) + sizeof(uint16_t);
-    static constexpr unsigned RECORDS_SIZE = Page::PAYLOAD_SIZE - META_SIZE;
+    static constexpr unsigned RECORDS_SIZE = STORAGE_PAGE_PAYLOAD_SIZE - META_SIZE;
     typedef struct __attribute__((packed)) _record_clust_t {
         // Software version
         uint8_t  version;

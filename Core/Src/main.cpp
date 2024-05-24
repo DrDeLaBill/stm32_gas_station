@@ -231,7 +231,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	storage = new StorageAT(
-		eeprom_get_size() / Page::PAGE_SIZE,
+		eeprom_get_size() / STORAGE_PAGE_SIZE,
 		&storageDriver
 	);
 

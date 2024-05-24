@@ -35,3 +35,12 @@
 Debug*
 Release*
 *language.settings.xml
+*Backup*
+build*
+.vscode*
+*.su
+*.obj
+*.mk
+*.map
+*.bin
+*.hex
