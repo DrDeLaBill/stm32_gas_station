@@ -389,7 +389,7 @@ uint32_t RecordClust::getCountByRecordSize(uint32_t recordSize)
         return 0;
     }
 
-    uint32_t payload_clust = Page::PAYLOAD_SIZE - RecordClust::META_SIZE;
+    uint32_t payload_clust = STORAGE_PAGE_PAYLOAD_SIZE - RecordClust::META_SIZE;
     return (recordSize > payload_clust) ? 1 : (payload_clust / recordSize);
 }
 
