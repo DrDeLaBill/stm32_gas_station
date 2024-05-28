@@ -91,7 +91,6 @@ void settings_repair(settings_t* other)
 
 	if (other->fw_id != FW_VERSION) {
 		other->fw_id = FW_VERSION;
-		return;
 	}
 
 	for (unsigned i = 0; i < __arr_len(other->limit_type); i++) {

@@ -1,3 +1,3 @@
-First release with different modes
+GALILEOSKY update
 
-- CI/CD added
+- GALILEOSKY clearing log buff removed

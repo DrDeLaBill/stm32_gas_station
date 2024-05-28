@@ -14,7 +14,7 @@
 #include "utils.h"
 
 
-#define PUMP_MD212_MLS_PER_TICK         ((int32_t)25)
+#define PUMP_MD212_MLSx10_PER_TICK      ((int32_t)25)
 #define PUMP_MD212_TRIGGER_VAL_MAX      ((int32_t)30000)
 #define PUMP_MD212_MLS_COUNT_MIN        ((uint32_t)10)
 #define PUMP_MD212_MEASURE_DELAY_MS     ((uint32_t)300)
@@ -211,7 +211,7 @@ int32_t PumpFSMBase::getCurrentTicks()
 
 int32_t PumpFSMBase::getCurrentEncoderMl()
 {
-    return (getEncoderTicks() * PUMP_MD212_MLS_PER_TICK) / 10;
+    return (getEncoderTicks() * PUMP_MD212_MLSx10_PER_TICK) / 10;
 }
 
 bool PumpFSMBase::isEnabled()
