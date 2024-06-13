@@ -49,7 +49,7 @@ if (DEBUG)
     set(OPTIMISATION Og)
     set(DEBUG "-g3")
 else()
-    set(OPTIMISATION O3)
+    set(OPTIMISATION O2)
     set(DEBUG "")
 endif()
 
