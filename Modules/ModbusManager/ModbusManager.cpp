@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "log.h"
+#include "glog.h"
 #include "soul.h"
 #include "main.h"
 #include "clock.h"

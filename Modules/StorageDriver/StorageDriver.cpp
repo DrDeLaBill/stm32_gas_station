@@ -2,7 +2,7 @@
 
 #include "StorageDriver.h"
 
-#include "log.h"
+#include "glog.h"
 #include "bmacro.h"
 #include "eeprom_at24cm01_storage.h"
 

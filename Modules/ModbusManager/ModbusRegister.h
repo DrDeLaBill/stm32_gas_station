@@ -10,8 +10,8 @@
 
 #include "ModbusTableService.h"
 
-#include "log.h"
-#include "utils.h"
+#include "glog.h"
+#include "gutils.h"
 #include "hal_defs.h"
 #include "modbus_rtu_base.h"
 

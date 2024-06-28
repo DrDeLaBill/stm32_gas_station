@@ -32,9 +32,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "log.h"
+#include "glog.h"
 #include "soul.h"
-#include "utils.h"
+#include "gutils.h"
 #include "clock.h"
 #include "TM1637.h"
 #include "wiegand.h"
@@ -102,9 +102,7 @@ void record_check();
 
 void system_error_handler();
 
-#ifdef DEBUG
-void test();
-#endif
+void rtc_test();
 
 /* USER CODE END PFP */
 
@@ -206,9 +204,7 @@ int main(void)
   HAL_Delay(100);
 #endif
 
-#ifdef DEBUG
-  test();
-#endif
+  rtc_test();
 
   gprint("\n\n\n");
   printTagLog(MAIN_TAG, "The device is loading");
@@ -456,8 +452,7 @@ void system_error_handler()
 	}
 }
 
-#ifdef DEBUG
-void test()
+void rtc_test()
 {
 	static const char TEST_TAG[] = "TEST";
 	gprint("\n\n\n");
@@ -583,7 +578,6 @@ void test()
 
 	printTagLog(TEST_TAG, "Testing done");
 }
-#endif
 
 int _write(int, uint8_t *ptr, int len) {
 	(void)ptr;

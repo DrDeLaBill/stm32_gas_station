@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #include "main.h"
-#include "utils.h"
+#include "gutils.h"
 #include "hal_defs.h"
 #include "modbus_rtu_slave.h"
 

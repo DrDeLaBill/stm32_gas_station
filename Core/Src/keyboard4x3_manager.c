@@ -6,9 +6,9 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "log.h"
+#include "glog.h"
 #include "main.h"
-#include "utils.h"
+#include "gutils.h"
 
 
 #define KEYBOARD4X3_DEBOUNCE_DELAY_MS ((uint32_t)50)

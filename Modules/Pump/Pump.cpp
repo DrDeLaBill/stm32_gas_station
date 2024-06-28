@@ -8,10 +8,10 @@
 
 #include "UI.h"
 
-#include "log.h"
+#include "glog.h"
 #include "main.h"
 #include "soul.h"
-#include "utils.h"
+#include "gutils.h"
 
 
 #define PUMP_MD212_MLSx10_PER_TICK      ((int32_t)25)
