@@ -69,12 +69,10 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 
-#ifdef DEBUG
-#   ifndef IS_SAME_TIME
-#       define IS_SAME_TIME(TIME1, TIME2) (TIME1.Hours   == TIME2.Hours && \
+#ifndef IS_SAME_TIME
+#   define IS_SAME_TIME(TIME1, TIME2) (TIME1.Hours   == TIME2.Hours && \
                                            TIME1.Minutes == TIME2.Minutes && \
 										   TIME1.Seconds == TIME2.Seconds)
-#   endif
 #endif
 
 /* USER CODE END PM */
