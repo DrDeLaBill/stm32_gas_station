@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "log.h"
+#include "glog.h"
 #include "soul.h"
 #include "main.h"
 #include "clock.h"
@@ -75,7 +75,7 @@ void ModbusManager::tick()
         return;
     }
 
-    if (is_status(WAIT_LOAD)) {
+    if (is_status(LOADING)) {
     	return;
     }
 

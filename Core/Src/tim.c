@@ -22,6 +22,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "main.h"
+#include "soul.h"
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim3;
@@ -85,6 +86,7 @@ void MX_TIM4_Init(void)
 
   /* USER CODE BEGIN TIM4_Init 1 */
 #if IS_DEVICE_WITH_4PIN()
+  if (!is_status(RCC_FAULT)) {
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 167;
@@ -108,6 +110,31 @@ void MX_TIM4_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM4_Init 2 */
+  } else {
+	  uint32_t presc = (HAL_RCC_GetHCLKFreq() / 500000) - 1;
+
+	  htim4.Instance = TIM4;
+	  htim4.Init.Prescaler = presc;
+	  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+	  htim4.Init.Period = 2;
+	  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+	  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+	  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+  }
 #else
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 2100;

@@ -8,7 +8,7 @@
 
 #include "stm32f4xx_hal.h"
 
-#include "utils.h"
+#include "gutils.h"
 
 
 #define WIEGAND_MAX_BITS_COUNT ((uint8_t)26)

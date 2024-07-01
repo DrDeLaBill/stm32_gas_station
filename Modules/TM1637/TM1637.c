@@ -1,7 +1,7 @@
 #include "TM1637.h"
 
-#include "log.h"
-#include "utils.h"
+#include "glog.h"
+#include "gutils.h"
 #include "bmacro.h"
 #include "hal_defs.h"
 

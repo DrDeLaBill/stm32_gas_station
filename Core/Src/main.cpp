@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "i2c.h"
 #include "iwdg.h"
 #include "rtc.h"
@@ -32,19 +33,20 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "log.h"
+#include "glog.h"
 #include "soul.h"
-#include "utils.h"
+#include "gutils.h"
 #include "clock.h"
 #include "TM1637.h"
+#include "system.h"
 #include "wiegand.h"
 #include "settings.h"
+#include "at24cm01.h"
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
-#include "eeprom_at24cm01_storage.h"
 
 #include "UI.h"
-#include "Pump.h"
+#include "pump.h"
 #include "Access.h"
 #include "Record.h"
 #include "SoulGuard.h"
@@ -102,9 +104,7 @@ void record_check();
 
 void system_error_handler();
 
-#ifdef DEBUG
-void test();
-#endif
+void rtc_test();
 
 /* USER CODE END PFP */
 
@@ -131,6 +131,7 @@ SoulGuard<
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	system_pre_load();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -139,18 +140,23 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  if (is_error(RCC_ERROR)) {
+	  system_clock_hsi_config();
+  } else {
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  }
+
 #ifdef __STANDART_GAS_STATION__
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_RTC_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
@@ -168,6 +174,7 @@ int main(void)
 #   if IS_DEVICE_WITH_4PIN()
 
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_RTC_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
@@ -183,6 +190,7 @@ int main(void)
 #   else
   DISPLAY_16PIN_GPIO_Init();
 
+  MX_DMA_Init();
   MX_RTC_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
@@ -198,33 +206,37 @@ int main(void)
 
 #endif
 
-  set_status(WAIT_LOAD);
+    set_status(LOADING);
 
 #ifdef DEBUG
-  HAL_Delay(300);
+    HAL_Delay(300);
 #else
-  HAL_Delay(100);
+    HAL_Delay(100);
 #endif
 
-#ifdef DEBUG
-  test();
-#endif
+    rtc_test();
 
-  gprint("\n\n\n");
-  printTagLog(MAIN_TAG, "The device is loading");
 
-  GPIO_PAIR clk{TM1637_CLK_GPIO_Port, TM1637_CLK_Pin};
-  GPIO_PAIR data{TM1637_DATA_GPIO_Port, TM1637_DATA_Pin};
-  tm1637_init(&clk, &data);
+	gprint("\n\n\n");
+	printTagLog(MAIN_TAG, "The device is loading");
 
-  // Indicators timer start
-  HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
+	SystemInfo();
 
-  // UI timer start
-  HAL_TIM_Base_Start_IT(&UI_TIM);
+	set_status(LOADING);
 
-  // Gas sensor encoder
-  HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
+	GPIO_PAIR clk{TM1637_CLK_GPIO_Port, TM1637_CLK_Pin};
+	GPIO_PAIR data{TM1637_DATA_GPIO_Port, TM1637_DATA_Pin};
+	tm1637_init(&clk, &data);
+
+	// Indicators timer start
+	HAL_TIM_Base_Start_IT(&INDICATORS_TIM);
+
+	// UI & pump timer start
+	pump_init();
+	HAL_TIM_Base_Start_IT(&UI_TIM);
+
+	// Gas sensor encoder
+	HAL_TIM_Encoder_Start(&MD212_TIM, TIM_CHANNEL_ALL);
 
   /* USER CODE END 2 */
 
@@ -235,7 +247,11 @@ int main(void)
 		&storageDriver
 	);
 
-	while (is_status(WAIT_LOAD)) soulGuard.defend();
+	while (is_status(LOADING)) {
+		soulGuard.defend();
+	}
+
+    system_post_load();
 
 	Record::showMax();
 
@@ -248,11 +264,10 @@ int main(void)
 #ifdef DEBUG
 	static unsigned last_error = get_first_error();
 #endif
+	set_status(WORKING);
 	while (1)
 	{
 		soulGuard.defend();
-
-		Pump::measure();
 
 #ifdef DEBUG
 		unsigned error = get_first_error();
@@ -341,6 +356,13 @@ void record_check()
 
 	uint32_t resultMl = UI::getResultMl();
 
+	if (UI::getCard() == SETTINGS_MASTER_CARD) {
+		reset_status(NEED_SAVE_FINAL_RECORD);
+		reset_status(NEED_INIT_RECORD_TMP);
+		reset_status(NEED_SAVE_RECORD_TMP);
+		return;
+	}
+
 	if (is_status(NEED_SAVE_FINAL_RECORD)) {
 		if (RecordTmp::remove() == RECORD_OK) {
 			save_new_log(resultMl);
@@ -369,7 +391,7 @@ void save_new_log(uint32_t mlCount)
         return;
     }
 
-    set_status(WAIT_LOAD);
+    set_status(LOADING);
 
     Record record(0);
 
@@ -378,7 +400,7 @@ void save_new_log(uint32_t mlCount)
     record.record.card     = UI::getCard();
 
     printTagLog(MAIN_TAG, "save new log: begin");
-    printTagLog(MAIN_TAG, "save new log: real mls=%lu", Pump::getCurrentMl());
+    printTagLog(MAIN_TAG, "save new log: real mls=%lu", pump_count_ml());
 
     RecordStatus status = record.save();
     if (status != RECORD_OK) {
@@ -391,7 +413,7 @@ void save_new_log(uint32_t mlCount)
     settings_add_used_liters(record.record.used_mls, record.record.card);
     set_status(NEED_SAVE_SETTINGS);
 
-    reset_status(WAIT_LOAD);
+    reset_status(LOADING);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -426,7 +448,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         keyboard4x3_proccess();
 #endif
 
-        Pump::tick();
+        pump_proccess();
 
         UI::proccess();
 
@@ -436,28 +458,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 }
 
-void system_error_handler()
-{
-	utl::Timer timer(30000);
-	timer.start();
-	while (1)
-	{
-		if (!timer.wait()) {
-			NVIC_SystemReset();
-		}
-
-		Pump::stop();
-
-        Pump::tick();
-
-        UI::proccess();
-
-        indicate_proccess();
-	}
-}
-
-#ifdef DEBUG
-void test()
+void rtc_test()
 {
 	static const char TEST_TAG[] = "TEST";
 	gprint("\n\n\n");
@@ -468,60 +469,60 @@ void test()
 
 	printPretty("Get date test: ");
 	if (!clock_get_rtc_date(&readDate)) {
-		printPretty("error\n");
+		gprint("\t\terror\n");
 		Error_Handler();
 	}
-	printPretty("OK\n");
+	gprint("\t\tOK\n");
 
 	printPretty("Get time test: ");
 	if (!clock_get_rtc_time(&readTime)) {
-		printPretty("error\n");
+		gprint("\t\terror\n");
 		Error_Handler();
 	}
-	printPretty("OK\n");
+	gprint("\t\tOK\n");
 
 
 	printPretty("Save date test: ");
 	if (!clock_save_date(&readDate)) {
-		printPretty("error\n");
+		gprint("\terror\n");
 		Error_Handler();
 	}
-	printPretty("OK\n");
+	gprint("\tOK\n");
 
 	printPretty("Save time test: ");
 	if (!clock_save_time(&readTime)) {
-		printPretty("error\n");
+		gprint("\terror\n");
 		Error_Handler();
 	}
-	printPretty("OK\n");
+	gprint("\tOK\n");
 
 
 	RTC_DateTypeDef checkDate  ={};
 	RTC_TimeTypeDef checkTime = {};
 	printPretty("Check date test: ");
 	if (!clock_get_rtc_date(&checkDate)) {
-		printPretty("error\n");
+		gprint("\terror\n");
 		Error_Handler();
 	}
 	if (memcmp((void*)&readDate, (void*)&checkDate, sizeof(readDate))) {
-		printPretty("error\n");
+		gprint("\terror\n");
 		Error_Handler();
 	}
-	printPretty("OK\n");
+	gprint("\tOK\n");
 
 	printPretty("Check time test: ");
 	if (!clock_get_rtc_time(&checkTime)) {
-		printPretty("error\n");
+		gprint("\terror\n");
 		Error_Handler();
 	}
 	if (!IS_SAME_TIME(readTime, checkTime)) {
-		printPretty("error\n");
+		gprint("\terror\n");
 		Error_Handler();
 	}
-	printPretty("OK\n");
+	gprint("\tOK\n");
 
 
-	printPretty("Weekday test:\n");
+	printPretty("Weekday test\n");
 	const RTC_DateTypeDef dates[] = {
 		{RTC_WEEKDAY_SATURDAY,  01, 01, 00},
 		{RTC_WEEKDAY_SUNDAY,    01, 02, 00},
@@ -563,27 +564,26 @@ void test()
 		RTC_TimeTypeDef tmpTime = {};
 		clock_seconds_to_datetime(seconds[i], &tmpDate, &tmpTime);
 		if (memcmp((void*)&tmpDate, (void*)&dates[i], sizeof(tmpDate))) {
-			printPretty("error\n");
+			gprint("\t\t\terror\n");
 			Error_Handler();
 		}
 		if (!IS_SAME_TIME(tmpTime, times[i])) {
-			printPretty("error\n");
+			gprint("\t\t\terror\n");
 			Error_Handler();
 		}
 
 		uint32_t tmpSeconds = clock_datetime_to_seconds(&dates[i], &times[i]);
 		if (tmpSeconds != seconds[i]) {
-			printPretty("error\n");
+			gprint("\t\t\terror\n");
 			Error_Handler();
 		}
 
-		printPretty("OK\n");
+		gprint("\t\t\tOK\n");
 	}
 
 
 	printTagLog(TEST_TAG, "Testing done");
 }
-#endif
 
 int _write(int, uint8_t *ptr, int len) {
 	(void)ptr;
@@ -609,8 +609,8 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
-	set_error(ERROR_HANDLER_CALLED);
-	system_error_handler();
+	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ERROR_HANDLER_CALLED;
+	system_error_handler(err);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -626,8 +626,8 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
 	b_assert((char*)file, line, "Wrong parameters value");
-	set_error(ASSERT_ERROR);
-	system_error_handler();
+	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ASSERT_ERROR;
+	system_error_handler(err);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

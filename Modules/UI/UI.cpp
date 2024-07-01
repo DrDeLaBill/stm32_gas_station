@@ -9,7 +9,7 @@
 #include "indicate_manager.h"
 #include "keyboard4x3_manager.h"
 
-#include "Pump.h"
+#include "pump.h"
 #include "Access.h"
 #include "defines.h"
 
@@ -26,6 +26,13 @@ uint8_t UI::resultBuffer[KEYBOARD4X3_BUFFER_SIZE] = {};
 uint32_t UI::targetMl = 0;
 uint32_t UI::resultMl = 0;
 
+
+void _ui_show_transition(const char* source, const char* event, const char* target)
+{
+#ifdef UI_BEDUG
+	printTagLog(UI::TAG, "%s %s event -> set %s page", source, event, target);
+#endif
+}
 
 void UI::proccess()
 {
@@ -49,12 +56,20 @@ bool UI::isPumpWorking()
 
 bool UI::isEnter()
 {
+#if IS_DEVICE_WITH_KEYBOARD()
     return keyboard4x3_is_enter();
+#else
+    return false;
+#endif
 }
 
 bool UI::isCancel()
 {
+#if IS_DEVICE_WITH_KEYBOARD()
     return keyboard4x3_is_cancel();
+#else
+    return false;
+#endif
 }
 
 bool UI::isStart()
@@ -69,6 +84,9 @@ bool UI::isStop()
 
 void UI::setReboot()
 {
+#ifdef UI_BEDUG
+	printTagLog(TAG, "Reboot event detected");
+#endif
 	fsm.push_event(reboot_e{});
 }
 
@@ -84,19 +102,23 @@ uint32_t UI::getResultMl()
 
 void UI::_init_s::operator ()()
 {
+	_ui_show_transition("init", "success", "load");
 	fsm.push_event(success_e{});
 }
 
 void UI::_load_s::operator ()()
 {
 	if (!timer.wait()) {
+		_ui_show_transition("load", "error", "error");
 		fsm.push_event(error_e{});
 		set_error(LOAD_ERROR);
 	}
-	if (!is_status(WAIT_LOAD)) {
+	if (!is_status(LOADING) && is_status(WORKING)) {
+		_ui_show_transition("load", "success", "idle");
 		fsm.push_event(success_e{});
 	}
 	if (has_errors()) {
+		_ui_show_transition("load", "error", "error");
 		fsm.push_event(error_e{});
 	}
 }
@@ -104,15 +126,19 @@ void UI::_load_s::operator ()()
 void UI::_idle_s::operator ()()
 {
 	if (Access::isDenied()) {
+		_ui_show_transition("idle", "denied", "denied");
 		fsm.push_event(denied_e{});
 	}
 	if (Access::isGranted()) {
+		_ui_show_transition("idle", "granted", "granted");
 		fsm.push_event(granted_e{});
 	}
-	if (is_status(WAIT_LOAD)) {
+	if (is_status(LOADING)) {
+		_ui_show_transition("idle", "load", "load");
 		fsm.push_event(load_e{});
 	}
 	if (has_errors()) {
+		_ui_show_transition("idle", "error", "error");
 		fsm.push_event(error_e{});
 	}
 
@@ -132,6 +158,7 @@ void UI::_idle_s::operator ()()
 void UI::_granted_s::operator ()()
 {
 	if (!timer.wait()) {
+		_ui_show_transition("granted", "timeout", "limit");
 		fsm.push_event(timeout_e{});
 	}
 }
@@ -139,6 +166,7 @@ void UI::_granted_s::operator ()()
 void UI::_denied_s::operator ()()
 {
 	if (!timer.wait()) {
+		_ui_show_transition("denied", "timeout", "idle");
 		fsm.push_event(timeout_e{});
 	}
 }
@@ -154,18 +182,22 @@ void UI::_limit_s::operator ()()
 	}
 
 	if (strlen(reinterpret_cast<char*>(keyboard4x3_get_buffer()))) {
+		_ui_show_transition("limit", "input", "input");
 		fsm.push_event(input_e{});
 	}
 
 	if (isStart()) {
+		_ui_show_transition("limit", "start", "check");
 		fsm.push_event(start_e{});
 	}
 
 	if (!timer.wait()) {
+		_ui_show_transition("limit", "timeout", "idle");
 		fsm.push_event(timeout_e{});
 	}
 
 	if (isCancel() || isStop()) {
+		_ui_show_transition("limit", "cancel", "idle");
 		fsm.push_event(cancel_e{});
 	}
 }
@@ -173,18 +205,22 @@ void UI::_limit_s::operator ()()
 void UI::_input_s::operator ()()
 {
 	if (isCancel() || isStop()) {
+		_ui_show_transition("input", "cancel", "idle");
 		fsm.push_event(cancel_e{});
 	}
 
 	if (!timer.wait()) {
+		_ui_show_transition("input", "timeout", "idle");
 		fsm.push_event(timeout_e{});
 	}
 
 	if (isEnter()) {
+		_ui_show_transition("input", "enter", "check");
 		fsm.push_event(enter_e{});
 	}
 
 	if (isStart()) {
+		_ui_show_transition("input", "start", "check");
 		fsm.push_event(start_e{});
 	}
 
@@ -209,15 +245,16 @@ void UI::_wait_count_s::operator ()()
     if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
         liters_multiplier /= util_small_pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
     }
-    uint32_t curr_count = Pump::getCurrentMl();
+    uint32_t curr_count = pump_count_ml();
     if (curr_count > targetMl) {
         curr_count = targetMl;
     }
 
-    if (Pump::hasStopped()) {
+    if (pump_stopped()) {
 #ifdef UI_BEDUG
-    	printTagLog(TAG, "Pump has been stopped");
+    	printTagLog(TAG, "pump has been stopped");
 #endif
+		_ui_show_transition("wait count", "end", "record");
     	fsm.push_event(end_e{});
     	return;
     }
@@ -226,6 +263,7 @@ void UI::_wait_count_s::operator ()()
 #ifdef UI_BEDUG
     	printTagLog(TAG, "Time is out. Stopping the pump.");
 #endif
+		_ui_show_transition("wait count", "end", "record");
 		fsm.push_event(end_e{});
 		return;
 	}
@@ -239,11 +277,13 @@ void UI::_wait_count_s::operator ()()
 			printTagLog(TAG, "Stop button has been pressed. Stopping the pump.");
 		}
 #endif
+		_ui_show_transition("wait count", "end", "record");
 		fsm.push_event(end_e{});
 		return;
 	}
 
     if (curr_count != resultMl) {
+		_ui_show_transition("wait count", "enter", "count");
     	fsm.push_event(enter_e{});
     	return;
     }
@@ -265,12 +305,13 @@ void UI::_wait_count_s::operator ()()
 void UI::_count_s::operator ()()
 {
     uint8_t buffer[KEYBOARD4X3_BUFFER_SIZE] = { 0 };
-    uint32_t curr_count = Pump::getCurrentMl();
+    uint32_t curr_count = pump_count_ml();
     if (curr_count > targetMl) {
         curr_count = targetMl;
     }
 
     if (curr_count == resultMl) {
+		_ui_show_transition("count", "end", "wait count");
     	fsm.push_event(end_e{});
         return;
     }
@@ -300,10 +341,12 @@ bool UI::_save_s::loading = false;
 void UI::_save_s::operator ()()
 {
 	if (!timer.wait()) {
+		_ui_show_transition("save", "timeout", "error");
 		fsm.push_event(timeout_e{});
 		return;
 	}
 	if (!is_status(NEED_SAVE_FINAL_RECORD) && !is_status(NEED_SAVE_SETTINGS)) {
+		_ui_show_transition("save", "success", "result");
 		fsm.push_event(success_e{});
 		return;
 	}
@@ -312,10 +355,12 @@ void UI::_save_s::operator ()()
 	}
 	if (Access::isGranted()) {
 		UI::setCard(Access::getCard());
+		_ui_show_transition("save", "granted", "save");
 		fsm.push_event(granted_e{});
 		return;
 	}
 	if (Access::isDenied()) {
+		_ui_show_transition("save", "denied", "save");
 		fsm.push_event(denied_e{});
 		return;
 	}
@@ -324,26 +369,31 @@ void UI::_save_s::operator ()()
 void UI::_result_s::operator ()()
 {
 	if (has_errors()) {
+		_ui_show_transition("result", "error", "-----");
 		fsm.push_event(error_e{});
 		return;
 	}
 
 	if (!timer.wait()) {
+		_ui_show_transition("result", "end", "load");
 		fsm.push_event(end_e{});
 		return;
 	}
 
 	if (isCancel() || isStop()) {
+		_ui_show_transition("result", "end", "load");
 		fsm.push_event(end_e{});
 		return;
 	}
 
     if (Access::isGranted()) {
+		_ui_show_transition("result", "granted", "granted");
     	fsm.push_event(granted_e{});
 		return;
     }
 
     if (Access::isDenied()) {
+		_ui_show_transition("result", "denied", "denied");
     	fsm.push_event(denied_e{});
 		return;
     }
@@ -352,14 +402,16 @@ void UI::_result_s::operator ()()
 void UI::_reboot_s::operator ()()
 {
 	if (!timer.wait()) {
+		_ui_show_transition("reboot", "timeout", "idle");
 		fsm.push_event(timeout_e{});
 	}
 }
 
 void UI::_error_s::operator ()()
 {
-    Pump::stop();
+    pump_stop();
 	if (!has_errors()) {
+		_ui_show_transition("error", "solved", "load");
 		fsm.push_event(solved_e{});
 	}
 }
@@ -374,16 +426,20 @@ void UI::load_ui_a::operator ()()
 
 void UI::idle_ui_a::operator ()()
 {
+	fsm.clear_events();
+
 	timer.changeDelay(_idle_s::TIMEOUT_MS);
 	timer.start();
 
     indicate_set_wait_page();
 
+#if IS_DEVICE_WITH_KEYBOARD()
     keyboard4x3_disable_light();
     keyboard4x3_clear();
+#endif
 
     Access::close();
-    Pump::clear();
+    // TODO: Pump::clear();
 }
 
 void UI::granted_ui_a::operator ()()
@@ -445,8 +501,10 @@ void UI::limit_ui_a::operator ()()
 
 	_limit_s::limitPage = true;
 
+#if IS_DEVICE_WITH_KEYBOARD()
 	keyboard4x3_enable_light();
     keyboard4x3_clear();
+#endif
 
 	indicate_set_limit_page();
 	indicate_set_buffer(limitBuffer, KEYBOARD4X3_BUFFER_SIZE);
@@ -464,14 +522,16 @@ void UI::reset_input_ui_a::operator ()()
 
 	memset(currentBuffer, 0 ,sizeof(currentBuffer));
 
+#if IS_DEVICE_WITH_KEYBOARD()
 	keyboard4x3_clear_enter();
+#endif
 
 	indicate_set_buffer_page();
 	indicate_clear_buffer();
 
 	targetMl = 0;
 	resultMl = 0;
-	Pump::clear();
+    // TODO: Pump::clear();
 }
 
 void UI::check_a::operator ()()
@@ -495,20 +555,25 @@ void UI::check_a::operator ()()
     	used_liters = 0;
     	limit = SETTINGS_MASTER_LIMIT;
     } else {
+    	_ui_show_transition("check", "limit max", "limit");
     	fsm.push_event(limit_max_e{});
     }
 
     if (targetMl + used_liters > limit) {
+    	_ui_show_transition("check", "limit max", "limit");
 		fsm.push_event(limit_max_e{});
 	} else if (targetMl < GENERAL_SESSION_ML_MIN) {
+    	_ui_show_transition("check", "limit min", "input");
 		fsm.push_event(limit_min_e{});
 	} else {
+    	_ui_show_transition("check", "success", "wait count");
 		fsm.push_event(success_e{});
 
 	    indicate_set_buffer_page();
 
-	    Pump::clear();
-	    Pump::setTargetMl(targetMl);
+	    // TODO: Pump::clear();
+		pump_start();
+	    set_pump_target(targetMl);
 
 	    set_status(NEED_INIT_RECORD_TMP);
 	}
@@ -520,11 +585,13 @@ void UI::start_a::operator ()()
 
     uint16_t idx = 0;
     if (settings_get_card_idx(UI::getCard(), &idx) != SETTINGS_OK) {
+    	_ui_show_transition(" action start", "limit max", "limit");
     	fsm.push_event(limit_max_e{});
     	return;
     }
 
     if (settings.used_liters[idx] >= settings.limits[idx]) {
+    	_ui_show_transition(" action start", "limit max", "limit");
     	fsm.push_event(limit_max_e{});
     	return;
     }
@@ -535,12 +602,14 @@ void UI::start_a::operator ()()
     	targetMl = settings.limits[idx] - settings.used_liters[idx];
     }
 
+	_ui_show_transition("action start", "success", "wait count");
 	fsm.push_event(success_e{});
 
 	indicate_set_buffer_page();
 
-	Pump::clear();
-	Pump::setTargetMl(targetMl);
+    // TODO: Pump::clear();
+	pump_start();
+	set_pump_target(targetMl);
 
 	set_status(NEED_INIT_RECORD_TMP);
 }
@@ -561,6 +630,8 @@ void UI::count_a::operator ()()
 void UI::record_ui_a::operator ()()
 {
 	fsm.clear_events();
+
+	_ui_show_transition("record", "success", "save");
 	fsm.push_event(success_e{});
 }
 
@@ -572,7 +643,7 @@ void UI::start_save_a::operator ()()
 	timer.start();
 
     Access::close();
-	Pump::stop();
+    pump_stop();
 
 	set_status(NEED_SAVE_FINAL_RECORD);
 	_save_s::loading = false;
@@ -596,21 +667,25 @@ void UI::result_ui_a::operator ()()
 	timer.changeDelay(_result_s::TIMEOUT_MS);
 	timer.start();
 
+#if IS_DEVICE_WITH_KEYBOARD()
 	keyboard4x3_disable_light();
     keyboard4x3_clear();
+#endif
 
     indicate_set_buffer_page();
     indicate_set_buffer(resultBuffer, KEYBOARD4X3_BUFFER_SIZE);
 
 	if (Access::isGranted()) {
+		_ui_show_transition("result", "granted", "granted");
 		fsm.push_event(granted_e{});
 	    UI::setCard(Access::getCard());
 	}
 	if (Access::isDenied()) {
+		_ui_show_transition("result", "denied", "denied");
 		fsm.push_event(denied_e{});
 	}
 
-	Pump::stop();
+	pump_stop();
 }
 
 void UI::reboot_ui_a::operator ()()
@@ -626,7 +701,9 @@ void UI::reboot_ui_a::operator ()()
 void UI::error_ui_a::operator ()()
 {
 	fsm.clear_events();
+#if IS_DEVICE_WITH_KEYBOARD()
 	keyboard4x3_disable_light();
+#endif
     indicate_set_error_page();
     set_status(INTERNAL_ERROR);
 }

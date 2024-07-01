@@ -70,7 +70,7 @@ extern "C" {
 #   define DEVICE_MODE                (DEVICE_MODE_16PIN_KEYBOARD)
 #else
 #   warning "Selected default device mode"
-#   define DEVICE_MODE                (DEVICE_MODE_16PIN_KEYBOARD)
+#   define DEVICE_MODE                (DEVICE_MODE_4PIN_KEYBOARD)
 #endif
 
 #ifndef IS_DEVICE_WITH_4PIN

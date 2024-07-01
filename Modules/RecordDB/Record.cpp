@@ -9,12 +9,12 @@
 #include "RecordClust.h"
 #include "CodeStopwatch.h"
 
-#include "log.h"
+#include "glog.h"
 #include "soul.h"
-#include "utils.h"
+#include "gutils.h"
 #include "clock.h"
 #include "settings.h"
-#include "eeprom_at24cm01_storage.h"
+#include "at24cm01.h"
 
 
 Record::Record(uint32_t recordId):
@@ -104,11 +104,11 @@ RecordStatus Record::save(uint32_t time)
 	utl::CodeStopwatch stopwatch(TAG, GENERAL_TIMEOUT_MS);
 
 	set_status(NEED_SAVE_FINAL_RECORD);
-	set_status(WAIT_LOAD);
+	set_status(LOADING);
 
 	if (!this->size()) {
 		reset_status(NEED_SAVE_FINAL_RECORD);
-		reset_status(WAIT_LOAD);
+		reset_status(LOADING);
 		return RECORD_ERROR;
 	}
 
@@ -129,7 +129,7 @@ RecordStatus Record::save(uint32_t time)
 
     set_status(RECORD_UPDATED);
 	reset_status(NEED_SAVE_FINAL_RECORD);
-	reset_status(WAIT_LOAD);
+	reset_status(LOADING);
     return recordStatus;
 }
 

@@ -6,7 +6,7 @@
 #include <cstring>
 #include <cstdint>
 
-#include "log.h"
+#include "glog.h"
 #include "bmacro.h"
 #include "settings.h"
 

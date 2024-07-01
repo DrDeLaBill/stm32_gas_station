@@ -4,7 +4,7 @@
 
 #include <cstring>
 
-#include "log.h"
+#include "glog.h"
 #include "soul.h"
 #include "clock.h"
 #include "settings.h"

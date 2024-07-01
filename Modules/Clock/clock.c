@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "log.h"
+#include "glog.h"
 #include "bmacro.h"
 #include "hal_defs.h"
 

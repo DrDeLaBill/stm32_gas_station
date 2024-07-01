@@ -10,7 +10,7 @@
 
 #include "main.h"
 #include "soul.h"
-#include "utils.h"
+#include "gutils.h"
 
 #if IS_DEVICE_WITH_4PIN()
 
