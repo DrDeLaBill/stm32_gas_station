@@ -95,18 +95,21 @@ public:
 
 struct PowerWatchdog
 {
-private:
-	static constexpr unsigned TRIG_LEVEL = 1500;
-	static constexpr uint32_t POWER_ADC_CHANNEL = 1;
-	static constexpr char TAG[] = "PWRw";
-
-	uint32_t getPower();
-
-public:
 	void check();
 };
 
 struct MemoryWatchdog
 {
+private:
+	static constexpr uint32_t TIMEOUT_MS = 15000;
+
+	utl::Timer errorTimer;
+	utl::Timer timer;
+	uint8_t errors;
+	bool timerStarted;
+
+public:
+	MemoryWatchdog();
+
 	void check();
 };

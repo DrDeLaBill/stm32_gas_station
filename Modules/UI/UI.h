@@ -9,7 +9,7 @@
 #include "FiniteStateMachine.h"
 
 
-#define UI_BEDUG (true)
+#define UI_BEDUG (0)
 
 
 struct UI
@@ -139,7 +139,6 @@ private:
 protected:
 	static constexpr uint32_t BASE_TIMEOUT_MS = 30000;
 	static constexpr uint32_t BLINK_DELAY_MS = 1000;
-	static constexpr char TAG[] = "UI";
 
 	static fsm::FiniteStateMachine<fsm_table> fsm;
 	static utl::Timer timer;
@@ -158,6 +157,8 @@ protected:
 	static void setCard(uint32_t card);
 
 public:
+	static constexpr char TAG[] = "UI";
+
 	static void proccess();
 
 	static void setReboot();

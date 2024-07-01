@@ -1,4 +1,6 @@
-GALILEOSKY update
-
-- GALILEOSKY clearing log buff removed
-- CMake keyboard mode flags fix
+- Without keyboard mode fixed
+- Dependencies updated
+- Remove master card logging
+- Pump updated
+- Load verification added
+- UI log added
