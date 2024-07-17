@@ -31,6 +31,8 @@ void MemoryWatchdog::check()
 		is_status(MEMORY_WRITE_FAULT) ||
 		is_error(MEMORY_ERROR)
 	) {
+		system_reset_i2c_errata();
+
 		uint32_t address = static_cast<uint32_t>(rand()) % eeprom_get_size();
 
 		status = eeprom_read(address, &data, sizeof(data));
@@ -57,6 +59,6 @@ void MemoryWatchdog::check()
 	}
 
 	if (timerStarted && !errorTimer.wait()) {
-		system_error_handler(MEMORY_ERROR);
+		system_error_handler(MEMORY_ERROR, NULL);
 	}
 }

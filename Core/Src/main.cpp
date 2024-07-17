@@ -71,8 +71,8 @@
 
 #ifndef IS_SAME_TIME
 #   define IS_SAME_TIME(TIME1, TIME2) (TIME1.Hours   == TIME2.Hours && \
-                                           TIME1.Minutes == TIME2.Minutes && \
-										   TIME1.Seconds == TIME2.Seconds)
+                                       TIME1.Minutes == TIME2.Minutes && \
+									   TIME1.Seconds == TIME2.Seconds)
 #endif
 
 /* USER CODE END PM */
@@ -81,11 +81,11 @@
 
 /* USER CODE BEGIN PV */
 
-static constexpr char MAIN_TAG[] = "MAIN";
+#ifdef DEBUG
+const char MAIN_TAG[] = "MAIN";
+#endif
 
 uint8_t modbus_uart_byte = 0;
-
-extern settings_t settings;
 
 StorageDriver storageDriver;
 StorageAT* storage;
@@ -100,9 +100,7 @@ void save_new_log(uint32_t mlCount);
 
 void record_check();
 
-void system_error_handler();
-
-void rtc_test();
+void error_loop();
 
 /* USER CODE END PFP */
 
@@ -212,8 +210,7 @@ int main(void)
     HAL_Delay(100);
 #endif
 
-    rtc_test();
-
+    utl::Timer errTimer(40 * SECOND_MS);
 
 	gprint("\n\n\n");
 	printTagLog(MAIN_TAG, "The device is loading");
@@ -245,8 +242,15 @@ int main(void)
 		&storageDriver
 	);
 
-	while (is_status(LOADING)) {
+	system_rtc_test();
+
+    errTimer.start();
+	while (has_errors() || is_status(LOADING)) {
 		soulGuard.defend();
+
+    	if (!errTimer.wait()) {
+			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
+		}
 	}
 
     system_post_load();
@@ -263,6 +267,7 @@ int main(void)
 	static unsigned last_error = get_first_error();
 #endif
 	set_status(WORKING);
+	errTimer.start();
 	while (1)
 	{
 		soulGuard.defend();
@@ -275,7 +280,11 @@ int main(void)
 		}
 #endif
 
-		if (has_errors()) {
+		if (!errTimer.wait()) {
+			system_error_handler((SOUL_STATUS)get_first_error(), error_loop);
+		}
+
+		if (has_errors() || is_status(LOADING)) {
 			continue;
 		}
 
@@ -294,6 +303,8 @@ int main(void)
 		record_check();
 
 		mbManager.tick();
+
+		errTimer.start();
 	}
   /* USER CODE END 3 */
 }
@@ -433,6 +444,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
 }
 
+void error_loop()
+{
+	soulGuard.defend();
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if(htim->Instance == INDICATORS_TIM.Instance) {
@@ -454,133 +470,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         indicate_proccess();
 #endif
     }
-}
-
-void rtc_test()
-{
-	static const char TEST_TAG[] = "TEST";
-	gprint("\n\n\n");
-	printTagLog(TEST_TAG, "Testing in progress...");
-
-	RTC_DateTypeDef readDate  ={};
-	RTC_TimeTypeDef readTime = {};
-
-	printPretty("Get date test: ");
-	if (!clock_get_rtc_date(&readDate)) {
-		gprint("\t\terror\n");
-		Error_Handler();
-	}
-	gprint("\t\tOK\n");
-
-	printPretty("Get time test: ");
-	if (!clock_get_rtc_time(&readTime)) {
-		gprint("\t\terror\n");
-		Error_Handler();
-	}
-	gprint("\t\tOK\n");
-
-
-	printPretty("Save date test: ");
-	if (!clock_save_date(&readDate)) {
-		gprint("\terror\n");
-		Error_Handler();
-	}
-	gprint("\tOK\n");
-
-	printPretty("Save time test: ");
-	if (!clock_save_time(&readTime)) {
-		gprint("\terror\n");
-		Error_Handler();
-	}
-	gprint("\tOK\n");
-
-
-	RTC_DateTypeDef checkDate  ={};
-	RTC_TimeTypeDef checkTime = {};
-	printPretty("Check date test: ");
-	if (!clock_get_rtc_date(&checkDate)) {
-		gprint("\terror\n");
-		Error_Handler();
-	}
-	if (memcmp((void*)&readDate, (void*)&checkDate, sizeof(readDate))) {
-		gprint("\terror\n");
-		Error_Handler();
-	}
-	gprint("\tOK\n");
-
-	printPretty("Check time test: ");
-	if (!clock_get_rtc_time(&checkTime)) {
-		gprint("\terror\n");
-		Error_Handler();
-	}
-	if (!IS_SAME_TIME(readTime, checkTime)) {
-		gprint("\terror\n");
-		Error_Handler();
-	}
-	gprint("\tOK\n");
-
-
-	printPretty("Weekday test\n");
-	const RTC_DateTypeDef dates[] = {
-		{RTC_WEEKDAY_SATURDAY,  01, 01, 00},
-		{RTC_WEEKDAY_SUNDAY,    01, 02, 00},
-		{RTC_WEEKDAY_SATURDAY,  04, 27, 24},
-		{RTC_WEEKDAY_SUNDAY,    04, 28, 24},
-		{RTC_WEEKDAY_MONDAY,    04, 29, 24},
-		{RTC_WEEKDAY_TUESDAY,   04, 30, 24},
-		{RTC_WEEKDAY_WEDNESDAY, 05, 01, 24},
-		{RTC_WEEKDAY_THURSDAY,  05, 02, 24},
-		{RTC_WEEKDAY_FRIDAY,    05, 03, 24},
-	};
-	const RTC_TimeTypeDef times[] = {
-		{00, 00, 00, 0, 0, 0, 0, 0},
-		{00, 00, 00, 0, 0, 0, 0, 0},
-		{03, 24, 49, 0, 0, 0, 0, 0},
-		{04, 14, 24, 0, 0, 0, 0, 0},
-		{03, 27, 01, 0, 0, 0, 0, 0},
-		{23, 01, 40, 0, 0, 0, 0, 0},
-		{03, 01, 40, 0, 0, 0, 0, 0},
-		{04, 26, 12, 0, 0, 0, 0, 0},
-		{03, 52, 35, 0, 0, 0, 0, 0},
-	};
-	const uint32_t seconds[] = {
-		0,
-		86400,
-		767503489,
-		767592864,
-		767676421,
-		767833300,
-		767847700,
-		767939172,
-		768023555,
-	};
-
-	for (unsigned i = 0; i < __arr_len(seconds); i++) {
-		printPretty("[%02u]: ", i);
-
-		RTC_DateTypeDef tmpDate = {};
-		RTC_TimeTypeDef tmpTime = {};
-		clock_seconds_to_datetime(seconds[i], &tmpDate, &tmpTime);
-		if (memcmp((void*)&tmpDate, (void*)&dates[i], sizeof(tmpDate))) {
-			gprint("\t\t\terror\n");
-			Error_Handler();
-		}
-		if (!IS_SAME_TIME(tmpTime, times[i])) {
-			gprint("\t\t\terror\n");
-			Error_Handler();
-		}
-
-		uint32_t tmpSeconds = clock_datetime_to_seconds(&dates[i], &times[i]);
-		if (tmpSeconds != seconds[i]) {
-			gprint("\t\t\terror\n");
-			Error_Handler();
-		}
-
-		gprint("\t\t\tOK\n");
-	}
-
-
-	printTagLog(TEST_TAG, "Testing done");
 }
 
 int _write(int, uint8_t *ptr, int len) {
@@ -608,7 +497,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
     b_assert(__FILE__, __LINE__, "The error handler has been called");
 	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ERROR_HANDLER_CALLED;
-	system_error_handler(err);
+	system_error_handler(err, error_loop);
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -625,7 +514,7 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE BEGIN 6 */
 	b_assert((char*)file, line, "Wrong parameters value");
 	SOUL_STATUS err = has_errors() ? (SOUL_STATUS)get_first_error() : ASSERT_ERROR;
-	system_error_handler(err);
+	system_error_handler(err, error_loop);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

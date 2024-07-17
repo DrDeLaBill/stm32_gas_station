@@ -116,6 +116,8 @@ void pump_start()
 	pump.need_start = true;
 	pump.need_stop  = false;
 	pump.stopped    = false;
+
+	pump.last_ml    = 0;
 }
 
 void pump_stop()
