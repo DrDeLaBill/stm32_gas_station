@@ -248,6 +248,10 @@ void system_post_load(void)
 	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, 0);
 	HAL_PWR_DisableBkUpAccess();
 
+	if (get_last_error()) {
+		printTagLog(SYSTEM_TAG, "Last reload error: %u", get_last_error());
+	}
+
 #ifdef STM32F1
 	HAL_ADCEx_Calibration_Start(&hadc1);
 #endif
