@@ -54,6 +54,11 @@ void settings_reset(settings_t* other)
     	other->limit_type[i] = LIMIT_DAY;
     }
 
+	other->cards[0] = SETTINGS_MASTER_CARD;
+	other->limits[0] = SETTINGS_MASTER_LIMIT;
+	other->limit_type[0] = LIMIT_DAY;
+	other->used_liters[0] = 0;
+
     other->last_day   = (uint8_t)clock_get_date();
     other->last_month = (uint8_t)clock_get_month();
 
@@ -140,6 +145,25 @@ void settings_repair(settings_t* other)
 			other->limits[i] = settings_v3.limits[i];
 			other->limit_type[i] = settings_v3.limit_type[i];
 			other->used_liters[i] = settings_v3.used_liters[i];
+		}
+	}
+
+	if (other->sw_id == 0x04) {
+		settings_v3_t settings_v4 = {0};
+		memcpy((void*)&settings_v4, (void*)other, sizeof(settings_v4));
+		memset(other->cards, 0, sizeof(other->cards));
+		memset(other->limits, 0, sizeof(other->limits));
+		memset(other->limit_type, 0, sizeof(other->limit_type));
+		memset(other->used_liters, 0, sizeof(other->used_liters));
+		other->cards[0] = SETTINGS_MASTER_CARD;
+		other->limits[0] = SETTINGS_MASTER_LIMIT;
+		other->limit_type[0] = LIMIT_DAY;
+		other->used_liters[0] = 0;
+		for (unsigned i = 1; i < __arr_len(settings_v4.cards); i++) {
+			other->cards[i] = settings_v4.cards[i];
+			other->limits[i] = settings_v4.limits[i];
+			other->limit_type[i] = settings_v4.limit_type[i];
+			other->used_liters[i] = settings_v4.used_liters[i];
 		}
 	}
 
@@ -230,20 +254,6 @@ void settings_set_device_id(uint32_t device_id)
     }
 }
 
-void settings_set_cards(void* cards, uint16_t len)
-{
-    if (len > __arr_len(settings.cards)) {
-        return;
-    }
-    if (memcmp(settings.cards, cards, __min(len, sizeof(settings.cards)))) {
-        return;
-    }
-    if (cards) {
-        memcpy(settings.cards, cards, __min(len, sizeof(settings.cards)));
-	    set_status(NEED_SAVE_SETTINGS);
-    }
-}
-
 void settings_set_limits(void* limits, uint16_t len)
 {
     if (len > __arr_len(settings.limits)) {
@@ -274,6 +284,9 @@ void settings_set_card(uint32_t card, uint16_t idx)
     }
     if (settings.cards[idx] == card) {
         return;
+    }
+    if (idx == 0) {
+    	return;
     }
     settings.cards[idx] = card;
     set_status(NEED_SAVE_SETTINGS);
@@ -311,9 +324,6 @@ void settings_add_used_liters(uint32_t used_litters, uint32_t card)
 		return;
 	}
     uint16_t idx = 0;
-    if (card == SETTINGS_MASTER_CARD) {
-    	return;
-    }
     if (settings_get_card_idx(card, &idx) != SETTINGS_OK) {
     	return;
     }

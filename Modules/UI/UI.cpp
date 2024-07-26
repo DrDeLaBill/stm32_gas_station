@@ -214,14 +214,17 @@ void UI::_input_s::operator ()()
 		fsm.push_event(timeout_e{});
 	}
 
-	if (isEnter()) {
+	if (isEnter() || isStart()) {
 		_ui_show_transition("input", "enter", "check");
-		fsm.push_event(enter_e{});
-	}
 
-	if (isStart()) {
-		_ui_show_transition("input", "start", "check");
-		fsm.push_event(start_e{});
+	    uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
+	    uint32_t liters_multiplier = ML_IN_LTR;
+	    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
+	        liters_multiplier /= util_small_pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
+	    }
+	    targetMl = user_input * liters_multiplier;
+
+		fsm.push_event(enter_e{});
 	}
 
     uint8_t number_buffer[KEYBOARD4X3_BUFFER_SIZE] = {};
@@ -477,8 +480,6 @@ void UI::limit_ui_a::operator ()()
     SettingsStatus status = settings_get_card_idx(UI::getCard(), &idx);
     if (status == SETTINGS_OK && settings.used_liters[idx] < settings.limits[idx]) {
     	residue = settings.limits[idx] - settings.used_liters[idx];
-    } else if (UI::getCard() == SETTINGS_MASTER_CARD) {
-    	residue = SETTINGS_MASTER_LIMIT;
     }
     uint32_t liters_multiplier = ML_IN_LTR;
 	if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
@@ -538,22 +539,12 @@ void UI::check_a::operator ()()
 {
 	fsm.clear_events();
 
-    uint32_t user_input        = (uint32_t)atoi(reinterpret_cast<char*>(keyboard4x3_get_buffer()));
-    uint32_t liters_multiplier = ML_IN_LTR;
-    if (KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT > 0) {
-        liters_multiplier /= util_small_pow(10, KEYBOARD4X3_VALUE_POINT_SYMBOLS_COUNT);
-    }
-    targetMl = user_input * liters_multiplier;
-
     uint32_t used_liters = 0;
     uint16_t idx;
     uint32_t limit = 0;
     if (settings_get_card_idx(UI::getCard(), &idx) == SETTINGS_OK) {
     	used_liters = settings.used_liters[idx];
     	limit = settings.limits[idx];
-    } else if (UI::getCard() == SETTINGS_MASTER_CARD) {
-    	used_liters = 0;
-    	limit = SETTINGS_MASTER_LIMIT;
     } else {
     	_ui_show_transition("check", "limit max", "limit");
     	fsm.push_event(limit_max_e{});
@@ -584,23 +575,22 @@ void UI::start_a::operator ()()
 	fsm.clear_events();
 
     uint16_t idx = 0;
-    if (settings_get_card_idx(UI::getCard(), &idx) != SETTINGS_OK) {
-    	_ui_show_transition(" action start", "limit max", "limit");
-    	fsm.push_event(limit_max_e{});
-    	return;
-    }
 
-    if (settings.used_liters[idx] >= settings.limits[idx]) {
-    	_ui_show_transition(" action start", "limit max", "limit");
-    	fsm.push_event(limit_max_e{});
-    	return;
-    }
+	if (settings_get_card_idx(UI::getCard(), &idx) != SETTINGS_OK) {
+		_ui_show_transition(" action start", "limit max", "limit");
+		fsm.push_event(limit_max_e{});
+		return;
+	}
 
-    if (UI::getCard() == SETTINGS_MASTER_CARD) {
-    	targetMl = SETTINGS_MASTER_LIMIT;
-    } else {
-    	targetMl = settings.limits[idx] - settings.used_liters[idx];
-    }
+	if (settings.used_liters[idx] >= settings.limits[idx]) {
+		_ui_show_transition(" action start", "limit max", "limit");
+		fsm.push_event(limit_max_e{});
+		return;
+	}
+
+	uint32_t used_liters = settings.used_liters[idx];
+	uint32_t limit = settings.limits[idx];
+	targetMl = used_liters >= limit ? 0 : limit - used_liters;
 
 	_ui_show_transition("action start", "success", "wait count");
 	fsm.push_event(success_e{});

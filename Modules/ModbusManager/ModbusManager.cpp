@@ -138,7 +138,10 @@ void ModbusManager::loadData()
             reg32->getNextAddress(),
             tmpSettings.cards[i]
         )->load();
-        tmpSettings.cards[i] = reg32->get();
+        uint32_t card = reg32->get();
+        if (i > 0) {
+        	tmpSettings.cards[i] = card;
+        }
     }
 
 #if MB_MANAGER_BEDUG

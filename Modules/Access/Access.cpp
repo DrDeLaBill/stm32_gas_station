@@ -46,14 +46,6 @@ void Access::check()
     }
 
     printTagLog(Access::TAG, "Card: %lu", user_card);
-    if (user_card == SETTINGS_MASTER_CARD) {
-        Access::denied  = false;
-        Access::granted = true;
-        Access::card    = user_card;
-        timer.start();
-        printTagLog(Access::TAG, "Access granted");
-        return;
-    }
     for (uint16_t i = 0; i < __arr_len(settings.cards); i++) {
         if (settings.cards[i] == user_card) {
             Access::denied  = false;

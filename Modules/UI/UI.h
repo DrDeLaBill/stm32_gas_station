@@ -108,7 +108,6 @@ private:
 		fsm::Transition<input_s,      cancel_e,    idle_s,       idle_ui_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<input_s,      timeout_e,   idle_s,       idle_ui_a,        fsm::Guard::NO_GUARD>,
 		fsm::Transition<input_s,      enter_e,     check_s,      check_a,          fsm::Guard::NO_GUARD>,
-		fsm::Transition<input_s,      start_e,     check_s,      start_a,          fsm::Guard::NO_GUARD>,
 
 		fsm::Transition<check_s,      limit_min_e, input_s,      reset_input_ui_a, fsm::Guard::NO_GUARD>,
 		fsm::Transition<check_s,      limit_max_e, limit_s,      limit_ui_a,       fsm::Guard::NO_GUARD>,

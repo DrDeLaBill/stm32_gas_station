@@ -68,13 +68,6 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
-#ifndef IS_SAME_TIME
-#   define IS_SAME_TIME(TIME1, TIME2) (TIME1.Hours   == TIME2.Hours && \
-                                       TIME1.Minutes == TIME2.Minutes && \
-									   TIME1.Seconds == TIME2.Seconds)
-#endif
-
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -364,13 +357,6 @@ void record_check()
 	static uint32_t resultMlBuf = 0;
 
 	uint32_t resultMl = UI::getResultMl();
-
-	if (UI::getCard() == SETTINGS_MASTER_CARD) {
-		reset_status(NEED_SAVE_FINAL_RECORD);
-		reset_status(NEED_INIT_RECORD_TMP);
-		reset_status(NEED_SAVE_RECORD_TMP);
-		return;
-	}
 
 	if (is_status(NEED_SAVE_FINAL_RECORD)) {
 		if (RecordTmp::remove() == RECORD_OK) {

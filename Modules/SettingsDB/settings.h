@@ -13,19 +13,26 @@ extern "C" {
 #include <stdbool.h>
 
 
+#define DEVICE_MAJOR (1)
+#define DEVICE_MINOR (2)
+#define DEVICE_PATCH (3)
+
+
 /*
  * Device types:
  * 0x0001 - Dispenser
  * 0x0002 - Gas station
  * 0x0003 - Logger
  * 0x0004 - B.O.B.A.
+ * 0x0005 - Calibrate station
+ * 0x0006 - Dispenser-mini
  */
 #define DEVICE_TYPE        ((uint16_t)0x0002) // TODO: add to settings
-#define SW_VERSION         ((uint8_t)0x04)
+#define SW_VERSION         ((uint8_t)0x05)
 #define FW_VERSION         ((uint8_t)0x01)
 #define DEFAULT_CF_VERSION ((uint8_t)0x01)
 #define DEFAULT_ID         ((uint8_t)0x01)
-#define RFID_CARDS_COUNT   ((uint16_t)50)
+#define RFID_CARDS_COUNT   ((uint16_t)51)
 
 #define SETTINGS_MASTER_CARD  (1255648)
 #define SETTINGS_MASTER_LIMIT (1000000)
@@ -59,6 +66,24 @@ typedef struct __attribute__((packed)) _settings_t  {
     uint8_t  last_day;
     uint8_t  last_month;
 } settings_t;
+
+
+typedef struct __attribute__((packed)) _settings_v4_t  {
+	// Configuration version
+    uint32_t cf_id;
+    // Software version
+    uint8_t  sw_id;
+    // Firmware version
+    uint8_t  fw_id;
+    uint32_t device_id;
+    uint32_t cards      [RFID_CARDS_COUNT];
+    uint32_t limits     [RFID_CARDS_COUNT];
+    uint8_t  limit_type [RFID_CARDS_COUNT];
+    uint32_t used_liters[RFID_CARDS_COUNT];
+    uint32_t log_id;
+    uint8_t  last_day;
+    uint8_t  last_month;
+} settings_v4_t;
 
 
 #define RFID_CARDS_COUNT_V3 (40)
@@ -118,7 +143,6 @@ void settings_show();
 
 void settings_set_cf_id(uint32_t cf_id);
 void settings_set_device_id(uint32_t device_id);
-void settings_set_cards(void* cards, uint16_t len);
 void settings_set_limits(void* limits, uint16_t len);
 void settings_set_log_id(uint32_t log_id);
 void settings_set_card(uint32_t card, uint16_t idx);
