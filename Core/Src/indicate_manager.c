@@ -292,7 +292,7 @@ void _indicate_display()
 	for (unsigned i = 0; i < NUM_OF_DIGITS; i++) {
 		for (unsigned j = 0; j < SEGMENTS_COUNT; j++) {
 			buffer[i] <<= 1;
-			buffer[i] |=  (display_buffer[i][j] & 0x01);
+			buffer[i] |=  (display_buffer[i][j] ? 0X01 : 0x00);
 		}
 	}
 

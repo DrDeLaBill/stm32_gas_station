@@ -4,3 +4,4 @@
 - Pump updated
 - Load verification added
 - UI log added
+- Gun switch fixed

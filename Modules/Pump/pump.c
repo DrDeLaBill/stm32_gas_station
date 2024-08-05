@@ -153,7 +153,7 @@ void _pump_disable()
 
 bool _pump_gun_ready()
 {
-	return HAL_GPIO_ReadPin(GUN_SWITCH_GPIO_Port, GUN_SWITCH_Pin);
+	return !HAL_GPIO_ReadPin(GUN_SWITCH_GPIO_Port, GUN_SWITCH_Pin);
 }
 
 int32_t _pump_encoder_ticks()
