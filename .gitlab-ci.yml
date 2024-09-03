@@ -18,6 +18,8 @@ build:
     - apt-get update --yes
     - apt-get install --yes gcc-arm-none-eabi
     - apt-get install --yes cmake
+    - apt-get update --yes
+    - apt-get install --only-upgrade cmake
     - git submodule init
     - git submodule update
 
