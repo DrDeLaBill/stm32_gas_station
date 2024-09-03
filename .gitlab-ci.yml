@@ -41,8 +41,9 @@ build:
 
     - mkdir ../build
     - cd ..
-    - cp debug/stm32_gas_station.bin build/stm32_gas_station-debug.bin
-    - cp release/stm32_gas_station.bin build/stm32_gas_station-release.bin
+    - la -al ./build
+    - cp ./debug/stm32_gas_station.bin ./build/stm32_gas_station-debug.bin
+    - cp ./release/stm32_gas_station.bin ./build/stm32_gas_station-release.bin
   artifacts:
     reports:
       dotenv: variables.env
