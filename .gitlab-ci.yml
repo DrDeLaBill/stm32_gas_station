@@ -47,7 +47,7 @@ build:
     reports:
       dotenv: variables.env
     paths:
-      - build/
+      - build
 
 release:
   stage: release
@@ -67,4 +67,4 @@ release:
     assets:
       links:
         - name: 'Binary file'
-          url: '$CI_PROJECT_URL/-/jobs/$BUILD_JOB_ID/artifacts/file/build/test'
+          url: '$CI_PROJECT_URL/-/jobs/$BUILD_JOB_ID/artifacts/file/build'
