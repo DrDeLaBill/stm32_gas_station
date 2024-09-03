@@ -15,16 +15,15 @@ build:
     - echo "BUILD_JOB_ID=${CI_JOB_ID}" >> variables.env
     - echo "BUILD_SHA_SHORT=${sha_short}" >> variables.env
     - cat variables.env
-    - apt-get update --yes
-    - apt-get install --yes gcc-arm-none-eabi
-    - apt-get install --yes cmake
-    - wget https://cmake.org/files/v3.12/cmake-3.26.0-Linux-x86_64.tar.gz  \
+    - wget https://cmake.org/files/v3.26/cmake-3.26.0-Linux-x86_64.tar.gz  \
       && tar xzf cmake-3.26.0-Linux-x86_64.tar.gz  \​
       && rm -rf cmake-3.26.0-Linux-x86_64.tar.gz  \​
       && cd cmake-3.26.0-Linux-x86_64  \​
       && apt-get install \
       && ./bin/cmake --version
-    - cd ..
+      && cd ..
+    - apt-get update --yes
+    - apt-get install --yes gcc-arm-none-eabi
     - git submodule init
     - git submodule update
 
