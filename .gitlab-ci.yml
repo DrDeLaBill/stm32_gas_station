@@ -71,5 +71,5 @@ release:
     ref: '$CI_COMMIT_SHA'
     assets:
       links:
-        - name: 'Binary file'
-          url: '$CI_PROJECT_URL/-/jobs/$BUILD_JOB_ID/artifacts/file/build'
+        - name: 'Binaries'
+          url: '$CI_PROJECT_URL/-/jobs/$BUILD_JOB_ID/artifacts/download?file_type=archive'
