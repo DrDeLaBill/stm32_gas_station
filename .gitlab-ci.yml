@@ -26,24 +26,27 @@ build:
     - apt-get install --yes gcc-arm-none-eabi
     - git submodule init
     - git submodule update
+    - ls -al ./build
 
     - echo "Build debug"
     - mkdir debug
     - cd debug
     - ../cmake-3.26.0-linux-x86_64/bin/cmake -G"Unix Makefiles" .. -DDEBUG=1 -DMODE4PIN=1 -DMODEKEYBOARD=1
     - ../cmake-3.26.0-linux-x86_64/bin/cmake --build .
+    - ls -al ./build
 
     - echo "Build release"
     - mkdir ../release
     - cd ../release
     - ../cmake-3.26.0-linux-x86_64/bin/cmake -G"Unix Makefiles" .. -DMODE4PIN=1 -DMODEKEYBOARD=1
     - ../cmake-3.26.0-linux-x86_64/bin/cmake --build .
+    - ls -al ./build
 
     - mkdir ../build
     - cd ..
-    - ls -al ./build
     - cp ./debug/stm32_gas_station.bin ./build/stm32_gas_station-debug.bin
     - cp ./release/stm32_gas_station.bin ./build/stm32_gas_station-release.bin
+    - ls -al ./build
   artifacts:
     reports:
       dotenv: variables.env
