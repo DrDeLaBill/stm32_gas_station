@@ -255,6 +255,10 @@ void _pump_start_s()
 
 void _pump_work_s()
 {
+#if PUMP_BEDUG
+	static util_old_timer_t log_timer = {0};
+#endif
+
 	if (is_error(PUMP_ERROR)) {
 		fsm_gc_push_event(&pump_fsm, &pump_error_e);
 		return;
@@ -273,7 +277,10 @@ void _pump_work_s()
     uint32_t curr_ml = _pump_encoder_ml();
     if (_pump_encoder_ticks() < pump.measure_ticks_add) {
 #if PUMP_BEDUG
-        printTagLog(PUMP_TAG, "pump isn't working: current gas ticks=%ld; target=%lu", pump.measure_ticks_add, pump.target_ml);
+    	if (!util_old_timer_wait(&log_timer)) {
+    		printTagLog(PUMP_TAG, "pump isn't working: current gas ticks=%ld; target=%lu", pump.measure_ticks_add, pump.target_ml);
+    		util_old_timer_start(&log_timer, 1500);
+    	}
 #endif
     	_pump_set_ticks((uint32_t)pump.measure_ticks_add);
     }
@@ -295,7 +302,10 @@ void _pump_work_s()
     }
 
 #if PUMP_BEDUG
-    printTagLog(PUMP_TAG, "current gas ml: %lu (summary: %ld ticks, add: %lu ticks); target: %lu", _pump_summary_ml(), _pump_summary_ticks(), pump.measure_ticks_add, pump.target_ml);
+	if (!util_old_timer_wait(&log_timer)) {
+		printTagLog(PUMP_TAG, "current gas ml: %lu (summary: %ld ticks, add: %lu ticks); target: %lu", _pump_summary_ml(), _pump_summary_ticks(), pump.measure_ticks_add, pump.target_ml);
+		util_old_timer_start(&log_timer, 1500);
+	}
 #endif
 
     pump.measure_ml_add    = _pump_encoder_ml();
