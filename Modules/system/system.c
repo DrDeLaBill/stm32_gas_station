@@ -6,6 +6,7 @@
 #include "glog.h"
 #include "pump.h"
 #include "clock.h"
+#include "gutils.h"
 #include "hal_defs.h"
 
 
@@ -352,7 +353,9 @@ uint32_t get_system_power(void)
 
 void system_reset_i2c_errata(void)
 {
+#if SYSTEM_BEDUG
 	printTagLog(SYSTEM_TAG, "RESET I2C (ERRATA)");
+#endif
 
 	HAL_I2C_DeInit(&EEPROM_I2C);
 
@@ -367,11 +370,10 @@ void system_reset_i2c_errata(void)
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(I2C_PORT, &GPIO_InitStruct);
 
-	hi2c1.Instance->CR1 &= (unsigned)~(0x0001);
+	EEPROM_I2C.Instance->CR1 &= (unsigned)~(0x0001);
 
 	GPIO_InitTypeDef GPIO_InitStructure = {0};
 	GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_OD;
-	GPIO_InitStructure.Alternate = 0;
 	GPIO_InitStructure.Pull = GPIO_PULLUP;
 	GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_HIGH;
 
@@ -384,23 +386,59 @@ void system_reset_i2c_errata(void)
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
 	HAL_GPIO_WritePin(I2C_PORT, (uint16_t)(GPIO_InitStructure.Pin), GPIO_PIN_SET);
 
-	while(GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SCL_Pin)) asm("nop");
-	while(GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SDA_Pin)) asm("nop");
+	util_old_timer_t timer = {0};
+	util_old_timer_start(&timer, 10000);
+	while(GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SCL_Pin)) {
+		if (!util_old_timer_wait(&timer)) {
+			system_error_handler(I2C_ERROR, NULL);
+		}
+		asm("nop");
+	}
+	util_old_timer_start(&timer, 10000);
+	while(GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SDA_Pin)) {
+		if (!util_old_timer_wait(&timer)) {
+			system_error_handler(I2C_ERROR, NULL);
+		}
+		asm("nop");
+	}
 
 	HAL_GPIO_WritePin(I2C_PORT, I2C_SDA_Pin, GPIO_PIN_RESET);
-	while(GPIO_PIN_RESET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SDA_Pin)) asm("nop");
+	util_old_timer_start(&timer, 10000);
+	while(GPIO_PIN_RESET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SDA_Pin)) {
+		if (!util_old_timer_wait(&timer)) {
+			system_error_handler(I2C_ERROR, NULL);
+		}
+		asm("nop");
+	}
 
 	HAL_GPIO_WritePin(I2C_PORT, I2C_SCL_Pin, GPIO_PIN_RESET);
-	while(GPIO_PIN_RESET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SCL_Pin)) asm("nop");
+	util_old_timer_start(&timer, 10000);
+	while(GPIO_PIN_RESET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SCL_Pin)) {
+		if (!util_old_timer_wait(&timer)) {
+			system_error_handler(I2C_ERROR, NULL);
+		}
+		asm("nop");
+	}
 
 	HAL_GPIO_WritePin(I2C_PORT, I2C_SDA_Pin, GPIO_PIN_SET);
-	while(GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SDA_Pin)) asm("nop");
+	util_old_timer_start(&timer, 10000);
+	while(GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SDA_Pin)) {
+		if (!util_old_timer_wait(&timer)) {
+			system_error_handler(I2C_ERROR, NULL);
+		}
+		asm("nop");
+	}
 
 	HAL_GPIO_WritePin(I2C_PORT, I2C_SCL_Pin, GPIO_PIN_SET);
-	while(GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SCL_Pin)) asm("nop");
+	util_old_timer_start(&timer, 10000);
+	while(GPIO_PIN_SET != HAL_GPIO_ReadPin(I2C_PORT, I2C_SCL_Pin)) {
+		if (!util_old_timer_wait(&timer)) {
+			system_error_handler(I2C_ERROR, NULL);
+		}
+		asm("nop");
+	}
 
 	GPIO_InitStructure.Mode = GPIO_MODE_AF_OD;
-	GPIO_InitStructure.Alternate = GPIO_AF4_I2C1;
 
 	GPIO_InitStructure.Pin = I2C_SCL_Pin;
 	HAL_GPIO_Init(I2C_PORT, &GPIO_InitStructure);
@@ -416,4 +454,20 @@ void system_reset_i2c_errata(void)
 	EEPROM_I2C.Instance->CR1 |= 0x0001;
 
 	HAL_I2C_Init(&EEPROM_I2C);
+}
+
+char* get_system_serial_str(void)
+{
+	uint32_t uid_base = 0x1FFFF7E8;
+
+	uint16_t *idBase0 = (uint16_t*)(uid_base);
+	uint16_t *idBase1 = (uint16_t*)(uid_base + 0x02);
+	uint32_t *idBase2 = (uint32_t*)(uid_base + 0x04);
+	uint32_t *idBase3 = (uint32_t*)(uid_base + 0x08);
+
+	static char str_uid[25] = {0};
+	memset((void*)str_uid, 0, sizeof(str_uid));
+	sprintf(str_uid, "%04X%04X%08lX%08lX", *idBase0, *idBase1, *idBase2, *idBase3);
+
+	return str_uid;
 }

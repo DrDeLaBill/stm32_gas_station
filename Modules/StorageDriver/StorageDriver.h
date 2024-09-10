@@ -9,7 +9,7 @@
 #include "StorageAT.h"
 
 
-#define STORAGE_DRIVER_BEDUG      (false)
+#define STORAGE_DRIVER_BEDUG      (true)
 #define STORAGE_DRIVER_USE_BUFFER (true)
 
 
@@ -28,6 +28,7 @@ private:
 #endif
 
 public:
-    StorageStatus read(uint32_t address, uint8_t *data, uint32_t len) override;
-    StorageStatus write(uint32_t address, uint8_t *data, uint32_t len) override;
+    StorageStatus read(const uint32_t address, uint8_t *data, const uint32_t len) override;
+    StorageStatus write(const uint32_t address, const uint8_t *data, const uint32_t len) override;
+    StorageStatus erase(const uint32_t*, const uint32_t) override;
 };

@@ -39,6 +39,7 @@
 #include "clock.h"
 #include "TM1637.h"
 #include "system.h"
+//#include "wialon.h"
 #include "wiegand.h"
 #include "settings.h"
 #include "at24cm01.h"
@@ -75,7 +76,7 @@
 /* USER CODE BEGIN PV */
 
 #ifdef DEBUG
-const char MAIN_TAG[] = "MAIN";
+static const char TAG[] = "MAIN";
 #endif
 
 uint8_t modbus_uart_byte = 0;
@@ -206,7 +207,7 @@ int main(void)
     utl::Timer errTimer(40 * SECOND_MS);
 
 	gprint("\n\n\n");
-	printTagLog(MAIN_TAG, "The device is loading");
+	printTagLog(TAG, "The device is loading");
 
 	SystemInfo();
 
@@ -232,7 +233,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 	storage = new StorageAT(
 		eeprom_get_size() / STORAGE_PAGE_SIZE,
-		&storageDriver
+		&storageDriver,
+		EEPROM_PAGE_SIZE
 	);
 
 	system_rtc_test();
@@ -246,6 +248,8 @@ int main(void)
 		}
 	}
 
+//	wln_begin();
+
     system_post_load();
 
 	Record::showMax();
@@ -254,10 +258,14 @@ int main(void)
 		RecordTmp::restore();
 	}
 
-	printTagLog(MAIN_TAG, "The device is loaded successfully");
+	printTagLog(TAG, "The device is loaded successfully");
 
 #ifdef DEBUG
-	static unsigned last_error = get_first_error();
+	unsigned last_error = get_first_error();
+
+	unsigned kFLOPScounter = 0;
+	utl::Timer kFLOPSTimer(10 * SECOND_MS);
+	kFLOPSTimer.start();
 #endif
 	set_status(WORKING);
 	errTimer.start();
@@ -268,8 +276,18 @@ int main(void)
 #ifdef DEBUG
 		unsigned error = get_first_error();
 		if (error && last_error != error) {
-			printTagLog(MAIN_TAG, "New error: %u", error);
+			printTagLog(TAG, "New error: %u", error);
 			last_error = error;
+		} else if (last_error != error) {
+			printTagLog(TAG, "No errors");
+			last_error = error;
+		}
+
+		kFLOPScounter++;
+		if (!kFLOPSTimer.wait()) {
+			printTagLog(TAG, "kFLOPS: %u", kFLOPScounter / 1000);
+			kFLOPScounter = 0;
+			kFLOPSTimer.start();
 		}
 #endif
 
@@ -294,6 +312,8 @@ int main(void)
 		settings_check_residues();
 
 		record_check();
+
+//		wln_proccess();
 
 		mbManager.tick();
 
@@ -359,6 +379,9 @@ void record_check()
 	uint32_t resultMl = UI::getResultMl();
 
 	if (is_status(NEED_SAVE_FINAL_RECORD)) {
+#ifdef DEBUG
+		printTagLog(TAG, "Saving final record (card=%lu ml=%lu)", UI::getCard(), resultMl);
+#endif
 		if (RecordTmp::remove() == RECORD_OK) {
 			save_new_log(resultMl);
 			UI::resetResultMl();
@@ -370,10 +393,16 @@ void record_check()
 			reset_status(NEED_SAVE_RECORD_TMP);
 		}
 	} else if (is_status(NEED_INIT_RECORD_TMP)) {
+#ifdef DEBUG
+		printTagLog(TAG, "Initializing record tmp");
+#endif
 		if (RecordTmp::init() == RECORD_OK) {
 			reset_status(NEED_INIT_RECORD_TMP);
 		}
 	} else if (__abs_dif(resultMl, resultMlBuf) > RecordTmp::TRIG_LEVEL_ML) {
+#ifdef DEBUG
+		printTagLog(TAG, "Saving record tmp (card=%lu ml=%lu)", UI::getCard(), resultMl);
+#endif
     	RecordTmp::save(UI::getCard(), resultMl);
 		set_status(NEED_SAVE_RECORD_TMP);
     	resultMlBuf = resultMl;
@@ -394,17 +423,17 @@ void save_new_log(uint32_t mlCount)
     record.record.used_mls = mlCount;
     record.record.card     = UI::getCard();
 
-    printTagLog(MAIN_TAG, "save new log: begin");
-    printTagLog(MAIN_TAG, "save new log: real mls=%lu", pump_count_ml());
+    printTagLog(TAG, "save new log: begin");
+    printTagLog(TAG, "save new log: real mls=%lu", pump_count_ml());
 
     RecordStatus status = record.save();
     if (status != RECORD_OK) {
-        printTagLog(MAIN_TAG, "save new logerror=%02x", status);
+        printTagLog(TAG, "save new logerror=%02x", status);
     } else {
-    	printTagLog(MAIN_TAG, "save new log: success");
+    	printTagLog(TAG, "save new log: success");
     }
 
-	printTagLog(MAIN_TAG, "adding %lu used milliliters for %lu card", record.record.used_mls, record.record.card);
+	printTagLog(TAG, "adding %lu used milliliters for %lu card", record.record.used_mls, record.record.card);
     settings_add_used_liters(record.record.used_mls, record.record.card);
     set_status(NEED_SAVE_SETTINGS);
 

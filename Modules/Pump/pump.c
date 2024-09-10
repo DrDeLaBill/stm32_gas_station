@@ -71,25 +71,25 @@ FSM_GC_CREATE_STATE(pump_work_s,  _pump_work_s)
 FSM_GC_CREATE_STATE(pump_stop_s,  _pump_stop_s)
 FSM_GC_CREATE_STATE(pump_error_s, _pump_error_s)
 
-FSM_GC_CREATE_EVENT(pump_success_e)
-FSM_GC_CREATE_EVENT(pump_negative_e)
-FSM_GC_CREATE_EVENT(pump_error_e)
-FSM_GC_CREATE_EVENT(pump_start_e)
-FSM_GC_CREATE_EVENT(pump_stop_e)
+FSM_GC_CREATE_EVENT(pump_success_e,  0)
+FSM_GC_CREATE_EVENT(pump_start_e,    0)
+FSM_GC_CREATE_EVENT(pump_stop_e,     0)
+FSM_GC_CREATE_EVENT(pump_negative_e, 1)
+FSM_GC_CREATE_EVENT(pump_error_e,    2)
 
 FSM_GC_CREATE_TABLE(
     pump_fsm_table,
-    { &pump_init_s,   &pump_success_e,  &pump_stop_s  },
-    { &pump_idle_s,   &pump_start_e,    &pump_start_s },
-    { &pump_idle_s,   &pump_stop_e,     &pump_stop_s  },
-    { &pump_idle_s,   &pump_error_e,    &pump_error_s },
-    { &pump_start_s,  &pump_success_e,  &pump_work_s  },
-    { &pump_start_s,  &pump_stop_e,     &pump_stop_s  },
-    { &pump_start_s,  &pump_negative_e, &pump_stop_s  },
-    { &pump_work_s,   &pump_stop_e,     &pump_stop_s  },
-    { &pump_work_s,   &pump_error_e,    &pump_error_s },
-    { &pump_stop_s,   &pump_success_e,  &pump_idle_s  },
-    { &pump_error_s,  &pump_success_e,  &pump_idle_s  }
+    { &pump_init_s,   &pump_success_e,  &pump_stop_s  , NULL},
+    { &pump_idle_s,   &pump_start_e,    &pump_start_s , NULL},
+    { &pump_idle_s,   &pump_stop_e,     &pump_stop_s  , NULL},
+    { &pump_idle_s,   &pump_error_e,    &pump_error_s , NULL},
+    { &pump_start_s,  &pump_success_e,  &pump_work_s  , NULL},
+    { &pump_start_s,  &pump_stop_e,     &pump_stop_s  , NULL},
+    { &pump_start_s,  &pump_negative_e, &pump_stop_s  , NULL},
+    { &pump_work_s,   &pump_stop_e,     &pump_stop_s  , NULL},
+    { &pump_work_s,   &pump_error_e,    &pump_error_s , NULL},
+    { &pump_stop_s,   &pump_success_e,  &pump_idle_s  , NULL},
+    { &pump_error_s,  &pump_success_e,  &pump_idle_s  , NULL}
 )
 
 
