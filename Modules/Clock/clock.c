@@ -32,6 +32,9 @@ typedef enum _Months {
 uint8_t _get_days_in_month(uint8_t year, Months month);
 
 
+static const char TAG[] = "CLCK";
+
+
 uint8_t clock_get_year()
 {
     RTC_DateTypeDef date;
@@ -103,32 +106,73 @@ bool clock_save_time(const RTC_TimeTypeDef* time)
     }
     RTC_TimeTypeDef tmpTime = {0};
     memcpy((void*)&tmpTime, (void*)time, sizeof(tmpTime));
+
+	HAL_PWR_EnableBkUpAccess();
 	status = HAL_RTC_SetTime(&hrtc, &tmpTime, RTC_FORMAT_BIN);
+	HAL_PWR_DisableBkUpAccess();
+
 	BEDUG_ASSERT(status == HAL_OK, "Unable to set current time");
+	if (status != HAL_OK) {
+		printTagLog(
+			TAG,
+			"clock_save_time: time=%02u:%02u:%02u",
+			tmpTime.Hours,
+			tmpTime.Minutes,
+			tmpTime.Seconds
+		);
+	}
     return status == HAL_OK;
 }
 
 bool clock_save_date(const RTC_DateTypeDef* date)
 {
+	RTC_TimeTypeDef tmpTime = {0};
+	RTC_DateTypeDef tmpDate = {0};
+    uint32_t seconds = 0;
     HAL_StatusTypeDef status = HAL_ERROR;
     if (date->Date > DAYS_PER_MONTH_MAX || date->Month > MONTHS_PER_YEAR) {
         return false;
     } else {
     	/* calculating weekday begin */
-    	RTC_TimeTypeDef tmpTime = {0};
-    	RTC_DateTypeDef tmpDate = {0};
     	memcpy((void*)&tmpDate, (void*)date, sizeof(tmpDate));
-    	uint32_t seconds = clock_datetime_to_seconds(&tmpDate, &tmpTime);
+    	seconds = clock_datetime_to_seconds(&tmpDate, &tmpTime);
     	clock_seconds_to_datetime(seconds, &tmpDate, &tmpTime);
         if (!tmpDate.WeekDay) {
         	BEDUG_ASSERT(false, "Error calculating clock weekday");
         	tmpDate.WeekDay = RTC_WEEKDAY_MONDAY;
         }
     	/* calculating weekday end */
+
+    	HAL_PWR_EnableBkUpAccess();
         status = HAL_RTC_SetDate(&hrtc, &tmpDate, RTC_FORMAT_BIN);
+    	HAL_PWR_DisableBkUpAccess();
     }
 	BEDUG_ASSERT(status == HAL_OK, "Unable to set current date");
+	if (status != HAL_OK) {
+		printTagLog(
+			TAG,
+			"clock_save_date: seconds=%lu, time=20%02u-%02u-%02u weekday=%u",
+			seconds,
+			tmpDate.Year,
+			tmpDate.Month,
+			tmpDate.Date,
+			tmpDate.WeekDay
+		);
+	}
     return status == HAL_OK;
+}
+
+bool clock_save_seconds(const uint32_t seconds)
+{
+	RTC_DateTypeDef date = {0};
+	RTC_TimeTypeDef time = {0};
+	clock_seconds_to_datetime(seconds, &date, &time);
+
+	if (!clock_save_date(&date)) {
+		return false;
+	}
+
+	return clock_save_time(&time);
 }
 
 bool clock_get_rtc_time(RTC_TimeTypeDef* time)
@@ -152,6 +196,9 @@ uint32_t clock_datetime_to_seconds(const RTC_DateTypeDef* date, const RTC_TimeTy
 		days += _get_days_in_month(date->Year, i);
 	}
 	days += date->Date;
+	if (!days) {
+		return 0;
+	}
 	days -= 1;
 	uint32_t hours = days * HOURS_PER_DAY + time->Hours;
 	uint32_t minutes = hours * MINUTES_PER_HOUR + time->Minutes;
@@ -195,7 +242,7 @@ void clock_seconds_to_datetime(const uint32_t seconds, RTC_DateTypeDef* date, RT
 	date->Month = 1;
 	while (days) {
 		uint16_t days_in_year = (date->Year % LEAP_YEAR_PERIOD > 0) ? DAYS_PER_YEAR : DAYS_PER_LEAP_YEAR;
-		if (days > days_in_year) {
+		if (days >= days_in_year) {
 			days -= days_in_year;
 			date->Year++;
 			continue;
@@ -211,6 +258,42 @@ void clock_seconds_to_datetime(const uint32_t seconds, RTC_DateTypeDef* date, RT
 		date->Date = (uint8_t)days;
 		break;
 	}
+}
+
+char* get_clock_time_format()
+{
+	static char format_time[30] = "";
+	memset(format_time, '-', sizeof(format_time) - 1);
+	format_time[sizeof(format_time) - 1] = 0;
+
+	RTC_DateTypeDef date = {0};
+	RTC_TimeTypeDef time = {0};
+
+	if (!clock_get_rtc_date(&date)) {
+		BEDUG_ASSERT(false, "Unable to get current date");
+		memset((void*)&date, 0, sizeof(date));
+		return format_time;
+	}
+
+	if (!clock_get_rtc_time(&time)) {
+		BEDUG_ASSERT(false, "Unable to get current time");
+		memset((void*)&time, 0, sizeof(time));
+		return format_time;
+	}
+
+	snprintf(
+		format_time,
+		sizeof(format_time) - 1,
+		"20%02u-%02u-%02uT%02u:%02u:%02u",
+		date.Year,
+		date.Month,
+		date.Date,
+		time.Hours,
+		time.Minutes,
+		time.Seconds
+	);
+
+	return format_time;
 }
 
 uint8_t _get_days_in_month(uint8_t year, Months month)

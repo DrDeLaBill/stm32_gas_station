@@ -180,9 +180,9 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
+						<entry excluding="StorageAT/test/*|ModbusManager/modbus_rtu_puk/test/*|ModbusManager/modbus_rtu_puk/build/*|Utils/test/*" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="Modules"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
-						<entry excluding="StorageAT/test/*|ModbusManager/modbus_rtu_puk/test/*|ModbusManager/modbus_rtu_puk/build/*|Utils/test/*" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="Modules"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -357,9 +357,9 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
+						<entry excluding="StorageAT/test/*|ModbusManager/modbus_rtu_puk/test/*|ModbusManager/modbus_rtu_puk/build/*|Utils/test/" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="Modules"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
-						<entry excluding="StorageAT/test/*|ModbusManager/modbus_rtu_puk/test/*|ModbusManager/modbus_rtu_puk/build/*|Utils/test/" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="Modules"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

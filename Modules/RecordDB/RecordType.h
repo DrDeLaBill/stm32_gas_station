@@ -1,6 +1,12 @@
 /* Copyright © 2024 Georgy E. All rights reserved. */
 
-#pragma once
+#ifndef _RECORD_TYPE_H_
+#define _RECORD_TYPE_H_
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 #include "main.h"
@@ -26,3 +32,10 @@ typedef struct __attribute__((packed)) _reocrd_t {
 } record_t;
 
 static const unsigned RECORD_SIZE = sizeof(record_t);
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

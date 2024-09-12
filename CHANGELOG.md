@@ -1,7 +1,2 @@
-- Without keyboard mode fixed
-- Dependencies updated
-- Remove master card logging
-- Pump updated
-- Load verification added
-- UI log added
-- Gun switch fixed
+- Update dependences
+- Clock fix
