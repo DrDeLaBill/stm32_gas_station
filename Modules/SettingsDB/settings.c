@@ -87,6 +87,13 @@ bool settings_check(settings_t* other)
 		return false;
 	}
 
+	if (other->cards[0]      != SETTINGS_MASTER_CARD ||
+	    other->limits[0]     != SETTINGS_MASTER_LIMIT ||
+	    other->limit_type[0] != LIMIT_DAY
+	) {
+		return false;
+	}
+
 	return true;
 }
 
@@ -146,10 +153,12 @@ void settings_repair(settings_t* other)
 			other->limit_type[i] = settings_v3.limit_type[i];
 			other->used_liters[i] = settings_v3.used_liters[i];
 		}
+
+		other->sw_id = 0x04;
 	}
 
 	if (other->sw_id == 0x04) {
-		settings_v3_t settings_v4 = {0};
+		settings_v4_t settings_v4 = {0};
 		memcpy((void*)&settings_v4, (void*)other, sizeof(settings_v4));
 		memset(other->cards, 0, sizeof(other->cards));
 		memset(other->limits, 0, sizeof(other->limits));
@@ -165,7 +174,45 @@ void settings_repair(settings_t* other)
 			other->limit_type[i] = settings_v4.limit_type[i-1];
 			other->used_liters[i] = settings_v4.used_liters[i-1];
 		}
+
+		other->sw_id = 0x05;
 	}
+
+	if (other->sw_id == 0x05) {
+		settings_v5_t settings_v5 = {0};
+		memcpy((void*)&settings_v5, (void*)other, sizeof(settings_v5));
+		memset(other->cards, 0, sizeof(other->cards));
+		memset(other->limits, 0, sizeof(other->limits));
+		memset(other->limit_type, 0, sizeof(other->limit_type));
+		memset(other->used_liters, 0, sizeof(other->used_liters));
+		other->cards[0] = SETTINGS_MASTER_CARD;
+		other->limits[0] = SETTINGS_MASTER_LIMIT;
+		other->limit_type[0] = LIMIT_DAY;
+		other->used_liters[0] = 0;
+		for (unsigned i = 1; i < __arr_len(settings_v5.cards); i++) {
+			other->cards[i] = settings_v5.cards[i-1];
+			other->limits[i] = settings_v5.limits[i-1];
+			other->limit_type[i] = settings_v5.limit_type[i-1];
+			other->used_liters[i] = settings_v5.used_liters[i-1];
+		}
+
+		other->sw_id = 0x06;
+	}
+
+	other->cards[0] = SETTINGS_MASTER_CARD;
+	other->limits[0] = SETTINGS_MASTER_LIMIT;
+	other->limit_type[0] = LIMIT_DAY;
+	other->used_liters[0] = 0;
+
+	for (unsigned i = 0; i < __arr_len(other->limit_type); i++) {
+		LimitType *type = &(other->limit_type[i]);
+		if (*type == LIMIT_DAY || *type == LIMIT_MONTH) {
+			continue;
+		}
+		*type = LIMIT_DAY;
+	}
+
+	other->sw_id = SW_VERSION;
 
 	if (!settings_check(other)) {
 		settings_reset(other);

@@ -27,12 +27,12 @@ extern "C" {
  * 0x0005 - Calibrate station
  * 0x0006 - Dispenser-mini
  */
-#define DEVICE_TYPE        ((uint16_t)0x0002) // TODO: add to settings
-#define SW_VERSION         ((uint8_t)0x05)
+#define DEVICE_TYPE        ((uint16_t)0x0002)
+#define SW_VERSION         ((uint8_t)0x06)
 #define FW_VERSION         ((uint8_t)0x01)
 #define DEFAULT_CF_VERSION ((uint8_t)0x01)
 #define DEFAULT_ID         ((uint8_t)0x01)
-#define RFID_CARDS_COUNT   ((uint16_t)51)
+#define RFID_CARDS_COUNT   ((uint16_t)71)
 
 #define SETTINGS_MASTER_CARD  (1255648)
 #define SETTINGS_MASTER_LIMIT (1000000)
@@ -67,7 +67,25 @@ typedef struct __attribute__((packed)) _settings_t  {
     uint8_t  last_month;
 } settings_t;
 
+#define RFID_CARDS_COUNT_V5 (51)
+typedef struct __attribute__((packed)) _settings_v5_t  {
+	// Configuration version
+    uint32_t cf_id;
+    // Software version
+    uint8_t  sw_id;
+    // Firmware version
+    uint8_t  fw_id;
+    uint32_t device_id;
+    uint32_t cards      [RFID_CARDS_COUNT_V5];
+    uint32_t limits     [RFID_CARDS_COUNT_V5];
+    uint8_t  limit_type [RFID_CARDS_COUNT_V5];
+    uint32_t used_liters[RFID_CARDS_COUNT_V5];
+    uint32_t log_id;
+    uint8_t  last_day;
+    uint8_t  last_month;
+} settings_v5_t;
 
+#define RFID_CARDS_COUNT_V4 (50)
 typedef struct __attribute__((packed)) _settings_v4_t  {
 	// Configuration version
     uint32_t cf_id;
@@ -76,10 +94,10 @@ typedef struct __attribute__((packed)) _settings_v4_t  {
     // Firmware version
     uint8_t  fw_id;
     uint32_t device_id;
-    uint32_t cards      [RFID_CARDS_COUNT];
-    uint32_t limits     [RFID_CARDS_COUNT];
-    uint8_t  limit_type [RFID_CARDS_COUNT];
-    uint32_t used_liters[RFID_CARDS_COUNT];
+    uint32_t cards      [RFID_CARDS_COUNT_V4];
+    uint32_t limits     [RFID_CARDS_COUNT_V4];
+    uint8_t  limit_type [RFID_CARDS_COUNT_V4];
+    uint32_t used_liters[RFID_CARDS_COUNT_V4];
     uint32_t log_id;
     uint8_t  last_day;
     uint8_t  last_month;
