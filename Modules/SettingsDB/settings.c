@@ -128,7 +128,7 @@ void settings_repair(settings_t* other)
 		memcpy((void*)&settings_v2, (void*)other, sizeof(settings_v2));
 		memset(other->cards, 0, sizeof(other->cards));
 		memset(other->limits, 0, sizeof(other->limits));
-		memset(other->limit_type, 0, sizeof(other->limit_type));
+		memset(other->limit_type, LIMIT_DAY, sizeof(other->limit_type));
 		memset(other->used_liters, 0, sizeof(other->used_liters));
 		for (unsigned i = 0; i < __arr_len(settings_v2.cards); i++) {
 			other->cards[i] = settings_v2.cards[i];
@@ -145,7 +145,7 @@ void settings_repair(settings_t* other)
 		memcpy((void*)&settings_v3, (void*)other, sizeof(settings_v3));
 		memset(other->cards, 0, sizeof(other->cards));
 		memset(other->limits, 0, sizeof(other->limits));
-		memset(other->limit_type, 0, sizeof(other->limit_type));
+		memset(other->limit_type, LIMIT_DAY, sizeof(other->limit_type));
 		memset(other->used_liters, 0, sizeof(other->used_liters));
 		for (unsigned i = 0; i < __arr_len(settings_v3.cards); i++) {
 			other->cards[i] = settings_v3.cards[i];
@@ -162,7 +162,7 @@ void settings_repair(settings_t* other)
 		memcpy((void*)&settings_v4, (void*)other, sizeof(settings_v4));
 		memset(other->cards, 0, sizeof(other->cards));
 		memset(other->limits, 0, sizeof(other->limits));
-		memset(other->limit_type, 0, sizeof(other->limit_type));
+		memset(other->limit_type, LIMIT_DAY, sizeof(other->limit_type));
 		memset(other->used_liters, 0, sizeof(other->used_liters));
 		other->cards[0] = SETTINGS_MASTER_CARD;
 		other->limits[0] = SETTINGS_MASTER_LIMIT;
@@ -183,7 +183,7 @@ void settings_repair(settings_t* other)
 		memcpy((void*)&settings_v5, (void*)other, sizeof(settings_v5));
 		memset(other->cards, 0, sizeof(other->cards));
 		memset(other->limits, 0, sizeof(other->limits));
-		memset(other->limit_type, 0, sizeof(other->limit_type));
+		memset(other->limit_type, LIMIT_DAY, sizeof(other->limit_type));
 		memset(other->used_liters, 0, sizeof(other->used_liters));
 		other->cards[0] = SETTINGS_MASTER_CARD;
 		other->limits[0] = SETTINGS_MASTER_LIMIT;
