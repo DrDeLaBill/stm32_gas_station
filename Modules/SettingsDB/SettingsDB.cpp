@@ -41,14 +41,37 @@ SettingsStatus SettingsDB::load()
         needResaveSecond = true;
     }
 
-    settings_t tmpSettings = {};
+    uint32_t address = 0;
     if (!needResaveFirst) {
-        status = storage->load(address1, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
+    	address = address1;
     } else if (!needResaveSecond) {
-        status = storage->load(address2, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
+    	address = address2;
     } else {
     	status = STORAGE_NOT_FOUND;
     }
+
+    if (status != STORAGE_OK) {
+#if SETTINGS_BEDUG
+        printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address1=%lu, adderss2=%lu", status, address1, address2);
+#endif
+    	return SETTINGS_ERROR;
+    }
+
+    settings_t tmpSettings = {};
+    status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpSettings), this->size);
+    if (status == STORAGE_NOT_FOUND) {
+        status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpSettings), sizeof(settings_v5_t));
+    }
+    if (status == STORAGE_NOT_FOUND) {
+        status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpSettings), sizeof(settings_v4_t));
+    }
+    if (status == STORAGE_NOT_FOUND) {
+        status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpSettings), sizeof(settings_v3_t));
+    }
+    if (status == STORAGE_NOT_FOUND) {
+        status = storage->load(address, reinterpret_cast<uint8_t*>(&tmpSettings), sizeof(settings_v2_t));
+    }
+
     if (status != STORAGE_OK) {
 #if SETTINGS_BEDUG
         printTagLog(SettingsDB::TAG, "error load settings: storage load error=%02X address1=%lu, adderss2=%lu", status, address1, address2);
