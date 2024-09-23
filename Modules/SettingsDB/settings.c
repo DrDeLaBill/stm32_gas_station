@@ -105,15 +105,14 @@ void settings_repair(settings_t* other)
 		other->fw_id = FW_VERSION;
 	}
 
-	for (unsigned i = 0; i < __arr_len(other->limit_type); i++) {
-		LimitType *type = &(other->limit_type[i]);
-		if (IS_LIMIT_TYPE(*type)) {
-			continue;
-		}
-		*type = LIMIT_DAY;
-	}
-
 	if (other->sw_id == SW_VERSION) {
+		for (unsigned i = 0; i < __arr_len(other->limit_type); i++) {
+			LimitType *type = &(other->limit_type[i]);
+			if (IS_LIMIT_TYPE(*type)) {
+				continue;
+			}
+			*type = LIMIT_DAY;
+		}
 		return;
 	}
 
