@@ -190,10 +190,10 @@ void settings_repair(settings_t* other)
 		other->limit_type[0] = LIMIT_DAY;
 		other->used_liters[0] = 0;
 		for (unsigned i = 1; i < __arr_len(settings_v5.cards); i++) {
-			other->cards[i] = settings_v5.cards[i-1];
-			other->limits[i] = settings_v5.limits[i-1];
-			other->limit_type[i] = settings_v5.limit_type[i-1];
-			other->used_liters[i] = settings_v5.used_liters[i-1];
+			other->cards[i] = settings_v5.cards[i];
+			other->limits[i] = settings_v5.limits[i];
+			other->limit_type[i] = settings_v5.limit_type[i];
+			other->used_liters[i] = settings_v5.used_liters[i];
 		}
 
 		other->sw_id = 0x06;
