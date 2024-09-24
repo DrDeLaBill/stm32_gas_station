@@ -93,6 +93,24 @@ void system_rtc_test(void)
 	}
 	gprint("   OK\n");
 
+	if (readDate.Date > 31) {
+		readDate.Date = 1;
+	}
+	if (readDate.Month > 12) {
+		readDate.Date = 12;
+	}
+	if (readDate.Year > 99) {
+		readDate.Year = 0;
+	}
+	if (readTime.Hours > 23) {
+		readTime.Hours = 0;
+	}
+	if (readTime.Minutes > 59) {
+		readTime.Minutes = 0;
+	}
+	if (readTime.Seconds > 59) {
+		readTime.Seconds = 0;
+	}
 
 	printPretty("Save date test: ");
 	if (!clock_save_date(&readDate)) {
