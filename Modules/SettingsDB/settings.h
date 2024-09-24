@@ -15,7 +15,7 @@ extern "C" {
 
 #define DEVICE_MAJOR (1)
 #define DEVICE_MINOR (2)
-#define DEVICE_PATCH (3)
+#define DEVICE_PATCH (4)
 
 
 /*

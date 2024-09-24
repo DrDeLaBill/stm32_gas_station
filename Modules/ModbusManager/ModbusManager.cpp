@@ -132,7 +132,7 @@ void ModbusManager::loadData()
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    printTagLog(TAG, "Load cards");
 #endif
-    for (unsigned i = 0; i < __arr_len(tmpSettings.cards); i++) {
+    for (unsigned i = 1; i < __arr_len(tmpSettings.cards); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
             MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
             reg32->getNextAddress(),
@@ -147,7 +147,7 @@ void ModbusManager::loadData()
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    printTagLog(TAG, "Load limits");
 #endif
-    for (unsigned i = 0; i < __arr_len(tmpSettings.limits); i++) {
+    for (unsigned i = 1; i < __arr_len(tmpSettings.limits); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
             MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
             reg32->getNextAddress(),
@@ -162,7 +162,7 @@ void ModbusManager::loadData()
 #endif
     uint32_t tmpAddress = reg32->getNextAddress();
     std::shared_ptr<ModbusRegister<uint8_t>> reg8;
-    for (unsigned i = 0; i < __arr_len(tmpSettings.limit_type); i++) {
+    for (unsigned i = 1; i < __arr_len(tmpSettings.limit_type); i++) {
         reg8 = ModbusRegister<uint8_t>::createRegister(
             MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
 			tmpAddress,
@@ -206,8 +206,8 @@ void ModbusManager::loadData()
 	)->load();
     clearLimitIdx = reg32->get();
 
-    if (enableClearLimit && clearLimitIdx < __arr_len(tmpSettings.used_liters)) {
-    	tmpSettings.used_liters[clearLimitIdx] = 0;
+    if (enableClearLimit && clearLimitIdx < __arr_len(tmpSettings.used_liters) - 1) {
+    	tmpSettings.used_liters[clearLimitIdx + 1] = 0;
     }
 
     if (memcmp(&tmpSettings, settings_get(), sizeof(tmpSettings))) {
@@ -302,7 +302,7 @@ void ModbusManager::updateData()
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    printTagLog(TAG, "Save cards");
 #endif
-    for (unsigned i = 0; i < __arr_len(settings.cards); i++) {
+    for (unsigned i = 1; i < __arr_len(settings.cards); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
             MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
             reg32->getNextAddress(),
@@ -313,7 +313,7 @@ void ModbusManager::updateData()
 #if MB_MANAGER_BEDUG
     ModbusManager::showLogLine();    printTagLog(TAG, "Save limits");
 #endif
-    for (unsigned i = 0; i < __arr_len(settings.limits); i++) {
+    for (unsigned i = 1; i < __arr_len(settings.limits); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
             MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
             reg32->getNextAddress(),
@@ -327,7 +327,7 @@ void ModbusManager::updateData()
 #endif
     uint32_t tmpAddress = reg32->getNextAddress();
     std::shared_ptr<ModbusRegister<uint8_t>> reg8;
-    for (unsigned i = 0; i < __arr_len(settings.limit_type); i++) {
+    for (unsigned i = 1; i < __arr_len(settings.limit_type); i++) {
         reg8 = ModbusRegister<uint8_t>::createRegister(
             MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
 			tmpAddress,
@@ -422,7 +422,7 @@ void ModbusManager::updateData()
     std::shared_ptr<ModbusRegister<uint16_t>> reg16 = ModbusRegister<uint16_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
         0,
-        RFID_CARDS_COUNT
+        RFID_CARDS_COUNT - 1
     )->save();
 
     Record record(settings.log_id);
