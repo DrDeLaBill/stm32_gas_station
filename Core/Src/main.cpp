@@ -76,7 +76,7 @@
 /* USER CODE BEGIN PV */
 
 #ifdef DEBUG
-static const char TAG[] = "MAIN";
+static const char MAIN_TAG[] = "MAIN";
 #endif
 
 uint8_t modbus_uart_byte = 0;
@@ -133,12 +133,14 @@ int main(void)
   if (is_error(RCC_ERROR)) {
 	  system_clock_hsi_config();
   } else {
+	  set_error(RCC_ERROR);
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  	  reset_error(RCC_ERROR);
   }
 
 #ifdef __STANDART_GAS_STATION__
@@ -196,6 +198,10 @@ int main(void)
 
 #endif
 
+#ifdef EXTERNAL_LOGGER
+    HAL_Delay(5000);
+#endif
+
     set_status(LOADING);
 
 #ifdef DEBUG
@@ -207,7 +213,7 @@ int main(void)
     utl::Timer errTimer(40 * SECOND_MS);
 
 	gprint("\n\n\n");
-	printTagLog(TAG, "The device is loading");
+	printTagLog(MAIN_TAG, "The device is loading");
 
 	SystemInfo();
 
@@ -258,7 +264,7 @@ int main(void)
 		RecordTmp::restore();
 	}
 
-	printTagLog(TAG, "The device is loaded successfully");
+	printTagLog(MAIN_TAG, "The device is loaded successfully");
 
 #ifdef DEBUG
 	unsigned last_error = get_first_error();
@@ -276,16 +282,21 @@ int main(void)
 #ifdef DEBUG
 		unsigned error = get_first_error();
 		if (error && last_error != error) {
-			printTagLog(TAG, "New error: %u", error);
+			printTagLog(MAIN_TAG, "New error: %u", error);
 			last_error = error;
 		} else if (last_error != error) {
-			printTagLog(TAG, "No errors");
+			printTagLog(MAIN_TAG, "No errors");
 			last_error = error;
 		}
 
 		kFLOPScounter++;
 		if (!kFLOPSTimer.wait()) {
-			printTagLog(TAG, "kFLOPS: %u", kFLOPScounter / (10 * SECOND_MS));
+			printTagLog(
+				MAIN_TAG,
+				"kFLOPS: %lu.%lu",
+				kFLOPScounter / (10 * SECOND_MS),
+				(kFLOPScounter / SECOND_MS) % 10
+			);
 			kFLOPScounter = 0;
 			kFLOPSTimer.start();
 		}
@@ -380,7 +391,7 @@ void record_check()
 
 	if (is_status(NEED_SAVE_FINAL_RECORD)) {
 #ifdef DEBUG
-		printTagLog(TAG, "Saving final record (card=%lu ml=%lu)", UI::getCard(), resultMl);
+		printTagLog(MAIN_TAG, "Saving final record (card=%lu ml=%lu)", UI::getCard(), resultMl);
 #endif
 		if (RecordTmp::remove() == RECORD_OK) {
 			save_new_log(resultMl);
@@ -394,14 +405,14 @@ void record_check()
 		}
 	} else if (is_status(NEED_INIT_RECORD_TMP)) {
 #ifdef DEBUG
-		printTagLog(TAG, "Initializing record tmp");
+		printTagLog(MAIN_TAG, "Initializing record tmp");
 #endif
 		if (RecordTmp::init() == RECORD_OK) {
 			reset_status(NEED_INIT_RECORD_TMP);
 		}
 	} else if (__abs_dif(resultMl, resultMlBuf) > RecordTmp::TRIG_LEVEL_ML) {
 #ifdef DEBUG
-		printTagLog(TAG, "Saving record tmp (card=%lu ml=%lu)", UI::getCard(), resultMl);
+		printTagLog(MAIN_TAG, "Saving record tmp (card=%lu ml=%lu)", UI::getCard(), resultMl);
 #endif
     	RecordTmp::save(UI::getCard(), resultMl);
 		set_status(NEED_SAVE_RECORD_TMP);
@@ -423,17 +434,17 @@ void save_new_log(uint32_t mlCount)
     record.record.used_mls = mlCount;
     record.record.card     = UI::getCard();
 
-    printTagLog(TAG, "save new log: begin");
-    printTagLog(TAG, "save new log: real mls=%lu", pump_count_ml());
+    printTagLog(MAIN_TAG, "save new log: begin");
+    printTagLog(MAIN_TAG, "save new log: real mls=%lu", pump_count_ml());
 
     RecordStatus status = record.save();
     if (status != RECORD_OK) {
-        printTagLog(TAG, "save new logerror=%02x", status);
+        printTagLog(MAIN_TAG, "save new logerror=%02x", status);
     } else {
-    	printTagLog(TAG, "save new log: success");
+    	printTagLog(MAIN_TAG, "save new log: success");
     }
 
-	printTagLog(TAG, "adding %lu used milliliters for %lu card", record.record.used_mls, record.record.card);
+	printTagLog(MAIN_TAG, "adding %lu used milliliters for %lu card", record.record.used_mls, record.record.card);
     settings_add_used_liters(record.record.used_mls, record.record.card);
     set_status(NEED_SAVE_SETTINGS);
 

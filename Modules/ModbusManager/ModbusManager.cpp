@@ -80,10 +80,11 @@ void ModbusManager::tick()
     }
 
     unsigned settingsHash = util_hash((uint8_t*)&settings, sizeof(settings));
-    if (settingsHash != lastHash || is_status(RECORD_UPDATED)) {
+    if (settingsHash != lastHash || is_status(RECORD_UPDATED) || is_status(NEW_CARD_RECEIVED)) {
     	lastHash = settingsHash;
-    	reset_status(RECORD_UPDATED);
         this->updateData();
+    	reset_status(RECORD_UPDATED);
+    	reset_status(NEW_CARD_RECEIVED);
     } else if (ModbusManager::recievedNewData) {
         this->loadData();
     }
@@ -107,10 +108,12 @@ void ModbusManager::loadData()
 
     settings_t tmpSettings = {};
     memcpy(&tmpSettings, &settings, sizeof(tmpSettings));
-    ModbusManager::showLogLine();    printTagLog(TAG, "LOAD FROM MODBUS TABLE");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "LOAD FROM MODBUS TABLE");
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load cf_id");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load cf_id");
 #endif
     std::shared_ptr<ModbusRegister<uint32_t>> reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -120,7 +123,8 @@ void ModbusManager::loadData()
     tmpSettings.cf_id = reg32->get();
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load device_id");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load device_id");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -130,7 +134,8 @@ void ModbusManager::loadData()
     tmpSettings.device_id = reg32->get();
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load cards");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load cards");
 #endif
     for (unsigned i = 1; i < __arr_len(tmpSettings.cards); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
@@ -145,7 +150,8 @@ void ModbusManager::loadData()
     }
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load limits");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load limits");
 #endif
     for (unsigned i = 1; i < __arr_len(tmpSettings.limits); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
@@ -173,7 +179,8 @@ void ModbusManager::loadData()
     }
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load log_id");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load log_id");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -217,7 +224,8 @@ void ModbusManager::loadData()
 
     RTC_DateTypeDef date = {};
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load year");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load year");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -226,7 +234,8 @@ void ModbusManager::loadData()
     )->load();
     date.Year = reg8->get();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load month");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load month");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -235,7 +244,8 @@ void ModbusManager::loadData()
     )->load();
     date.Month = reg8->get();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load date");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load date");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -249,7 +259,8 @@ void ModbusManager::loadData()
 
     RTC_TimeTypeDef time = {};
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load hours");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load hours");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -258,7 +269,8 @@ void ModbusManager::loadData()
     )->load();
     time.Hours = reg8->get();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load minutes");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load minutes");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -267,7 +279,8 @@ void ModbusManager::loadData()
     )->load();
     time.Minutes = reg8->get();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Load seconds");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Load seconds");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -281,9 +294,11 @@ void ModbusManager::loadData()
 
 void ModbusManager::updateData()
 {
-    ModbusManager::showLogLine();    printTagLog(TAG, "UPDATE TO MODBUS TABLE");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "UPDATE TO MODBUS TABLE");
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save cf_id");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save cf_id");
 #endif
     std::shared_ptr<ModbusRegister<uint32_t>> reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -291,7 +306,8 @@ void ModbusManager::updateData()
         settings.cf_id
     )->save();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save device_id");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save device_id");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -300,7 +316,8 @@ void ModbusManager::updateData()
     )->save();
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save cards");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save cards");
 #endif
     for (unsigned i = 1; i < __arr_len(settings.cards); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
@@ -311,7 +328,8 @@ void ModbusManager::updateData()
     }
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save limits");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save limits");
 #endif
     for (unsigned i = 1; i < __arr_len(settings.limits); i++) {
         reg32 = ModbusRegister<uint32_t>::createRegister(
@@ -337,7 +355,8 @@ void ModbusManager::updateData()
     }
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save log_id");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save log_id");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -366,7 +385,8 @@ void ModbusManager::updateData()
 	);
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save year");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save year");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -374,7 +394,8 @@ void ModbusManager::updateData()
         clock_get_year()
     )->save();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save month");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save month");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -382,7 +403,8 @@ void ModbusManager::updateData()
         clock_get_month()
     )->save();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save date");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save date");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -391,7 +413,8 @@ void ModbusManager::updateData()
     )->save();
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save hours");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save hours");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -399,7 +422,8 @@ void ModbusManager::updateData()
         clock_get_hour()
     )->save();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save minutes");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save minutes");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -407,7 +431,8 @@ void ModbusManager::updateData()
         clock_get_minute()
     )->save();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save seconds");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save seconds");
 #endif
     reg8 = ModbusRegister<uint8_t>::createRegister(
         MODBUS_REGISTER_ANALOG_OUTPUT_HOLDING_REGISTERS,
@@ -417,7 +442,8 @@ void ModbusManager::updateData()
 
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save rfid cards count");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save rfid cards count");
 #endif
     std::shared_ptr<ModbusRegister<uint16_t>> reg16 = ModbusRegister<uint16_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
@@ -432,7 +458,8 @@ void ModbusManager::updateData()
     }
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save record id");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save record id");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
@@ -441,7 +468,8 @@ void ModbusManager::updateData()
     )->save();
 
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save record time");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save record time");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
@@ -449,16 +477,19 @@ void ModbusManager::updateData()
 		record.record.time
     )->save();
 
+    uint32_t card = is_status(NEW_CARD_RECEIVED) ? UI::getCard() : record.record.card;
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save record card");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save record card %lu", card);
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,
         reg32->getNextAddress(),
-        record.record.card
+		card
     )->save();
 #if MB_MANAGER_BEDUG
-    ModbusManager::showLogLine();    printTagLog(TAG, "Save record used_liters");
+    ModbusManager::showLogLine();
+    printTagLog(TAG, "Save record used_liters");
 #endif
     reg32 = ModbusRegister<uint32_t>::createRegister(
         MODBUS_REGISTER_ANALOG_INPUT_REGISTERS,

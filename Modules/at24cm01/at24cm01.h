@@ -16,7 +16,7 @@ extern "C" {
 #define EEPROM_I2C_ADDR    ((uint8_t)0xA0)
 #define EEPROM_PAGE_SIZE   (256)
 #define EEPROM_PAGES_COUNT (512)
-#define EEPROM_DEBUG       (1)
+#define EEPROM_DEBUG       (0)
 
 
 typedef enum _eeprom_status_t {

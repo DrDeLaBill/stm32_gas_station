@@ -9,7 +9,7 @@
 #include "StorageAT.h"
 
 
-#define STORAGE_DRIVER_BEDUG      (true)
+#define STORAGE_DRIVER_BEDUG      (false)
 #define STORAGE_DRIVER_USE_BUFFER (true)
 
 

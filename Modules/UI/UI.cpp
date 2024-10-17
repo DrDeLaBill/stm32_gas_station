@@ -41,6 +41,7 @@ void UI::proccess()
 
 void UI::setCard(uint32_t card)
 {
+	set_status(NEW_CARD_RECEIVED);
     UI::card = card;
 }
 
